@@ -1,0 +1,166 @@
+/* 도트 폰트: Galmuri (SIL OFL 1.1) — assets/fonts/OFL.txt */
+@font-face { font-family: Galmuri11; font-weight: 400; font-display: swap; src: url('../assets/fonts/Galmuri11.woff2') format('woff2'); }
+@font-face { font-family: Galmuri11; font-weight: 700; font-display: swap; src: url('../assets/fonts/Galmuri11-Bold.woff2') format('woff2'); }
+
+/*
+ * 도트 UI 규칙: 둥근 모서리·흐림(blur)·부드러운 그라데이션을 쓰지 않는다.
+ * 그림자는 번짐 없는 오프셋(--drop), 명암은 딱 끊기는 색 경계로만 만든다.
+ */
+:root {
+  --bg: #10131c;
+  --panel: #181d2a;
+  --card: #1f2536;
+  --line: #2a3246;
+  --ink: #0a0d14;
+  --text: #e8ecf5;
+  --muted: #8a93a8;
+  --accent: #4fd1ff;
+  --gold: #ffd166;
+  --target: #ffd166;
+  --action: #ff7a8a;
+  --filter: #6ee7c8;
+  --flow: #8fb8ff;
+  --event: #ffa94d;
+  --icons: 22;
+  --drop: 4px 4px 0 rgba(0, 0, 0, .55);
+  --tshadow: 2px 2px 0 #000;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Galmuri11, 'Malgun Gothic', system-ui, sans-serif;
+  user-select: none;
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+canvas { display: block; image-rendering: pixelated; }
+.hidden { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; inset: 0 0 auto 0; pointer-events: none; }
+#xpbar {
+  position: relative; height: 18px;
+  background: var(--ink); border-bottom: 3px solid var(--line);
+}
+#xpfill {
+  height: 100%; width: 0;
+  /* 칸칸이 끊긴 도트 게이지 + 윗면 하이라이트 */
+  background: repeating-linear-gradient(90deg, var(--accent) 0 9px, #2b7fff 9px 12px);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, .35), inset 0 -3px 0 rgba(0, 0, 0, .25);
+  transition: width .12s steps(3);
+}
+#lvl {
+  position: absolute; right: 10px; top: 0;
+  line-height: 18px; font-size: 12px; font-weight: 700;
+  text-shadow: var(--tshadow);
+}
+#topinfo {
+  display: flex; justify-content: center; align-items: baseline; gap: 22px;
+  margin-top: 8px; font-weight: 700; font-size: 22px;
+  text-shadow: 3px 3px 0 #000; font-variant-numeric: tabular-nums;
+}
+#kills { font-size: 15px; color: var(--muted); text-shadow: var(--tshadow); }
+#stage { font-size: 15px; text-shadow: var(--tshadow); }
+.enemy-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; text-align: left; }
+.enemy-chip { padding: 3px 8px; font-size: 13px; background: var(--card); border: 2px solid var(--line); }
+.enemy-chip.boss { border-color: #ff3b6b; color: #ffb3c4; }
+.enemy-chip i { margin-left: 6px; font-style: normal; font-size: 11px; }
+.stage-notes { margin-top: 8px; text-align: left; font-size: 13px; line-height: 1.55; color: #c3c9d8; word-break: keep-all; }
+.stage-notes p + p { margin-top: 3px; }
+@media (max-width: 480px) { #topinfo { gap: 12px; } #stage { font-size: 12px; } }
+
+/* ---------- Overlay / panels ---------- */
+#overlay {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  /* 흐림 대신 체크무늬 디더로 뒤 화면을 누른다 */
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, .35) 0 25%, transparent 0 50%) 0 0 / 4px 4px,
+    rgba(6, 8, 14, .6);
+}
+.panel {
+  width: 100%; max-width: min(760px, 100%);
+  max-height: 100%; overflow-y: auto;
+  padding: 28px 32px;
+  background: var(--panel);
+  border: 3px solid var(--line);
+  text-align: center;
+  box-shadow: 0 0 0 3px var(--ink), inset 0 3px 0 rgba(255, 255, 255, .05), 10px 10px 0 3px rgba(0, 0, 0, .45);
+}
+.panel h1 { font-size: 44px; letter-spacing: 4px; line-height: 1.05; color: var(--accent); text-shadow: 4px 4px 0 #0b3b52; }
+.panel h2 { font-size: 28px; margin-bottom: 4px; text-shadow: 3px 3px 0 #000; }
+.panel .sub { color: var(--muted); margin-top: 10px; }
+
+.keys {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px;
+  margin: 22px 0; color: var(--muted); font-size: 14px;
+}
+kbd {
+  display: inline-block; min-width: 22px; padding: 1px 6px; margin: 0 2px;
+  border: 2px solid var(--line); border-bottom-width: 4px;
+  background: #0f131d; color: var(--text); font-family: inherit; font-size: 12px; font-weight: 600; line-height: 1.6;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 22px; margin: 6px;
+  border: 3px solid var(--line);
+  background: var(--card); color: var(--text);
+  font-family: inherit; font-size: 16px; font-weight: 600; cursor: pointer;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .3), 0 4px 0 var(--ink);
+}
+.btn:hover { border-color: var(--accent); }
+.btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .3), 0 1px 0 var(--ink); }
+.btn.primary { background: #1b5f86; border-color: var(--accent); }
+
+/* ---------- Level up cards ---------- */
+.cards {
+  display: grid; gap: 14px; margin-top: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.card {
+  position: relative; text-align: left;
+  padding: 18px 16px 16px;
+  background: var(--card); color: inherit; font: inherit;
+  border: 3px solid var(--line);
+  box-shadow: var(--drop);
+  cursor: pointer; transition: transform .1s steps(2);
+}
+.card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.card .icon { font-size: 26px; color: var(--gold); }
+.card .name { font-size: 18px; font-weight: 700; margin-top: 6px; }
+.card .lv { font-size: 12px; color: var(--accent); margin-top: 2px; }
+.card .desc { font-size: 14px; color: var(--muted); margin-top: 10px; }
+.card .hint { position: absolute; top: 12px; right: 12px; }
+
+/* ---------- Stats table ---------- */
+.stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 6px 18px; margin: 18px 0; text-align: left; font-size: 14px;
+}
+.stats div {
+  display: flex; justify-content: space-between; padding: 3px 0 5px;
+  /* 도트 점선 (둥근 dotted 대신 네모 조각) */
+  background: linear-gradient(90deg, var(--line) 50%, transparent 0) left bottom / 6px 2px repeat-x;
+}
+.stats span:first-child { color: var(--muted); }
+.stats small { color: var(--muted); font-size: 12px; }
+.section-title { text-align: left; font-size: 13px; color: var(--muted); margin-top: 14px; letter-spacing: 1px; }
+.skill-list { text-align: left; margin-top: 6px; font-size: 14px; }
+.skill-list li { list-style: none; padding: 6px 10px; background: var(--card); border: 2px solid var(--line); margin-top: 6px; }
+
+@media (max-width: 520px) {
+  .panel { padding: 22px 18px; }
+  .panel h1 { font-size: 34px; }
+}
+
+/* ---------- 공용 ---------- */
+.muted { color: var(--muted); }
+.warn { color: #ffb454; }

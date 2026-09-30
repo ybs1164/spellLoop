@@ -1,0 +1,256 @@
+/* ---------- 도트 아이콘 (assets/sprites/icons.png) ---------- */
+.ico {
+  display: inline-block; flex: none;
+  width: var(--s); height: var(--s);
+  background: url('../assets/sprites/icons.png') no-repeat;
+  background-size: calc(var(--icons) * var(--s)) var(--s);
+  background-position: calc(var(--i) * var(--s) * -1) 0;
+  image-rendering: pixelated;
+}
+.t-target { --c: var(--target); }
+.t-action { --c: var(--action); }
+.t-filter { --c: var(--filter); }
+.t-flow { --c: var(--flow); }
+.t-event { --c: var(--event); }
+b.c-event { color: var(--event); }
+b.c-filter { color: var(--filter); }
+b.c-target { color: var(--target); }
+b.c-action { color: var(--action); }
+b.c-flow { color: var(--flow); }
+
+/* ---------- 작은 카드 (HUD / 목록) ---------- */
+.mini {
+  display: inline-grid; place-items: center; width: 24px; height: 24px;
+  background: color-mix(in srgb, var(--c) 14%, #121722);
+  border: 2px solid color-mix(in srgb, var(--c) 70%, transparent);
+  vertical-align: middle; margin-right: 3px;
+}
+.mini.run { background: color-mix(in srgb, var(--c) 50%, #121722); border-color: #fff; transform: translateY(-3px); box-shadow: 0 3px 0 #000; }
+.title-cards { margin-top: 16px; }
+
+/* ---------- 덱 HUD ---------- */
+#deck {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px;
+  width: max-content; max-width: calc(100% - 32px);
+}
+.dslot {
+  position: relative; display: flex; align-items: center;
+  min-width: 34px; min-height: 36px; padding: 5px 6px;
+  background: rgba(15, 19, 29, .9); border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .5);
+}
+.dslot.empty { opacity: .45; }
+.dslot.next { border-color: #3b6e87; }
+.dslot.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px rgba(79, 209, 255, .5), 3px 3px 0 4px rgba(0, 0, 0, .5); }
+.dslot .no {
+  position: absolute; top: -10px; left: -8px; padding: 0 4px;
+  font-size: 10px; font-weight: 700; line-height: 15px;
+  background: var(--ink); border: 2px solid var(--line);
+}
+/* 이벤트 슬롯: 순환에서 빠져 있다 — 주황 점선 테두리, 발동하면 active 로 덮인다 */
+.dslot.ev { border-style: dashed; border-color: color-mix(in srgb, var(--event) 60%, var(--line)); }
+/* 이벤트가 끼어들어 멈춰 둔 슬롯 */
+.dslot.held { border-color: var(--event); opacity: .7; }
+/* 쿨타임: 슬롯 아래쪽 막대가 남은 비율만큼 (--cd 0~1) */
+.dslot .cdbar {
+  position: absolute; left: 0; bottom: -2px; height: 3px;
+  width: calc(var(--cd, 0) * 100%); background: var(--muted);
+}
+.dslot.ev .cdbar { background: var(--event); }
+.dslot.cooling .mini { filter: brightness(.6); }
+.dslot .dcost { margin-left: 3px; font-size: 10px; color: var(--muted); }
+.dslot .dcost.over { color: #ff6b6b; font-weight: 700; }
+.dhint {
+  padding: 6px 9px; font-size: 12px; color: var(--muted);
+  background: rgba(15, 19, 29, .9); border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, .5);
+}
+.dhint b { color: var(--gold); }
+
+/* ---------- 편집기 카드 ---------- */
+.pcard {
+  position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+  width: 74px; height: 92px; padding: 8px 4px 6px;
+  font-size: 11px; font-weight: 700; color: var(--text); cursor: grab; text-align: center;
+  /* 색 띠 → 본문, 딱 끊기는 2단 명암 */
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--c) 28%, #161b28) 0 12px,
+    color-mix(in srgb, var(--c) 14%, #141926) 12px 36%,
+    #121620 36%);
+  border: 2px solid var(--c);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35), 0 4px 0 color-mix(in srgb, var(--c) 35%, #000);
+  transition: transform .08s steps(2);
+}
+.pcard:hover { transform: translateY(-4px); }
+.pcard .nm { line-height: 1.15; word-break: keep-all; }
+.pcard .cost, .bigcard .cost {
+  position: absolute; top: -8px; left: -8px; display: grid; place-items: center;
+  width: 22px; height: 22px; font-size: 12px; font-weight: 700; color: #0b0e15;
+  background: #8be9ff; border: 3px solid #0b0e15;
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .2);
+  /* 모서리 한 칸을 계단식으로 깎은 도트 배지 (둥근 원 대신) */
+  clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px),
+    calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px);
+}
+.pcard.dragging { opacity: .35; }
+
+/* ---------- 큰 카드 (도감 / 레벨업) ---------- */
+.bigcards { display: grid; gap: 16px 12px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.bigcard {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding: 14px 10px 12px; text-align: center; color: var(--text); font: inherit;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--c) 24%, #181d2a) 0 18px,
+    color-mix(in srgb, var(--c) 12%, #161b27) 18px 45%,
+    #141824 45%);
+  border: 3px solid var(--c);
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35), 0 5px 0 color-mix(in srgb, var(--c) 30%, #000);
+}
+.bigcard .cost { width: 28px; height: 28px; font-size: 15px; top: -10px; left: -10px; }
+.bigcard .ribbon {
+  position: absolute; top: 6px; right: 6px; padding: 1px 6px;
+  font-size: 10px; font-weight: 700; color: #0b0e15; background: var(--c);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .45);
+}
+.bigcard .art {
+  display: grid; place-items: center; width: 72px; height: 72px; margin: 6px 0 8px;
+  background: #0d1018; border: 3px solid color-mix(in srgb, var(--c) 45%, var(--line));
+  box-shadow: inset 3px 3px 0 rgba(0, 0, 0, .5);
+}
+.bigcard .name { font-size: 15px; font-weight: 700; }
+.bigcard .kind { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.bigcard .kind b { color: var(--c); }
+.bigcard .desc { font-size: 12px; line-height: 1.5; color: #c3c9d8; margin-top: 8px; word-break: keep-all; }
+.bigcard .kw { margin-top: 8px; padding-top: 6px; border-top: 2px dashed #2a3246; font-size: 11px; line-height: 1.45; color: var(--muted); text-align: left; word-break: keep-all; }
+.bigcard .kw p + p { margin-top: 3px; }
+.bigcard .kw b { color: #e6e9f2; }
+.bigcard.pickable { cursor: pointer; transition: transform .1s steps(2); padding-bottom: 34px; }
+.bigcard.pickable:hover { transform: translateY(-4px); }
+.bigcard .hint { position: absolute; bottom: 8px; right: 8px; }
+
+.panel.codex { max-width: min(980px, 100%); text-align: left; }
+.panel.codex h2, .panel.codex > .sub { text-align: center; }
+.panel.codex > .sub { font-size: 13px; line-height: 1.7; }
+.codex-example {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;
+  margin-top: 16px; padding: 16px 10px 10px; font-size: 12px;
+  background: #141926; border: 3px dashed var(--line);
+}
+.codex-example .pcard { cursor: default; }
+.codex-example .arrow { color: var(--muted); font-size: 18px; }
+
+/* ---------- 카드 편집기 ---------- */
+.panel.editor { max-width: min(960px, 100%); text-align: left; }
+.panel.editor h2, .panel.editor > .sub { text-align: center; }
+.panel.editor > .sub { font-size: 13px; line-height: 1.7; }
+.slots { margin-top: 16px; }
+.slot-row {
+  display: grid; grid-template-columns: 34px 1fr auto; gap: 8px 12px; align-items: center;
+  margin-top: 12px; padding: 12px;
+  background: #141926; border: 3px solid var(--line); cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .35);
+}
+.slot-row.sel { border-color: var(--accent); background: #15202d; }
+.slot-row.ev { border-left-color: var(--event); border-left-style: dashed; }
+.slot-info .evnote { width: 100%; color: var(--event); }
+.slot-head { display: flex; flex-direction: column; align-items: center; gap: 2px; grid-row: span 2; }
+.slot-no { font-size: 18px; font-weight: 700; }
+.icon-btn {
+  width: 26px; height: 18px; font-size: 9px; cursor: pointer; font-family: inherit;
+  background: var(--card); color: var(--muted); border: 2px solid var(--line);
+}
+.icon-btn:disabled { opacity: .3; cursor: default; }
+.slot-cards, .inventory {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  min-height: 104px; padding: 10px 8px 6px; border: 3px dashed transparent;
+}
+.inventory { margin-top: 6px; padding: 14px 12px 10px; border-color: var(--line); }
+.dropzone.over {
+  border-color: var(--accent);
+  background: repeating-conic-gradient(rgba(79, 209, 255, .12) 0 25%, transparent 0 50%) 0 0 / 6px 6px;
+}
+.cell {
+  display: grid; place-items: center; width: 74px; height: 92px;
+  color: var(--line); font-size: 22px; border: 3px dashed var(--line);
+}
+.costmeter { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 88px; }
+.costmeter span { font-size: 22px; font-weight: 700; color: #8be9ff; text-shadow: var(--tshadow); }
+.costmeter small { font-size: 13px; color: var(--muted); }
+.costmeter.over span { color: #ff6b6b; }
+.slot-info { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
+.slot-info .step { color: var(--text); }
+.slot-info .step.bad { text-decoration: line-through; opacity: .6; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.editor-msg { min-height: 22px; margin: 8px 0 2px; text-align: center; font-size: 13px; color: #ffb454; }
+.skill-list li { display: flex; align-items: center; }
+
+@media (max-width: 620px) {
+  .slot-row { grid-template-columns: 30px 1fr; }
+  .costmeter { grid-column: 2; flex-direction: row; align-items: center; }
+  .slot-info { grid-column: 1 / 3; }
+}
+
+/* ---------- 성장 (코스트 포인트 · 슬롯) ---------- */
+.growth {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 12px;
+  margin-top: 14px; font-size: 13px;
+}
+.growth > span:not(.muted) { padding: 3px 9px; color: #0b0e15; font-weight: 700; background: #8be9ff; box-shadow: 3px 3px 0 rgba(0, 0, 0, .45); }
+.growth b { color: #8be9ff; }
+.points { margin-top: 14px; padding: 8px 12px; font-size: 13px; background: #141926; border: 3px solid var(--line); }
+.points b { color: #8be9ff; }
+.points.has { border-color: #8be9ff; }
+.costmeter .plus {
+  margin-right: 8px; padding: 2px 6px; vertical-align: 4px;
+  font: 700 12px Galmuri11, sans-serif; color: #0b0e15; cursor: pointer;
+  background: #8be9ff; border: 2px solid #0b0e15;
+  animation: pulse .6s steps(1) infinite alternate;
+}
+/* 번짐 대신 두 단계로 깜빡이는 도트 외곽 */
+@keyframes pulse { to { box-shadow: 0 0 0 3px rgba(139, 233, 255, .6); } }
+.dhint .pts { color: #8be9ff; font-weight: 700; }
+h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
+
+/* ---------- 버프 표시줄 ---------- */
+#buffs {
+  position: fixed; left: 50%; bottom: 62px; transform: translateX(-50%);
+  display: flex; gap: 6px;
+}
+.buff {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 4px;
+  font-size: 11px; background: rgba(15, 19, 29, .9); border: 2px solid var(--line);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, .5);
+}
+
+/* ---------- 대상 조건 카드 ---------- */
+.pcard .cost.neg, .bigcard .cost.neg { background: #5be37a; }
+.pcard .cost.zero, .bigcard .cost.zero { background: #9aa3b8; }
+/* →N·↺: 대상 카드 가격을 바꾸는 조건 */
+.pcard .cost.cap, .bigcard .cost.cap { width: auto; min-width: 22px; padding: 0 4px; background: #6ee7c8; letter-spacing: -1px; }
+.bigcard .cost.cap { min-width: 28px; }
+/* 슬롯 안에서 실제 코스트가 적힌 값과 다를 때: 적힌 값에 줄을 긋고 실제 값을 쓴다 */
+.pcard .cost.eff { width: auto; min-width: 22px; padding: 0 5px; gap: 3px; grid-auto-flow: column; background: #f4f6ff; }
+.pcard .cost.eff s { font-size: 10px; color: #7a8296; text-decoration-thickness: 2px; text-decoration-color: #ff5c5c; }
+.codex-note { font-size: 12px; text-align: center; }
+.codex-example .pcard { width: 66px; }
+.btn.reroll { margin-top: 16px; }
+.btn.reroll:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+
+/* ---------- 저주 카드: 보라색, 떨린다 ---------- */
+.curse { --c: #b39dff; }
+.pcard.curse { cursor: not-allowed; animation: cursed .4s steps(2) infinite; }
+.mini.curse { animation: cursed .4s steps(2) infinite; }
+@keyframes cursed { 50% { transform: translateX(2px); } }
+
+/* ---------- 던전 기믹 (도감) ---------- */
+.gimmicks { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.gimmick {
+  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px;
+  background: #141926; border: 3px solid var(--line); box-shadow: 3px 3px 0 rgba(0, 0, 0, .35);
+}
+.gimmick b { color: var(--gold); }
+.glossary { display: grid; gap: 4px 18px; margin-top: 10px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); font-size: 12px; line-height: 1.5; color: #c3c9d8; word-break: keep-all; }
+.glossary b { color: #e6e9f2; }
+.gimmick p { margin-top: 4px; font-size: 12px; line-height: 1.55; color: #c3c9d8; word-break: keep-all; }

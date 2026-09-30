@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spell Loop</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/cards.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="xpbar"><div id="xpfill"></div><span id="lvl">Lv 1</span></div>
+    <div id="topinfo"><span id="stage"></span><span id="timer">00:00</span><span id="kills">0</span></div>
+    <div id="buffs"></div>
+    <div id="deck"></div>
+  </div>
+
+  <div id="overlay" class="hidden"></div>
+
+  <!-- 모듈 없이 file:// 로도 열리도록 classic script 순서 로드 -->
+  <script src="js/util.js"></script>
+  <script src="js/pixel.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/cards.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/entities.js"></script>
+  <script src="js/stages.js"></script>
+  <script src="js/upgrades.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
