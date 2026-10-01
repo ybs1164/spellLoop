@@ -158,13 +158,6 @@ ICONS = [
     ('zones',       'ob', 830,  '#ffd166'),
     ('shots',       'ob', 1061, '#ffd166'),
     ('gems',        'ob', 237,  '#ffd166'),
-    # 이벤트 카드 (주황)
-    ('eCast',       'ob', 1067, '#ffa94d'),
-    ('eMove',       'td', 118,  '#ffa94d'),
-    ('eStop',       'ob', 1075, '#ffa94d'),
-    ('eEngage',     'ob', 626,  '#ffa94d'),
-    ('eWithdraw',   'ob', 1061, '#ffa94d'),
-    ('eTouch',      'ob', 1064, '#ffa94d'),
 ]
 
 

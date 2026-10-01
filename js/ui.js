@@ -105,7 +105,6 @@ const UI = {
       const note = `대상 코스트 →${c.targetCost}`;
       return c.kinds.length === ALL_KINDS.length ? note : `${kinds(c.kinds)} 전용${note ? ` · ${note}` : ''}`;
     }
-    if (c.type === 'event') return `${c.edge ? '순간' : '상태'} 이벤트 · 이 슬롯은 순환에서 빠진다`;
     if (c.type === 'flow' || c.accepts.length === ALL_KINDS.length) return '';
     if (c.accepts.length === ALL_KINDS.length - 1) return `${kinds(ALL_KINDS.filter((k) => !c.accepts.includes(k)))} 제외`;
     return `${kinds(c.accepts)} 전용`;
@@ -167,7 +166,7 @@ const UI = {
       this._last.run = null;
       const slots = deck.slots.map((s, i) => {
         const over = SkillDeck.overCost(s);
-        const cls = (SkillDeck.runnable(s) ? '' : ' empty') + (SkillDeck.isEvent(s) ? ' ev' : '');
+        const cls = SkillDeck.runnable(s) ? '' : ' empty';
         const eff = this.slotCosts(s.cards);
         return `<div class="dslot${cls}" data-i="${i}"><span class="no">${i + 1}</span>${s.cards.map((id, ci) => this.miniHtml(id, eff[ci])).join('')}
           <span class="dcost${over ? ' over' : ''}">${cardsCost(s.cards)}/${s.limit}</span><i class="cdbar"></i></div>`;
@@ -186,16 +185,14 @@ const UI = {
       els.forEach((el, i) => { el.style.setProperty('--cd', cds[i]); el.classList.toggle('cooling', cds[i] > 0); });
     }
 
-    // 실행 중: 해당 슬롯 + 방금 실행된 카드 / 대기 중: 다음 슬롯 / 이벤트가 끼어들어 멈춘 슬롯
-    const c = deck.cast, h = deck.held, next = c ? -1 : deck.nextRunnable();
-    const run = c ? `${c.slot}:${c.i - 1}:${h ? h.slot : ''}` : `n${next}`;
+    // 슬롯마다 따로: 실행 중인 슬롯 + 그 슬롯에서 방금 실행된 카드
+    const run = deck.slots.map((s) => (s.cast ? s.cast.i - 1 : '')).join(',');
     if (this._last.run === run) return;
     this._last.run = run;
     els.forEach((el, i) => {
-      el.classList.toggle('active', !!c && c.slot === i);
-      el.classList.toggle('held', !!h && h.slot === i);
-      el.classList.toggle('next', next === i);
-      el.querySelectorAll('.mini').forEach((m, j) => m.classList.toggle('run', !!c && c.slot === i && j === c.i - 1));
+      const c = deck.slots[i]?.cast;
+      el.classList.toggle('active', !!c);
+      el.querySelectorAll('.mini').forEach((m, j) => m.classList.toggle('run', !!c && j === c.i - 1));
     });
   },
 
@@ -291,8 +288,6 @@ const UI = {
         ${actions}
         <h3 class="codex-h">반복 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'flow').length}장</span></h3>
         ${grid(ids.filter((id) => CARDS[id].type === 'flow'))}
-        <h3 class="codex-h">이벤트 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'event').length}장</span></h3>
-        ${grid(ids.filter((id) => CARDS[id].type === 'event'))}
         <div style="text-align:center;margin-top:18px"><button class="btn primary" data-act="codex-close">닫기 <kbd>Esc</kbd></button></div>
       </div>`, 'codex');
   },
@@ -361,9 +356,7 @@ const UI = {
       return `<span class="step${s.ok ? '' : ' bad'}">${who} → <b class="${s.flow ? 'c-flow' : 'c-action'}">${CARDS[s.action].name}</b></span>`;
     }).join('');
     const warns = pv.warns.map((w) => `<span class="warn">⚠ ${w}</span>`).join('');
-    const ev = pv.events.length
-      ? `<span class="evnote">⚡ 이벤트 슬롯 — 순환에서 빠지고 ${pv.events.map((id) => `<b class="c-event">「${CARDS[id].name}」</b>`).join(' 또는 ')} 조건이 성립하면 실행이 이 슬롯으로 넘어옵니다</span>` : '';
-    return `${ev}${over}${steps}<span class="muted">1회 ${pv.time.toFixed(2)}초 · 쿨타임 ${pv.cooldown.toFixed(1)}초</span>${warns}`;
+    return `${over}${steps}<span class="muted">1회 ${pv.time.toFixed(2)}초 · 쿨타임 ${pv.cooldown.toFixed(1)}초</span>${warns}`;
   },
 
   showEditor(g) {
@@ -374,7 +367,7 @@ const UI = {
       const eff = this.slotCosts(slot.cards);
       const cards = slot.cards.map((id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`, eff[ci])).join('');
       return `
-        <div class="slot-row${si === this.editSel ? ' sel' : ''}${SkillDeck.isEvent(slot) ? ' ev' : ''}" data-slot="${si}">
+        <div class="slot-row${si === this.editSel ? ' sel' : ''}" data-slot="${si}">
           <div class="slot-head">
             <button class="icon-btn" data-act="slot-up" data-slot="${si}" ${si === 0 ? 'disabled' : ''}>▲</button>
             <span class="slot-no">${si + 1}</span>
@@ -394,7 +387,7 @@ const UI = {
     this.open(`
       <div class="panel editor">
         <h2>카드 편집</h2>
-        <p class="sub">슬롯은 위에서 아래로 순환하고, 카드는 왼쪽부터 실행됩니다. 쿨타임 중인 슬롯은 건너뜁니다.</p>
+        <p class="sub">슬롯은 각자 따로 실행되고, 카드는 왼쪽부터 실행됩니다. 쿨타임이 끝난 슬롯은 바로 다시 실행됩니다.</p>
         <div class="points${deck.costPoints ? ' has' : ''}">코스트 포인트 <b>${deck.costPoints}</b>
           <span class="muted">— 슬롯 오른쪽 <b>+1</b> 로 제한 코스트 올리기</span></div>
         <div class="slots">${rows}</div>
@@ -405,7 +398,6 @@ const UI = {
           <span><i style="background:${CARD_TYPES.filter.color}"></i>대상 조건 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
           <span><i style="background:${CARD_TYPES.flow.color}"></i>반복 카드</span>
-          <span><i style="background:${CARD_TYPES.event.color}"></i>이벤트 카드</span>
         </div>
         <div class="editor-msg">${this.editMsg}</div>
         <div style="text-align:center"><button class="btn primary" data-act="resume">닫기 <kbd>E</kbd></button></div>

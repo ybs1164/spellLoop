@@ -7,7 +7,7 @@
  *   ├─ 슬롯 1 [제한 4]: [적][눈앞의 적][마탄]                 ← 카드를 왼쪽부터 순차 실행
  *   ├─ 슬롯 2 [제한 5]: [전방 지점 1][부유 구체 2][설치물 1][기폭 1] ← 구체를 깔고 그 구체를 터뜨린다
  *   └─ ...
- *  슬롯은 위에서부터 하나씩 실행되고, 끝나면 SLOT_GAP 뒤 다음 슬롯으로 넘어가며 순환한다.
+ *  슬롯은 서로 기다리지 않고 각자 실행된다. 쿨타임이 풀린 슬롯은 곧바로 다시 실행된다.
  *
  *  - 대상 카드: "현재 대상"을 지정(교체)한다. 자신 / 적 / 지점 / 설치물 / 아군 / 장판 / 탄환 / 보석 여덟 종류와,
  *    이들을 한꺼번에 고르는 「전체」가 있다. 대상 카드는 "어디서" 고를지만 정하고, "몇 개·누구"는 조건 카드가 정한다.
@@ -20,12 +20,7 @@
  *    대상이 여럿이면 한꺼번에가 아니라 하나씩 차례로 실행하고, 대상마다 그 카드의 딜레이만큼 기다린다.
  *  - 반복 카드: 실행 흐름을 바꾼다. 대상 카드로 되돌아가거나(추격·되감기), 뒤 카드들을 대상마다 따로 돌리거나(차례로),
  *    직전 행동을 같은 대상에게 몰아친다(연타).
- *  - 이벤트 카드: 슬롯을 순환에서 빼고, 조건이 성립하는 순간 실행을 그 슬롯으로 옮긴다(이벤트 슬롯).
- *    실행 중이던 일반 슬롯은 카드 사이에서 멈췄다가 이벤트 슬롯이 끝나면 멈춘 자리부터 이어서 실행한다.
- *    이벤트 슬롯끼리는 끼어들지 않고, 여럿이 동시에 성립하면 위 슬롯부터 차례로 실행한다.
- *    한 슬롯에 이벤트 카드가 여럿이면 그중 하나만 성립해도 된다. 실행될 때는 아무 효과 없이 지나간다.
- *  - 쿨타임: 슬롯마다 실행을 마친 뒤 코스트에 비례한 쿨타임이 돈다. 순환 차례가 와도 쿨타임 중이면 다음 슬롯으로 건너뛰고,
- *    모든 슬롯이 쿨타임 중이면 가장 먼저 풀리는 슬롯을 기다린다. 이벤트 슬롯도 쿨타임 중에는 발동하지 않는다.
+ *  - 쿨타임: 슬롯마다 실행을 마친 뒤 코스트에 비례한 쿨타임이 돌고, 풀리면 그 슬롯만 다시 실행된다.
  *    행동이 하나도 실행되지 않은 슬롯(대상 없음·조건 불성립)은 짧은 쿨타임(FIZZLE_CD)만 받는다.
  *  - 모든 카드는 코스트가 있고, 한 슬롯의 코스트 합이 그 슬롯의 제한 코스트를 넘으면 그 슬롯은 실행되지 않는다.
  *  - 레벨업마다 코스트 포인트 1을 받아 원하는 슬롯의 제한을 올리거나 보상 카드를 새로고침하고, 5레벨마다 슬롯이 하나 늘어난다.
@@ -36,7 +31,6 @@ const CARD_TYPES = {
   filter: { label: '조건', color: '#6ee7c8' },
   action: { label: '행동', color: '#ff7a8a' },
   flow: { label: '반복', color: '#8fb8ff' },
-  event: { label: '이벤트', color: '#ffa94d' },
 };
 
 /**
@@ -78,7 +72,6 @@ const CARD_GROUPS = [
   { id: 8, name: '저주 — 망자가 덱에 끼워 넣는 카드' },
 ];
 
-const SLOT_GAP = 0.5;       // 슬롯 하나를 마친 뒤 다음 슬롯까지의 간격(초)
 const MAX_SLOTS = 6;
 const START_SLOT_LIMIT = 4;
 const MAX_SLOT_LIMIT = 15;
@@ -88,9 +81,7 @@ const MAX_CURSES = 3;        // 덱에 동시에 끼어 있을 수 있는 저주
 const CURSE_RUNS = 3;        // 저주 카드가 이만큼 실행되면 하나 사라진다
 const SLOT_CD_PER_COST = 0.35;   // 슬롯 쿨타임(초) = 슬롯 코스트 × 이 값
 const SLOT_CD_MIN = 0.6;         // 슬롯 쿨타임 최소
-const EVENT_CD_MIN = 1.5;        // 이벤트 슬롯 쿨타임 최소 (조건이 계속 성립해도 연달아 끼어들지 않게)
 const FIZZLE_CD = 0.5;           // 행동이 하나도 실행되지 않은 슬롯의 쿨타임
-const EVENT_WINDOW = 1;          // 입력·이동 이벤트가 쿨타임이 풀리길 기다려 주는 시간(초)
 
 // 대상 각각의 위치(env.at)로 env[fn] 을 호출하는 행동
 const each = (fn) => (ts, env) => ts.forEach((t) => env[fn](env.at(t), t));
@@ -467,39 +458,10 @@ const CARDS = {
     desc: '슬롯 실행당 한 번, 마지막 대상 카드부터 다시 실행한다.',
   },
 
-  /* ================= 이벤트: 조건이 성립하면 실행을 이 슬롯으로 옮긴다 (SkillDeck.firedEvent) =================
-   * edge: 순간 이벤트 — SkillDeck.emit(edge) 로 알려진 일이 일어나면 한 번 발동한다. 쿨타임 중이면 EVENT_WINDOW 초까지 기다려 준다.
-   * test(g, p, slot): 상태 이벤트 — 성립하는 동안 쿨타임이 풀릴 때마다 발동한다. slot.evAt 은 이 슬롯이 마지막으로 발동한 시각.
-   */
-  eCast: {
-    type: 'event', name: '주문 호출', cost: 0, weight: 3, edge: 'cast',
-    desc: 'Space를 누르면 실행.',
-  },
-  eMove: {
-    type: 'event', name: '출발', cost: 0, weight: 2, edge: 'move',
-    desc: '이동을 시작하면 실행.',
-  },
-  eStop: {
-    type: 'event', name: '급정지', cost: 0, weight: 2, edge: 'stop',
-    desc: '이동키를 놓고 멈추면 실행.',
-  },
-  eEngage: {
-    type: 'event', name: '파고들기', cost: 0, weight: 2, edge: 'engage',
-    desc: '이동해 적의 100 거리 안으로 들어가면 실행.',
-  },
-  eWithdraw: {
-    type: 'event', name: '치고 빠지기', cost: 0, weight: 2, edge: 'withdraw',
-    desc: '100 안으로 접근한 적에게서 160 밖으로 물러나면 실행.',
-  },
-  eTouch: {
-    type: 'event', name: '현장 지휘', cost: 0, weight: 2, edge: 'touch',
-    desc: '이동해 설치물의 48 거리 안으로 들어가면 실행.',
-  },
-
   /* ================= 저주: 보상으로 나오지 않는다 ================= */
   curse: {
     type: 'action', group: 8, name: '저주', cost: 0, delay: 1.2, weight: 0, accepts: ALL_KINDS, curse: true,
-    desc: '실행을 1.2초 멈추며, 이동할 수 없고 3번 실행하거나 치유로 정화하면 사라진다.',
+    desc: '이 슬롯의 실행을 1.2초 멈추며, 이동할 수 없고 3번 실행하거나 치유로 정화하면 사라진다.',
     run: () => {},   // SkillDeck.update 에서 처리
   },
   abyssGate: {
@@ -544,7 +506,7 @@ function costBreakdown(ids) {
       return;
     }
     cards[i] = c.cost;
-    if (!chain || c.type === 'event') { total += cards[i]; return; }
+    if (!chain) { total += cards[i]; return; }
     chain.rest += cards[i];
     if (c.type === 'action') chain.usedPrice = Math.max(chain.usedPrice ?? 0, chain.currentPrice);
   });
@@ -564,103 +526,26 @@ class SkillDeck {
       { limit: START_SLOT_LIMIT, cards: ['enemies', 'fNearest', 'bolt'] },
       { limit: START_SLOT_LIMIT, cards: ['ahead', 'orb'] },
     ];
-    this.inventory = ['objects', 'detonate', 'fLowHp', 'eCast'];
+    this.inventory = ['objects', 'detonate', 'fLowHp'];
     this.costPoints = 0;      // 레벨업마다 +1, 슬롯 제한 코스트를 올리는 데 쓴다
-    this.cursor = 0;          // 다음에 실행할 슬롯
-    this.timer = 0.4;
-    this.cast = null;         // 실행 중인 슬롯 { slot, ref, event, cards, i, wait, queue, ctx, env }
-    this.held = null;         // 이벤트 슬롯이 끼어들어 멈춰 둔 일반 슬롯 실행 (이벤트가 끝나면 이어서)
-    this.events = {};         // 입력·이동 이벤트가 마지막으로 일어난 시각
-    this.eventMotion = { moving: false, x: null, y: null, withdrawal: new Set() };
+    this.timer = 0.4;         // 시작 직후 잠깐 기다렸다가 실행
     this.version = 0;         // 구성이 바뀔 때마다 증가 (HUD 갱신용)
-    // 슬롯마다: cd 남은 쿨타임, cdMax 마지막으로 건 쿨타임, evAt 이벤트로 마지막 발동한 시각
-    for (const s of this.slots) s.cd = 0;
+    // 슬롯마다: cd 남은 쿨타임, cdMax 마지막으로 건 쿨타임, cast 실행 중인 상태 { cards, i, wait, queue, ctx, env }
+    for (const s of this.slots) { s.cd = 0; s.cast = null; }
   }
 
   static hasAction(slot) { return slot.cards.some((id) => CARDS[id].type === 'action'); }
   static overCost(slot) { return cardsCost(slot.cards) > slot.limit; }
   /** 행동 카드가 있고 코스트 합이 제한 이하인 슬롯만 실행된다 */
   static runnable(slot) { return SkillDeck.hasAction(slot) && !SkillDeck.overCost(slot); }
-  /** 이벤트 카드가 있는 슬롯은 순환에서 빠지고 이벤트로만 실행된다 */
-  static isEvent(slot) { return slot.cards.some((id) => CARDS[id].type === 'event'); }
   static ready(slot) { return !(slot.cd > 0); }
   /** 실행을 마친 슬롯에 걸리는 쿨타임(초, 집중 버프 전): 코스트에 비례 */
   static cooldownOf(slot) {
-    const t = Math.max(SLOT_CD_MIN, cardsCost(slot.cards) * SLOT_CD_PER_COST);
-    return SkillDeck.isEvent(slot) ? Math.max(EVENT_CD_MIN, t) : t;
+    return Math.max(SLOT_CD_MIN, cardsCost(slot.cards) * SLOT_CD_PER_COST);
   }
 
-  /** cursor 부터 순환하며 지금 실행할 수 있는 일반 슬롯을 찾는다 (쿨타임 중인 슬롯은 건너뛴다) */
-  nextRunnable() {
-    const n = this.slots.length;
-    for (let k = 0; k < n; k++) {
-      const i = (this.cursor + k) % n, s = this.slots[i];
-      if (!SkillDeck.isEvent(s) && SkillDeck.runnable(s) && SkillDeck.ready(s)) return i;
-    }
-    return -1;
-  }
-
-  /* ---------------- 이벤트 ---------------- */
-  /** 순간 이벤트 알림. 입력·이동 변화를 같은 방식으로 기록한다. */
-  emit(name, time) { this.events[name] = time; }
-
-  /** 입력을 소비하지 않아 같은 호출에 연결한 여러 슬롯이 함께 반응한다. */
-  sampleEvents(dt, game, player) {
-    if (Input.pressed.has('Space')) this.emit('cast', game.time);
-    const motion = this.eventMotion, a = Input.axis();
-    const moving = a.x !== 0 || a.y !== 0;
-    if (moving && !motion.moving) this.emit('move', game.time);
-    if (!moving && motion.moving) this.emit('stop', game.time);
-    // 같은 개체의 현재 위치를 기준으로 이전·현재 플레이어 위치를 비교한다.
-    // 적이 다가오거나 새 설치물이 생기는 것만으로는 진입 이벤트를 만들지 않는다.
-    const distance2 = (entity, x, y) => (entity.x - x) ** 2 + (entity.y - y) ** 2;
-    if (moving && motion.x !== null) {
-      for (const e of game.enemies) {
-        if (e.dead) continue;
-        const now = distance2(e, player.x, player.y);
-        if (now <= 100 ** 2 && distance2(e, motion.x, motion.y) > 100 ** 2) {
-          this.emit('engage', game.time);
-          motion.withdrawal.add(e);
-        }
-        if (motion.withdrawal.has(e) && now > 160 ** 2) {
-          this.emit('withdraw', game.time);
-          motion.withdrawal.delete(e);
-        }
-      }
-      for (const o of game.objects) {
-        if (!o.dead && distance2(o, player.x, player.y) <= 48 ** 2 &&
-            distance2(o, motion.x, motion.y) > 48 ** 2) this.emit('touch', game.time);
-      }
-    }
-    for (const e of motion.withdrawal) if (e.dead) motion.withdrawal.delete(e);
-    motion.x = player.x;
-    motion.y = player.y;
-    motion.moving = moving;
-  }
-
-  eventMet(card, slot, game, player) {
-    if (!card.edge) return card.test(game, player, slot);
-    const t = this.events[card.edge];
-    return t !== undefined && t > (slot.evAt ?? -Infinity) && game.time - t <= EVENT_WINDOW;
-  }
-
-  /** 지금 발동할 이벤트 슬롯 (위 슬롯 우선). 성립한 이벤트 카드를 함께 돌려준다 */
-  firedEvent(game, player) {
-    for (let i = 0; i < this.slots.length; i++) {
-      const s = this.slots[i];
-      if (!SkillDeck.ready(s) || !SkillDeck.isEvent(s) || !SkillDeck.runnable(s)) continue;
-      const id = s.cards.find((cid) => CARDS[cid].type === 'event' && this.eventMet(CARDS[cid], s, game, player));
-      if (id) return { idx: i, id };
-    }
-    return null;
-  }
-
-  startCast(idx, game, event) {
-    const slot = this.slots[idx];
-    this.cast = {
-      slot: idx,
-      ref: slot,
-      event,                // 이벤트로 끼어든 실행인가
+  startCast(slot, game) {
+    slot.cast = {
       cards: slot.cards.slice(),
       i: 0,
       wait: 0,
@@ -682,57 +567,44 @@ class SkillDeck {
     };
   }
 
-  /** 슬롯 실행을 마친다: 쿨타임을 걸고, 멈춰 둔 슬롯이 있으면 이어서, 없으면 SLOT_GAP 뒤 다음 슬롯 */
-  endCast(c, cd) {
-    this.setCooldown(c.ref, c.ctx.fired ? SkillDeck.cooldownOf(c.ref) : FIZZLE_CD);
-    if (this.held) { this.cast = this.held; this.held = null; return; }
-    this.cast = null;
-    this.timer = SLOT_GAP * cd + c.wait;
+  /** 슬롯 실행을 마치고 쿨타임을 건다 */
+  endCast(slot) {
+    this.setCooldown(slot, slot.cast.ctx.fired ? SkillDeck.cooldownOf(slot) : FIZZLE_CD);
+    slot.cast = null;
   }
 
   setCooldown(slot, t) { slot.cd = slot.cdMax = t; }
 
   update(dt, game, player) {
-    this.sampleEvents(dt, game, player);
     const cd = player.stats.cooldown;
     // 쿨타임은 실행 중이든 아니든 돈다. 「집중」이면 빨리 돈다
     for (const s of this.slots) if (s.cd > 0) s.cd = Math.max(0, s.cd - dt / cd);
-
-    // 이벤트가 성립하면 실행을 그 슬롯으로 옮긴다. 이벤트 슬롯 실행 중에는 다른 이벤트가 끼어들지 않고 기다린다
-    if (!this.cast?.event) {
-      const ev = this.firedEvent(game, player);
-      if (ev) {
-        const s = this.slots[ev.idx], p = game.player;
-        s.evAt = game.time;
-        if (this.cast) this.held = this.cast;
-        this.startCast(ev.idx, game, true);
-        game.addText(p.x, p.y - 44, `${CARDS[ev.id].name}!`, CARD_TYPES.event.color);
+    if (this.timer > 0) { this.timer -= dt; return; }
+    // 슬롯마다 따로: 쉬고 있으면 쿨타임이 풀리는 대로 시작하고, 실행 중이면 이어서 진행한다
+    for (const s of this.slots) {
+      if (!s.cast) {
+        if (!SkillDeck.runnable(s) || !SkillDeck.ready(s)) continue;
+        this.startCast(s, game);
       }
+      this.stepCast(s, dt, game, cd);
     }
+  }
 
-    if (!this.cast) {
-      this.timer -= dt;
-      if (this.timer > 0) return;
-      const idx = this.nextRunnable();
-      if (idx < 0) { this.timer = 0.05; return; }   // 전부 쿨타임 중: 풀리는 대로 바로 실행
-      this.startCast(idx, game, false);
-      this.cursor = (idx + 1) % this.slots.length;
-    }
-
-    const c = this.cast;
+  /** 슬롯 하나의 실행을 dt 만큼 진행한다 */
+  stepCast(slot, dt, game, cd) {
+    const c = slot.cast;
     c.wait -= dt;
     while (c.wait <= 0) {
       if (c.queue.length) { c.wait += this.runStep(c.queue.shift(), c.ctx, c.env) * cd; continue; }
       if (this.seqNext(c)) continue;
       if (c.i >= c.cards.length) break;
       const at = c.i, id = c.cards[c.i++], card = CARDS[id];
-      if (card.type === 'event') continue;   // 이벤트 카드는 실행 중엔 아무 일도 하지 않는다
-      if (card.curse) { this.curseTick(c.ref, game); c.wait += cardDelay(id) * cd; }
+      if (card.curse) { this.curseTick(slot, game); c.wait += cardDelay(id) * cd; }
       else if (card.type === 'flow') { this.runFlow(id, at, c); c.wait += cardDelay(id) * cd; }
       // 행동이 대기열에 들어갔으면 기다리는 시간은 대상마다 대기열이 맡는다
       else if (!this.runCard(id, c.ctx, c.env, at, c.queue)) c.wait += cardDelay(id) * cd;
     }
-    if (c.i >= c.cards.length && !c.queue.length && c.wait <= 0) this.endCast(c, cd);
+    if (c.i >= c.cards.length && !c.queue.length && c.wait <= 0) this.endCast(slot);
   }
 
   /** 대기열의 행동 하나를 대상 하나에게 실행하고, 기다릴 시간을 돌려준다 (이미 쓰러진 대상은 0초로 건너뜀) */
@@ -853,11 +725,10 @@ class SkillDeck {
    */
   preview(slotIdx, stats) {
     const slot = this.slots[slotIdx], cards = slot.cards;
-    const steps = [], warns = [], events = [];
+    const steps = [], warns = [];
     let chain = null, kind = null, used = true, last = null, time = 0;
     for (const id of cards) {
       const c = CARDS[id];
-      if (c.type === 'event') { events.push(id); continue; }
       time += cardDelay(id);
       if (c.type === 'target') {
         if (!used) warns.push(`「${CARDS[chain[0]].name}」 뒤에 행동 카드가 없어 무시됩니다`);
@@ -886,7 +757,7 @@ class SkillDeck {
       if (!ok) warns.push(`「${CARDS[act].name}」은(는) ${KIND_LABEL[kind]} 대상에 쓸 수 없습니다`);
     }
     if (chain && !used) warns.push(`마지막 「${CARDS[chain[0]].name}」 뒤에 행동 카드가 없습니다`);
-    return { steps, warns, events, time: (time + SLOT_GAP) * stats.cooldown, cooldown: SkillDeck.cooldownOf(slot) * stats.cooldown };
+    return { steps, warns, time: time * stats.cooldown, cooldown: SkillDeck.cooldownOf(slot) * stats.cooldown };
   }
 
   /* ---------------- 성장 ---------------- */
@@ -895,7 +766,7 @@ class SkillDeck {
     this.costPoints++;
     let added = false;
     if (level % SLOT_EVERY_LEVELS === 0 && this.slots.length < MAX_SLOTS) {
-      this.slots.push({ limit: START_SLOT_LIMIT, cards: [], cd: 0 });
+      this.slots.push({ limit: START_SLOT_LIMIT, cards: [], cd: 0, cast: null });
       added = true;
     }
     this.changed();
@@ -955,14 +826,16 @@ class SkillDeck {
 
   /* ---------------- 편집 연산 ---------------- */
   /**
-   * 구성이 바뀌면 실행 중·멈춰 둔 슬롯을 끊는다. 이미 행동을 실행한 슬롯은 쿨타임을 받는다 (편집으로 쿨타임을 건너뛰지 못하게).
+   * 구성이 바뀌면 실행 중인 슬롯을 모두 끊는다. 이미 행동을 실행한 슬롯은 쿨타임을 받는다 (편집으로 쿨타임을 건너뛰지 못하게).
    * 카드를 빼서 쿨타임이 줄어든 슬롯은 남은 쿨타임도 새 쿨타임까지 줄인다.
    */
   changed() {
     this.version++;
-    for (const c of [this.cast, this.held]) if (c?.ctx.fired) this.setCooldown(c.ref, SkillDeck.cooldownOf(c.ref));
-    this.cast = this.held = null;
-    for (const s of this.slots) if (s.cd > 0) s.cd = Math.min(s.cd, SkillDeck.cooldownOf(s));
+    for (const s of this.slots) {
+      if (s.cast?.ctx.fired) this.setCooldown(s, SkillDeck.cooldownOf(s));
+      s.cast = null;
+      if (s.cd > 0) s.cd = Math.min(s.cd, SkillDeck.cooldownOf(s));
+    }
   }
 
   addCard(id) { this.inventory.push(id); this.changed(); }
