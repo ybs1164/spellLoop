@@ -231,8 +231,6 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .pcard .cost.cap, .bigcard .cost.cap { width: auto; min-width: 22px; padding: 0 4px; background: #6ee7c8; letter-spacing: -1px; }
 .bigcard .cost.cap { min-width: 28px; }
 /* 슬롯 안에서 실제 코스트가 적힌 값과 다를 때: 적힌 값에 줄을 긋고 실제 값을 쓴다 */
-.pcard .cost.eff { width: auto; min-width: 22px; padding: 0 5px; gap: 3px; grid-auto-flow: column; background: #f4f6ff; }
-.pcard .cost.eff s { font-size: 10px; color: #7a8296; text-decoration-thickness: 2px; text-decoration-color: #ff5c5c; }
 .codex-note { font-size: 12px; text-align: center; }
 .codex-example .pcard { width: 66px; }
 .btn.reroll { margin-top: 16px; }
@@ -253,4 +251,6 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .gimmick b { color: var(--gold); }
 .glossary { display: grid; gap: 4px 18px; margin-top: 10px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); font-size: 12px; line-height: 1.5; color: #c3c9d8; word-break: keep-all; }
 .glossary b { color: #e6e9f2; }
+.card-term { cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+.card-term:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .gimmick p { margin-top: 4px; font-size: 12px; line-height: 1.55; color: #c3c9d8; word-break: keep-all; }

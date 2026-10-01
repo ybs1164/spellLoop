@@ -16,13 +16,12 @@ const STAGE_LEN = 5 * 60;
 const STAGES = [
   {
     name: '어둠의 동굴', color: '#8be9ff',
-    hint: '탐욕 슬라임이 보석을 노린다',
+    hint: '슬라임과 박쥐의 포위를 돌파하라',
     rate: [0.9, 5], dmgMul: 1,
     pool: [
       ['grunt', 6, 0, 1],
       ['runner', 3, 30, 1],
       ['rat', 2, 60, 5],
-      ['greedy', 0.9, 40, 1],
       ['brute', 1, 150, 1],
     ],
     swarm: 'runner', boss: 'slimeKing', bossAt: 240,
@@ -65,8 +64,6 @@ const STAGES = [
 const GIMMICKS = [
   { icon: 'fBarrels', name: '화약통', stages: [0, 1, 2],
     desc: `${PLACED_TYPES.barrel.desc}. 불이 옆 화약통으로 번져 연쇄 폭발한다.` },
-  { icon: 'harvest', name: '탐욕 슬라임', stages: [0],
-    desc: '보석을 쫓아가 삼키고 커진다. 쓰러뜨리면 삼킨 보석을 1.5배로 뱉는다.' },
   { icon: 'curse', name: '저주 카드', stages: [1],
     desc: '사령술사·망령 군주의 보라 해골탄에 맞으면 슬롯에 「저주」 카드가 끼어든다.' },
   { icon: 'frost', name: '원소 반응', stages: [0, 1, 2],

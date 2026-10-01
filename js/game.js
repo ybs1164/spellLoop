@@ -190,7 +190,6 @@ class Game {
     this.updateBarrels(dt);
     p.update(dt, this);
     for (const e of this.enemies) e.update(dt, this.chaseTarget(e), this);
-    this.updateGreedy();
 
     this.rebuildHash();
     this.separateEnemies();
@@ -407,7 +406,7 @@ class Game {
       alive: (t) => !obj(t).dead,
 
       /* ---- 대상 카드 ---- */
-      enemiesInSight: (r, n) => g.nearestEnemies(p.x, p.y, n, r).map((e) => ({ kind: 'enemy', e })),
+      enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map((e) => ({ kind: 'enemy', e })),
       aheadPoint: (d) => ({ kind: 'point', x: p.x + p.facing.x * d, y: p.y + p.facing.y * d }),
       // 화약통(중립 설치물)은 시야 안의 것만 고른다
       objects: () => g.objects.filter((o) => !o.dead && (!o.neutral || dist2(o.x, o.y, p.x, p.y) <= 600 * 600)).map((o) => ({ kind: 'object', o })),
@@ -425,11 +424,10 @@ class Game {
         }
         return best ? [{ kind: 'point', x: best.x, y: best.y }] : [];
       },
-      /** 최근 sec 초 안에 적이 쓰러진 자리 중 가까운 n곳 */
-      fallenPoints: (sec, n) => g.fallen
+      /** 최근 sec 초 안에 적이 쓰러진 모든 자리 */
+      fallenPoints: (sec) => g.fallen
         .filter((f) => g.time - f.t <= sec)
         .sort((a, b) => dist2(a.x, a.y, p.x, p.y) - dist2(b.x, b.y, p.x, p.y))
-        .slice(0, n)
         .map((f) => ({ kind: 'point', x: f.x, y: f.y })),
       randomPoint: (r0, r1) => {
         const a = rand(0, Math.PI * 2), d = rand(r0, r1);
@@ -551,7 +549,7 @@ class Game {
     const hot = [];   // 불타는 적 (화상 · 화염 속성)
     this.hitCircle(o.x, o.y, r, 4 * p.power, 0, (e) => {
       e.freezeT = Math.max(e.freezeT, e.boss ? dur * BOSS_FREEZE : dur);
-      if (e.burnT > 0 || e.affinityOf('fire') < 0) hot.push(e);
+      if (e.burnT > 0 || e.traits.includes('fire')) hot.push(e);
     }, 'frost');
     this.circleFx(o.x, o.y, r, '#9fd8ff', { life: 0.4, fill: 0.4 });
     this.burst(o.x, o.y, '#cfeeff', 8);
@@ -619,7 +617,7 @@ class Game {
     else if (kind === 'shield') this.addText(p.x, p.y - 44, '보호막', color);
   }
 
-  /** 치유의 빛: 반경 안의 모두(나 포함)를 치유한다. 언데드에겐 치유가 곧 피해. */
+  /** 치유의 빛: 반경 안의 모두(나 포함)를 치유한다. */
   mend(o) {
     const p = this.player, r = 80 * p.stats.area, n = 20 * p.power;
     if (dist2(o.x, o.y, p.x, p.y) <= (r + p.radius) ** 2 && p.hp < p.stats.maxHp) {
@@ -755,17 +753,8 @@ class Game {
     }
   }
 
-  /** 미끼가 있으면 적이 대신 쫓는다. 탐욕 슬라임은 보석을 먼저 쫓는다. */
+  /** 미끼가 있으면 적이 대신 쫓는다. */
   chaseTarget(e) {
-    if (e.def.ai === 'greedy') {
-      let gem = null, gd = 450 * 450;
-      for (const pk of this.pickups) {
-        if (pk.kind !== 'gem' || pk.pulled || pk.dead) continue;
-        const d = dist2(pk.x, pk.y, e.x, e.y);
-        if (d < gd) { gd = d; gem = pk; }
-      }
-      if (gem) return gem;
-    }
     let best = this.player, bd = 350 * 350;
     for (const o of this.objects) {
       if (o.dead || o.kind !== 'decoy') continue;
@@ -1151,7 +1140,7 @@ class Game {
           if ((z.tick -= dt) <= 0) {
             z.tick += 0.5;
             let lit = false;   // 불타는 적(화상 · 화염 속성)이 들어오면 인화
-            this.hitCircle(z.x, z.y, z.r, 6 * p.power, 0, (e) => { if (e.burnT > 0 || e.affinityOf('fire') < 0) lit = true; }, 'poison');
+            this.hitCircle(z.x, z.y, z.r, 6 * p.power, 0, (e) => { if (e.burnT > 0 || e.traits.includes('fire')) lit = true; }, 'poison');
             if (lit) this.ignitePoison(z.x, z.y, 0);
           }
           break;
@@ -1382,34 +1371,23 @@ class Game {
     return pr;
   }
 
-  /**
-   * 적에게 피해. 언데드(inverted)는 피해 대신 그만큼 회복한다 (넉백은 그대로 받는다).
-   * elem: 피해 원소. 적 속성의 배율이 음수면 피해 대신 회복한다.
-   */
+  /** 적에게 피해. elem은 피해 원소이며 모든 공격은 피해를 입힌다. */
   damageEnemy(e, dmg, dirX, dirY, knockback, color = '#ffffff', elem = null) {
     if (e.dead) return;
-    if (e.inverted) {
-      const len = Math.hypot(dirX, dirY) || 1;
-      e.hit(0, (dirX / len) * knockback, (dirY / len) * knockback);
-      this.restoreEnemy(e, dmg);
-      return;
-    }
     // 방패: 정면에서 온 피해를 막는다 (독 장판은 발밑에서 오므로 못 막는다)
     if (elem !== 'poison' && e.blocks(dirX, dirY)) {
       dmg *= 1 - e.guard; knockback *= 0.3; color = '#8a93a8';
       const c = Math.cos(e.ang), s = Math.sin(e.ang);
       if (Math.random() < 0.5) this.burst(e.x + c * e.radius, e.y + s * e.radius * 0.5, '#fff3c4', 2);
     }
-    const aff = e.affinityOf(elem);
-    if (aff < 0) { this.restoreEnemy(e, dmg * -aff); return; }
+    const aff = Math.max(1, e.affinityOf(elem));
     this.hurtEnemy(e, dmg * aff, dirX, dirY, knockback, aff > 1 ? '#ffe45c' : color);
   }
 
-  /** 적을 치유. 언데드(inverted)는 치유량만큼 피해를 입는다. */
+  /** 적을 치유. */
   healEnemy(e, n) {
     if (e.dead) return;
-    if (e.inverted) this.hurtEnemy(e, n, 0, -1, 0, '#b6ffc8');
-    else this.restoreEnemy(e, n);
+    this.restoreEnemy(e, n);
   }
 
   /** 실제 피해 적용. 순서: 표식 ×2 → 갑주 고정 감소 */
@@ -1540,42 +1518,11 @@ class Game {
     } else {
       this.dropGem(e.x, e.y, e.xp);
       if (e.hunted) this.dropGem(e.x + 10, e.y, e.xp * 2);   // 「사냥감」 보너스
-      if (e.hoard > 0) this.spillHoard(e);
       const r = Math.random();
       if (r < 0.012) this.pickups.push(new Pickup('heart', e.x, e.y));
       else if (r < 0.016) this.pickups.push(new Pickup('magnet', e.x, e.y));
     }
     this.events.emit('enemyKilled', { enemy: e });
-  }
-
-  /** 탐욕 슬라임: 닿은 보석을 삼키고, 삼킨 만큼 체력·몸집이 커지고 느려진다 */
-  updateGreedy() {
-    for (const e of this.enemies) {
-      if (e.dead || e.def.ai !== 'greedy') continue;
-      for (const pk of this.pickups) {
-        if (pk.kind !== 'gem' || pk.pulled || pk.dead) continue;
-        if (dist2(pk.x, pk.y, e.x, e.y) > (e.radius + 6) ** 2) continue;
-        pk.dead = true;
-        e.hoard += pk.value;
-        const grow = pk.value * 5;
-        e.maxHp += grow; e.hp += grow;
-        e.radius = Math.min(30, 12 + Math.sqrt(e.hoard) * 2.2);
-        e.scale = e.radius >= 24 ? 5 : e.radius >= 17 ? 4 : 3;
-        e.speed = Math.max(48, e.speed * 0.97);
-        this.addText(e.x, e.y - e.radius - 10, '꿀꺽', '#ffd166');
-      }
-    }
-  }
-
-  /** 삼킨 보석을 1.5배로 사방에 뱉는다 */
-  spillHoard(e) {
-    const total = Math.ceil(e.hoard * 1.5), n = Math.min(8, total);
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + rand(-0.3, 0.3), d = rand(20, 50);
-      this.dropGem(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, Math.floor(total / n) + (i < total % n ? 1 : 0));
-    }
-    this.addText(e.x, e.y - e.radius - 20, `보석 ×${total}`, '#ffd166');
-    this.circleFx(e.x, e.y, e.radius + 30, '#ffd166', { life: 0.45, style: 'wave', sparks: 12 });
   }
 
   dropGem(x, y, value) {

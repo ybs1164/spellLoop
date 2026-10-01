@@ -2,15 +2,14 @@
 
 /*
  * 적 속성. 피해에는 원소(elem)가 붙고, 속성이 그 원소를 몇 배로 받을지 정한다.
- *  affinity: 원소 → 배율. 음수면 피해 대신 그만큼 회복한다.
+ *  affinity: 원소 → 피해 배율.
  *  armor: 타격 한 번마다 깎는 고정 피해 (최소 1). 자잘한 다단히트에 강하다.
  *  guard: 바라보는 쪽(정면)에서 날아온 피해를 이 비율만큼 막는다. 방향은 피해의 넉백 방향으로 판정한다.
- *  invert: 딜 ↔ 힐 완전 반전. 모든 피해는 회복이 되고, 모든 치유는 피해가 된다.
  * 원소: poison(독 장판) · fire(화상·유성) · frost(빙결)
  */
 const TRAITS = {
-  undead:  { name: '언데드', color: '#b39dff', invert: true,                    desc: '피해를 받으면 회복하고, 치유를 받으면 피해를 입는다' },
-  fire:    { name: '화염',   color: '#ff7b2e', affinity: { fire: -1, frost: 2 },  desc: '화상·유성에 회복하고, 빙결에 2배 피해' },
+  undead:  { name: '언데드', color: '#b39dff', desc: '일반 공격으로 처치할 수 있다' },
+  fire:    { name: '화염',   color: '#ff7b2e', affinity: { frost: 2 }, desc: '빙결에 2배 피해' },
   armored: { name: '갑주',   color: '#c0c8d8', armor: 4,                          desc: '타격마다 피해 -4 (최소 1)' },
   shielded:{ name: '방패',   color: '#e9d8a6', guard: 0.85,                       desc: '정면 피해를 85% 막는다. 등·옆, 독·화상, 빙결 중엔 못 막는다' },
 };
@@ -33,16 +32,12 @@ const BOSS_FREEZE = 0.4;   // 보스가 받는 빙결 시간 배율
  * ai: chase(기본) | keep(거리 유지) | flee(도망, escape 초 뒤 사라짐 · loot: 잡으면 보물 상자) · summon: 주기적으로 부하 소환 · shoot: 주기적으로 탄 발사
  * curse: 주기적으로 저주탄 발사 — 맞으면 덱에 저주 카드가 끼어든다
  * split: 죽으면 작은 적으로 분열 · elite: 체력바 표시 · tint: 스프라이트 색조
- * ai 'greedy': 플레이어 대신 가까운 보석을 쫓아 삼키고 커진다 (Game.updateGreedy)
  */
 const ENEMY_TYPES = {
   /* 1단계 · 어둠의 동굴 */
   grunt:     { name: '슬라임',     hp: 10,   speed: 62,  radius: 12, damage: 6,  xp: 1,  color: '#6fd08c', sprites: [TD.slime], scale: 3 },
   runner:    { name: '박쥐',       hp: 6,    speed: 118, radius: 9,  damage: 5,  xp: 1,  color: '#f2a541', sprites: [TD.bat], scale: 2 },
   rat:       { name: '굴쥐',       hp: 4,    speed: 135, radius: 8,  damage: 3,  xp: 1,  color: '#c49a6c', sprites: [TD.rat], scale: 2 },
-  // 보석을 쫓아가 삼키고 커진다. 쓰러뜨리면 삼킨 보석을 이자까지 쳐서 뱉는다.
-  greedy:    { name: '탐욕 슬라임', hp: 20,  speed: 92,  radius: 12, damage: 6,  xp: 2,  color: '#ffd166', sprites: [TD.slime], scale: 3, tint: '#ffc93c',
-               ai: 'greedy' },
   brute:     { name: '외눈 거인',  hp: 70,   speed: 40,  radius: 22, damage: 16, xp: 6,  color: '#e9b36b', sprites: [TD.cyclops], scale: 4, elite: true },
   slimeKing: { name: '슬라임 왕',  hp: 900,  speed: 50,  radius: 40, damage: 22, xp: 0,  color: '#6fd08c', sprites: [TD.slime], scale: 7, boss: true,
                split: { type: 'grunt', n: 12 } },
@@ -183,7 +178,6 @@ class Player {
     this.hp -= dmg;
     this.invuln = 0.5;
     this.hurtT = 2;
-    this.deck.emit('hurt', game.time);   // 「피격 시」 이벤트 카드
     game.shake(6);
     game.addText(this.x, this.y - 24, Math.round(dmg), '#ff5a5a');
     game.events.emit('playerHit', { amount: dmg });
@@ -281,16 +275,13 @@ class Enemy {
     this.affinity = {};
     this.armor = 0;
     this.guard = 0;          // 방패: 정면 피해 차단율
-    this.inverted = false;   // 언데드: 딜 ↔ 힐 반전
     for (const k of this.traits) {
       const t = TRAITS[k];
       Object.assign(this.affinity, t.affinity);
       this.armor += t.armor || 0;
       this.guard = Math.max(this.guard, t.guard || 0);
-      if (t.invert) this.inverted = true;
     }
     this.tint = def.tint || (this.traits.includes('fire') ? '#ff6a2a' : this.traits.includes('undead') ? '#9d7dff' : null);
-    this.hoard = 0;     // 탐욕 슬라임이 삼킨 보석 경험치
     this.summonCd = def.summon ? def.summon.cd * rand(0.4, 0.8) : 0;
     this.shootCd = def.shoot ? def.shoot.cd * rand(0.5, 1) : 0;
     this.curseCd = def.curse ? def.curse.cd * rand(0.5, 1) : 0;
@@ -379,7 +370,7 @@ class Enemy {
     return (dirX * Math.cos(this.ang) + dirY * Math.sin(this.ang)) / len < -0.35;
   }
 
-  /** 원소 피해 배율 (음수면 회복) */
+  /** 원소 피해 배율 */
   affinityOf(elem) { return elem && this.affinity[elem] !== undefined ? this.affinity[elem] : 1; }
 
   get knockResist() { return this.boss ? 0.08 : this.radius > 20 ? 0.4 : this.armor > 0 ? 0.6 : 1; }
@@ -445,14 +436,6 @@ class Enemy {
       ctx.fillStyle = '#ffd166';
       const fx = Px.snap(x), fy = Px.snap(y - r - 16);
       ctx.fillRect(fx, fy, G, G * 2); ctx.fillRect(fx, fy + G * 3, G, G);
-    }
-
-    if (this.hoard > 0) {
-      // 삼킨 보석: 머리 위 금빛 마름모, 많이 삼킬수록 크다
-      const n = this.hoard >= 20 ? 3 : this.hoard >= 6 ? 2 : 1;
-      const gx = Px.snap(x), gy = Px.snap(y - r - 12 + Math.sin(time * 5) * 2);
-      ctx.fillStyle = '#ffd166';
-      for (let j = -n; j <= n; j++) { const w = n - Math.abs(j); ctx.fillRect(gx - w * G, gy + j * G, (w * 2 + 1) * G, G); }
     }
 
     if (this.guard > 0 && this.freezeT <= 0) {

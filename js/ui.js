@@ -70,7 +70,7 @@ const UI = {
   /** eff: 슬롯 안에서 실제로 매겨진 코스트 (costBreakdown). 없으면 카드에 적힌 코스트 */
   miniHtml(id, eff) {
     const c = CARDS[id];
-    const cost = c.cap ? `대상 ${c.cap}개 가격으로` : `코스트 ${costLabel(eff ?? c.cost)}`;
+    const cost = c.type === 'filter' ? `대상 코스트 →${c.targetCost}` : `코스트 ${costLabel(eff ?? c.cost)}`;
     return `<span class="mini t-${c.type}${c.curse ? ' curse' : ''}" title="${c.name} (${cost})">${this.iconHtml(id, 16)}</span>`;
   },
 
@@ -81,18 +81,12 @@ const UI = {
       ${this.costHtml(c, eff)}${this.iconHtml(id, 32)}<span class="nm">${c.name}</span></div>`;
   },
 
-  /**
-   * 코스트 배지.
-   *  개수를 못 박는 조건: →N (대상 카드 가격을 N개 가격으로) · 「나머지」: ↺ (대상 가격 되돌림)
-   *  슬롯 안에서 적힌 값과 실제 값이 다르면 적힌 값을 지우고 실제 값을 쓴다. 예) [적] 6 → 1
-   */
+  /** 조건은 대상 코스트 지정값을, 대상은 갱신된 숫자 하나를 표시한다. */
   costHtml(c, eff) {
-    if (c.cap) return `<span class="cost cap" title="대상 카드 코스트를 ${c.cap}개 가격으로">→${c.cap}</span>`;
-    if (c.uncap) return '<span class="cost cap" title="대상 카드 코스트를 원래 가격으로 되돌림">↺</span>';
+    if (c.type === 'filter') return `<span class="cost cap" title="대상 카드 코스트를 ${c.targetCost}로 지정">→${c.targetCost}</span>`;
     const v = eff ?? c.cost;
     const cls = v < 0 ? ' neg' : v === 0 ? ' zero' : '';
-    if (v === c.cost) return `<span class="cost${cls}">${costLabel(v)}</span>`;
-    return `<span class="cost eff${cls}" title="적힌 코스트 ${costLabel(c.cost)} → 이 슬롯에서 ${costLabel(v)}"><s>${costLabel(c.cost)}</s>${costLabel(v)}</span>`;
+    return `<span class="cost${cls}" title="코스트 ${costLabel(v)}">${costLabel(v)}</span>`;
   },
 
   /** 슬롯 카드들의 실제 코스트. 묶음 최소 코스트로 더해진 값은 대상 카드에 얹는다 */
@@ -105,11 +99,10 @@ const UI = {
   acceptsText(c) {
     const kinds = (list) => `<b>${list.map((k) => KIND_LABEL[k]).join('·')}</b>`;
     if (c.type === 'target') {
-      const caps = c.max > 1 && CAP_COST[c.kind];
-      return kinds([c.kind]) + (caps ? ` · 좁히면 ${Object.entries(caps).map(([n, v]) => `${n}개 ${v}`).join(' · ')}` : '');
+      return kinds([c.kind]);
     }
     if (c.type === 'filter') {
-      const note = c.cap ? `대상 ${c.cap}개 가격으로` : c.uncap ? '대상 가격 되돌림' : c.cost < 0 ? `코스트 ${-c.cost} 환급` : '';
+      const note = `대상 코스트 →${c.targetCost}`;
       return c.kinds.length === ALL_KINDS.length ? note : `${kinds(c.kinds)} 전용${note ? ` · ${note}` : ''}`;
     }
     if (c.type === 'event') return `${c.edge ? '순간' : '상태'} 이벤트 · 이 슬롯은 순환에서 빠진다`;
@@ -130,8 +123,26 @@ const UI = {
     return '';
   },
 
+  termLabel(k) {
+    return STATUS[k]?.name || PLACED_TYPES[k]?.name || { status: '상태 이상', placed: '설치물' }[k];
+  },
+
+  termHtml(k, label = this.termLabel(k)) {
+    const escape = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const text = this.keyText(k).replace(/<[^>]*>/g, '');
+    return `<span class="card-term" tabindex="0" title="${escape(text)}" aria-label="${escape(text)}">${escape(label)}</span>`;
+  },
+
+  descriptionHtml(c) {
+    const terms = [...Object.keys(STATUS), ...Object.keys(PLACED_TYPES), 'status', 'placed'];
+    const byName = new Map(terms.map(k => [this.termLabel(k), k]));
+    const pattern = new RegExp([...byName.keys()].sort((a, b) => b.length - a.length).join('|'), 'g');
+    return c.desc.replace(pattern, name => this.termHtml(byName.get(name), name));
+  },
+
   keysHtml(c) {
-    return c.keys ? `<div class="kw">${c.keys.map((k) => `<p>${this.keyText(k)}</p>`).join('')}</div>` : '';
+    const keys = (c.keys || []).filter(k => this.termLabel(k) && !c.desc.includes(this.termLabel(k)));
+    return keys.length ? `<div class="kw">${keys.map(k => this.termHtml(k)).join(' · ')}</div>` : '';
   },
 
   /** 도감·레벨업용 큰 카드 */
@@ -143,7 +154,7 @@ const UI = {
       <div class="art">${this.iconHtml(id, 48)}</div>
       <div class="name">${c.name}</div>
       ${kind ? `<div class="kind">${kind}</div>` : ''}
-      <div class="desc">${c.desc}</div>${this.keysHtml(c)}${extra}`;
+      <div class="desc">${this.descriptionHtml(c)}</div>${this.keysHtml(c)}${extra}`;
   },
 
   /* ------------------------------------------------------------------ */
@@ -238,11 +249,12 @@ const UI = {
         <h1>SPELL<br>LOOP</h1>
         <p class="sub">카드를 쌓아 나만의 주문을 조립하라</p>
         <div class="title-cards">
-          ${['enemies', 'fNearest', 'bolt', 'self', 'fCrisis', 'heal'].map((id) => this.miniHtml(id)).join('')}
+          ${['enemies', 'fNearest', 'bolt', 'self', 'heal'].map((id) => this.miniHtml(id)).join('')}
         </div>
         <div class="keys">
           <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 방향키 이동</span>
           <span><kbd>E</kbd> 카드 편집</span>
+          <span><kbd>Space</kbd> 이벤트 슬롯 호출</span>
           <span><kbd>Esc</kbd> 일시정지</span>
           <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 레벨업 선택</span>
         </div>
@@ -271,45 +283,15 @@ const UI = {
     this.open(`
       <div class="panel codex">
         <h2>카드 도감</h2>
-        <p class="sub"><b class="c-target">대상 카드</b>로 “누구에게”를 넓게 고르고, <b class="c-filter">대상 조건 카드</b>로 “그중 누구만”으로 좁힌 뒤,
-          <b class="c-action">행동 카드</b>가 “무엇을” 할지 정합니다.<br>
-          슬롯에 올린 카드의 코스트 합이 슬롯의 제한 코스트를 넘으면 그 슬롯은 실행되지 않습니다.</p>
-        <div class="codex-example">
-          <span class="muted">예시 슬롯 (제한 ${cardsCost(['enemies', 'fDebuffed', 'fNearest', 'spread', 'fInvert', 'fLowHp', 'execute'])})</span>
-          ${((ex) => { const eff = this.slotCosts(ex); return ex.map((id, i) => this.cardHtml(id, 'draggable="false"', eff[i])).join('<span class="arrow">›</span>'); })(['enemies', 'fDebuffed', 'fNearest', 'spread', 'fInvert', 'fLowHp', 'execute'])}
-          <span class="muted">= 코스트 ${cardsCost(['enemies', 'fDebuffed', 'fNearest', 'spread', 'fInvert', 'fLowHp', 'execute'])} · 상태 이상 걸린 가장 가까운 적에게서 전염시키고, 나머지 중 빈사인 적을 처형한다</span>
-        </div>
-        <h3 class="codex-h">던전 기믹</h3>
-        ${this.gimmicksHtml(GIMMICKS)}
-        <h3 class="codex-h">용어</h3>
-        <div class="glossary">
-          <p>${this.keyText('status')} <span class="muted">· 「상태 이상」 조건·「전염」이 다루는 효과. 보스는 빙결이 짧고 공포에 걸리지 않는다</span></p>
-          ${Object.keys(STATUS).map((k) => `<p>${this.keyText(k)}</p>`).join('')}
-          <p>${this.keyText('placed')}</p>
-          ${Object.keys(PLACED_TYPES).map((k) => `<p>${this.keyText(k)}</p>`).join('')}
-          ${Object.values(TRAITS).map((t) => `<p><b style="color:${t.color}">${t.name}</b> <span class="muted">적 특성</span> ${t.desc}</p>`).join('')}
-        </div>
-        <div class="section-title">대상 카드 — 누구에게 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'target').length}장</span></div>
+        <div class="section-title">대상 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'target').length}장</span></div>
         ${grid(ids.filter((id) => CARDS[id].type === 'target'))}
-        <h3 class="codex-h">대상 조건 카드 — 그중 누구만 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'filter').length}장</span></h3>
-        <p class="sub codex-note">대상 카드 바로 뒤에 붙여 대상 중 일부를 지웁니다.
-          <b class="c-filter">→1</b>·<b class="c-filter">→3</b> 조건은 개수를 못 박아 대상 카드 코스트를 그 개수의 가격으로 바꿉니다 — 슬롯에서 [적] 배지가 <s>6</s>1 로 바뀝니다.
-          <b class="c-filter">↺</b>「나머지」는 원래 가격으로 되돌립니다.
-          <b class="c-filter">−</b> 코스트는 환급이며 뒤따르는 행동 카드 코스트까지 깎습니다.
-          대상 카드부터 다음 대상 카드 전까지의 합은 최소 ${MIN_CHAIN_COST}이고, 모자란 만큼은 대상 카드 배지에 더해 보여 줍니다.</p>
+        <h3 class="codex-h">조건 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'filter').length}장</span></h3>
         ${filters}
-        <h3 class="codex-h">행동 카드 — 무엇을 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'action').length}장</span></h3>
+        <h3 class="codex-h">행동 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'action').length}장</span></h3>
         ${actions}
-        <h3 class="codex-h">반복 카드 — 몇 번 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'flow').length}장</span></h3>
-        <p class="sub codex-note">행동 카드 뒤에 붙여 실행 흐름을 바꿉니다. 대상 카드로 되돌아가 다시 고르거나, 대상마다 따로 돌리거나, 같은 대상을 몰아칩니다.
-          행동 카드는 대상이 여럿이면 하나씩 차례로 실행하며, 대상마다 그 카드의 딜레이만큼 기다립니다.</p>
+        <h3 class="codex-h">반복 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'flow').length}장</span></h3>
         ${grid(ids.filter((id) => CARDS[id].type === 'flow'))}
-        <h3 class="codex-h">이벤트 카드 — 언제 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'event').length}장</span></h3>
-        <p class="sub codex-note">이벤트 카드를 넣은 슬롯은 순환에서 빠지고, 조건이 성립하는 순간 실행이 그 슬롯으로 넘어옵니다.
-          실행 중이던 슬롯은 카드 사이에서 멈췄다가, 이벤트 슬롯이 끝나면 멈춘 자리부터 이어서 실행합니다.
-          이벤트 슬롯도 쿨타임(최소 ${EVENT_CD_MIN}초) 중에는 발동하지 않으며, 순간 이벤트는 쿨타임이 풀리길 ${EVENT_WINDOW}초까지 기다려 줍니다.<br>
-          모든 슬롯은 실행을 마치면 <b>코스트 × ${SLOT_CD_PER_COST}초</b>(최소 ${SLOT_CD_MIN}초)의 쿨타임을 받고, 차례가 와도 쿨타임 중이면 다음 슬롯으로 건너뜁니다.
-          행동이 하나도 실행되지 않았으면 ${FIZZLE_CD}초만 쉽니다.</p>
+        <h3 class="codex-h">이벤트 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'event').length}장</span></h3>
         ${grid(ids.filter((id) => CARDS[id].type === 'event'))}
         <div style="text-align:center;margin-top:18px"><button class="btn primary" data-act="codex-close">닫기 <kbd>Esc</kbd></button></div>
       </div>`, 'codex');
@@ -412,7 +394,7 @@ const UI = {
     this.open(`
       <div class="panel editor">
         <h2>카드 편집</h2>
-        <p class="sub">슬롯은 위에서 아래로 순환하고, 카드는 왼쪽부터 실행됩니다. 쿨타임 중인 슬롯은 건너뜁니다. 자세한 규칙은 카드 도감에.</p>
+        <p class="sub">슬롯은 위에서 아래로 순환하고, 카드는 왼쪽부터 실행됩니다. 쿨타임 중인 슬롯은 건너뜁니다.</p>
         <div class="points${deck.costPoints ? ' has' : ''}">코스트 포인트 <b>${deck.costPoints}</b>
           <span class="muted">— 슬롯 오른쪽 <b>+1</b> 로 제한 코스트 올리기</span></div>
         <div class="slots">${rows}</div>
