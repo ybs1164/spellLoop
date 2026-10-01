@@ -837,7 +837,7 @@ class Pickup {
         // 도트 마름모 보석 (큰 보석은 한 칸 더 크다)
         const G = Px.G, n = v <= 6 ? 2 : 3;
         const gx = Math.round(x / G) * G, gy = Math.round(y / G) * G;
-        ctx.fillStyle = v <= 1 ? '#5ab8ff' : v <= 6 ? '#5be37a' : '#ff6b8b';
+        ctx.fillStyle = v <= 1 ? '#ffe45c' : v <= 6 ? '#ffd11a' : '#ffb300';
         for (let j = -n; j <= n; j++) {
           const w = n - Math.abs(j);
           ctx.fillRect(gx - w * G, gy + j * G, (w * 2 + 1) * G, G);
