@@ -163,3 +163,9 @@ kbd {
 /* ---------- 공용 ---------- */
 .muted { color: var(--muted); }
 .warn { color: #ffb454; }
+
+/* ---------- 레벨업: 카드 5장 + 인벤토리 보기 ---------- */
+.panel.levelup { max-width: min(1080px, 100%); }
+.panel.levelup .cards { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.lv-inv { margin-top: 10px; text-align: left; }
+.lv-inv .pcard { cursor: default; }

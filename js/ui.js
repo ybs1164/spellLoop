@@ -16,6 +16,7 @@ const UI = {
     this._pick = null;
     this.mode = null;          // 현재 오버레이 종류
     this.editSel = 0;          // 편집기에서 선택된 슬롯
+    this.lvInvOpen = false;    // 레벨업 화면의 인벤토리 펼침 여부
     this.editMsg = '';
     this.codexBack = null;     // 도감을 닫으면 돌아갈 화면
     document.documentElement.style.setProperty('--icons', ICONS.length);
@@ -229,6 +230,7 @@ const UI = {
         break;
       case 'pick': this.pickLevelUp(Number(data.idx)); break;
       case 'reroll': this.refreshLevelUp(); break;
+      case 'lv-inv': this.toggleLevelUpInventory(); break;
       case 'slot-up':
       case 'slot-down': {
         const i = Number(data.slot), dir = action === 'slot-up' ? -1 : 1;
@@ -322,13 +324,31 @@ const UI = {
         ${this.bigCardHtml(id)}<kbd class="hint">${i + 1}</kbd></button>`).join('');
     const growth = notes.length ? `<div class="growth">${notes.map((n) => `<span>${n}</span>`).join('')}</div>` : '';
     this.open(`
-      <div class="panel">
+      <div class="panel levelup">
         <h2>${leveled ? `레벨 업! <span class="muted">Lv ${player.level}</span>` : '보상'}</h2>
         ${growth}
         <div class="cards">${cards}</div>
         <button class="btn reroll" data-act="reroll" ${deck.costPoints > 0 ? '' : 'disabled'}>
           새로고침 · 코스트 포인트 1 <span class="muted">(보유 ${deck.costPoints})</span> <kbd>R</kbd></button>
+        <button class="btn reroll" data-act="lv-inv">인벤토리 보기 <kbd>E</kbd></button>
+        <div class="lv-inv${this.lvInvOpen ? '' : ' hidden'}">${this.inventoryViewHtml(deck)}</div>
       </div>`, 'levelup');
+  },
+
+  /** 레벨업 화면에서 보는 읽기 전용 인벤토리 (슬롯 + 보관함) */
+  inventoryViewHtml(deck) {
+    const inv = deck.inventory.length
+      ? deck.inventory.map((id) => this.cardHtml(id, 'draggable="false"')).join('')
+      : '<span class="muted">보관함이 비었습니다.</span>';
+    return `<div class="section-title">슬롯</div>${this.deckSummaryHtml(deck)}
+      <div class="section-title">보관함 <span class="muted">· ${deck.inventory.length}장</span></div>
+      <div class="inventory">${inv}</div>`;
+  },
+
+  toggleLevelUpInventory() {
+    if (this.mode !== 'levelup') return;
+    this.lvInvOpen = !this.lvInvOpen;
+    this.overlay.querySelector('.lv-inv')?.classList.toggle('hidden', !this.lvInvOpen);
   },
 
   pickLevelUp(i) { if (this._pick) this._pick(i); },
