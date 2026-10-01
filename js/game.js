@@ -10,6 +10,7 @@ const MAX_ZONES = 16;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
 const CARD_EFFECTS = [
+  'directAction',
   'bolt', 'slash', 'explode', 'frost', 'shockwave', 'poison', 'vortex', 'summonKnight', 'mend',
   'scatter', 'lance', 'magnet',
   'placeOrb', 'placeMine', 'placeTurret', 'placeDecoy', 'detonate', 'launch',
@@ -198,7 +199,10 @@ class Game {
     this.recycleFarEnemies();
 
     for (const a of this.allies) a.update(dt, this);
-    for (const o of this.objects) if (!o.dead) o.update(dt, this);
+    for (const o of this.objects) if (!o.dead) {
+      if (o.directFrozen) { if ((o.life -= dt) <= 0) o.dead = true; }
+      else o.update(dt, this);
+    }
     this.updateZones(dt);
     this.updateStatuses(dt);
     for (const pr of this.projectiles) pr.update(dt, this);
@@ -495,6 +499,43 @@ class Game {
     else o.dead = true;
   }
 
+  damageTarget(t, damage, knock = 0, elem = null) {
+    const o = this.targetObj(t), p = this.player;
+    if (o.dead) return;
+    const amount = damage * p.cardMul;
+    if (t.kind === 'enemy') this.damageEnemy(o, amount, o.x - p.x || 1, o.y - p.y, knock, '#ffffff', elem);
+    else if (t.kind === 'self') p.takeDamage(amount, this);
+    else if (t.kind !== 'point') this.shatter(o);
+  }
+
+  directAction(id, t) {
+    const o = this.targetObj(t), p = this.player;
+    if (o.dead) return;
+    const hits = { bolt: 20, slash: 24, explode: 26, frost: 4, shockwave: 12, scatter: 60, lance: 16, boomerang: 16, homing: 60, laser: 16, chain: 20, snipe: 100, drain: 60, soulReap: 20 };
+    const status = { frost: ['freeze', 1], root: ['root', 1.8], fear: ['fear', 2], mark: ['mark', 6], burn: ['burn', 3] };
+    if (status[id]) {
+      const [key, dur] = status[id];
+      if (key !== 'fear' || !o.boss) {
+        o.directStates ||= {};
+        o.directStates[key] = Math.max(o.directStates[key] || 0, dur * (key === 'freeze' && o.boss ? BOSS_FREEZE : 1));
+        if (key === 'mark' && (o === p || t.kind === 'enemy')) o.markT = Math.max(o.markT || 0, dur);
+      }
+    }
+    if (id === 'spread') {
+      for (const k of Object.keys(o.directStates || {})) o.directStates[k] *= 1.5;
+      if (o.markT > 0) o.markT *= 1.5;
+    } else if (id === 'execute') {
+      if (t.kind === 'enemy' && !o.boss && o.hp <= o.maxHp * 0.35) this.consumeTarget(o);
+      else this.damageTarget(t, 50, 60);
+    } else if (hits[id]) {
+      if (id !== 'frost' || Number.isFinite(o.hp)) this.damageTarget(t, hits[id], id === 'shockwave' ? 520 : 80, id === 'frost' ? 'frost' : null);
+      if ((id === 'drain' || id === 'soulReap') && t.kind !== 'self') p.heal(id === 'drain' ? 6 : 1);
+    }
+    const color = id === 'frost' ? '#9fd8ff' : id === 'burn' ? '#ff7b2e' : '#8be9ff';
+    this.circleFx(o.x, o.y, (o.r || o.radius || 12) + 12, color, { life: 0.3, follow: o, style: 'wave' });
+    if (hits[id]) this.addFx({ kind: 'beam', x: p.x, y: p.y, x1: o.x, y1: o.y, color, w: 3, life: 0.2 });
+  }
+
   // 필드 값을 누적 곱하지 않고 활성 버프의 배율만 적용하고 만료 시 복구한다.
   syncTargetBuffs(o) {
     const active = k => o.cardBuffs?.[k] > 0;
@@ -518,7 +559,20 @@ class Game {
   updateTargetBuffs(dt) {
     for (const t of this.allTargets()) {
       const o = this.targetObj(t);
-      if (o === this.player || !o.cardBuffs) continue;
+      const states = o.directStates || {};
+      o.directFrozen = states.freeze > 0;
+      o.directMove = states.freeze > 0 || states.root > 0 || states.fear > 0 ? 0 : 1;
+      if (states.fear > 0 && !o.directFrozen && !(states.root > 0)) {
+        const dx = o === this.player ? -o.facing.x : o.x - this.player.x || 1;
+        const dy = o === this.player ? -o.facing.y : o.y - this.player.y;
+        const d = Math.hypot(dx, dy) || 1;
+        o.x += dx / d * 120 * Math.min(dt, states.fear);
+        o.y += dy / d * 120 * Math.min(dt, states.fear);
+        if (o.follow) o.follow = null;
+      }
+      if (states.burn > 0) this.damageTarget(t, 10 * Math.min(dt, states.burn), 0, 'fire');
+      for (const k of Object.keys(states)) states[k] = Math.max(0, states[k] - dt);
+      if (!o.cardBuffs) continue;
       if (o.cardBuffs.regen > 0) this.healTarget(o, 2 * Math.min(dt, o.cardBuffs.regen));
       for (const k of Object.keys(o.cardBuffs)) o.cardBuffs[k] = Math.max(0, o.cardBuffs[k] - dt);
       if (!(o.cardBuffs.shield > 0)) o.cardShield = 0;
@@ -670,7 +724,7 @@ class Game {
     const p = this.player;
     const o = this.targetObj(t);
     if (o.dead) return;
-    if (o === p) p.applyBuff(kind, this);
+    if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
     else if (kind === 'heal') this.healTarget(o, 15);
     else if (kind === 'prolong') {
       const key = Number.isFinite(o.life) ? 'life' : 'escT';
@@ -690,14 +744,8 @@ class Game {
 
   /** 치유의 빛: 반경 안의 모두(나 포함)를 치유한다. */
   mend(o) {
-    const p = this.player, r = 80 * p.stats.area, n = 20 * p.power;
-    if (dist2(o.x, o.y, p.x, p.y) <= (r + p.radius) ** 2 && p.hp < p.stats.maxHp) {
-      p.heal(n);
-      this.addText(p.x, p.y - 28, `+${Math.round(n)}`, '#5be37a');
-    }
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => this.healEnemy(e, n));
-    this.circleFx(o.x, o.y, r, '#7dff9a', { life: 0.4, fill: 0.45, spark: '#eaffef' });
-    this.burst(o.x, o.y, '#b6ffc8', 8);
+    this.healTarget(o, 20);
+    this.circleFx(o.x, o.y, (o.radius || 12) + 12, '#7dff9a', { life: 0.4, fill: 0.45, spark: '#eaffef' });
   }
 
   /* ---------------- 1차: 능력치 → 행동 ---------------- */
@@ -715,11 +763,8 @@ class Game {
   }
 
   magnet(o) {
-    const r = 260 * this.player.stats.area;
-    for (const pk of this.pickups) {
-      if (pk.kind === 'gem' && dist2(pk.x, pk.y, o.x, o.y) <= r * r) { pk.pulled = true; pk.speed = 0; }
-    }
-    this.circleFx(o.x, o.y, r, '#ff6b6b', { life: 0.4, style: 'pulse' });
+    o.pulled = true; o.speed = 0;
+    this.circleFx(o.x, o.y, (o.radius || 5) + 12, '#ffd166', { life: 0.4, style: 'pulse' });
   }
 
   /* ---------------- 2차: 설치물 ---------------- */
@@ -861,7 +906,7 @@ class Game {
     }
   }
 
-  meteor(o) { this.addZone('meteor', o, null); }
+  meteor(o, t) { this.addZone('meteor', o, t); }
 
   blades(o, t) { this.addZone('blades', o, t); }
 
@@ -954,25 +999,20 @@ class Game {
 
   /* ---------------- 5차: 이동·아군·메타 ---------------- */
   blink(o, t) {
-    const p = this.player;
-    let x = o.x, y = o.y;
-    if (t.kind === 'enemy') {   // 적 바로 앞(내 쪽)으로
-      const a = Math.atan2(p.y - o.y, p.x - o.x);
-      x += Math.cos(a) * (o.radius + 20); y += Math.sin(a) * (o.radius + 20);
-    }
-    this.circleFx(p.x, p.y, 26, '#c49bff', { life: 0.3, style: 'wave' });
-    p.x = x; p.y = y;
-    p.invuln = Math.max(p.invuln, 0.4);
-    this.circleFx(x, y, 30, '#c49bff', { life: 0.35 });
+    this.moveTarget(o, 160, '#c49bff');
   }
 
   dash(t) {
-    const p = this.player, a = this.aimAt(t), len = 170;
-    const x0 = p.x, y0 = p.y, x1 = p.x + Math.cos(a) * len, y1 = p.y + Math.sin(a) * len;
-    this.hitLine(x0, y0, x1, y1, 18, 40 * p.power, 220);
-    p.x = x1; p.y = y1;
-    p.invuln = Math.max(p.invuln, 0.25);
-    this.addFx({ kind: 'beam', x: x0, y: y0, x1, y1, color: '#5be37a', w: 10, life: 0.2 });
+    this.moveTarget(this.targetObj(t), 170, '#5be37a');
+  }
+
+  moveTarget(o, distance, color) {
+    const p = this.player;
+    const angle = o.facing ? Math.atan2(o.facing.y, o.facing.x) : Number.isFinite(o.ang) ? o.ang : o.vx || o.vy ? Math.atan2(o.vy, o.vx) : o.flip ? Math.PI : Math.atan2(p.facing.y, p.facing.x);
+    const x = o.x, y = o.y;
+    o.x += Math.cos(angle) * distance; o.y += Math.sin(angle) * distance;
+    if (o.follow) o.follow = null;
+    this.addFx({ kind: 'beam', x, y, x1: o.x, y1: o.y, color, w: 4, life: 0.2 });
   }
 
   summonArcher(o) { this.summonAlly('archer', o); }
@@ -1156,8 +1196,8 @@ class Game {
     this.burst(o.x, o.y, '#d9ccff', 12);
   }
 
-  abyssGate(o) {
-    this.addZone('abyss', o, null);
+  abyssGate(o, t) {
+    this.addZone('abyss', o, t);
     this.shake(3);
   }
 
@@ -1177,7 +1217,7 @@ class Game {
     const live = this.zones.filter((z) => !z.dead);
     if (live.length >= MAX_ZONES) live[0].dead = true;
     const follow = t && t.kind !== 'point' ? o : null;
-    const z = { kind, x: o.x, y: o.y, follow, max: def.life, rallyT: 0, dead: false, ...def };
+    const z = { kind, x: o.x, y: o.y, follow, directTarget: follow ? t : null, max: def.life, rallyT: 0, dead: false, ...def };
     this.zones.push(z);
     return z;
   }
@@ -1186,6 +1226,12 @@ class Game {
   endZone(z, forced = false) {
     const p = this.player;
     z.dead = true;
+    if (z.directTarget) {
+      const damage = { meteor: 48, slime: 30, abyss: 70 }[z.kind] || (forced ? 45 : 0);
+      if (damage) this.damageTarget(z.directTarget, damage * (z.cardPower || 1));
+      this.circleFx(z.x, z.y, z.r, '#ffb347', { life: 0.35 });
+      return;
+    }
     if (z.kind === 'meteor') { this.blast(z.x, z.y, z.r / p.stats.area, 48, '#ff6a3d', 'fire'); this.ignitePoison(z.x, z.y, z.r); }
     else if (z.kind === 'slime') this.blast(z.x, z.y, z.r / p.stats.area, 30, '#6fd08c');
     else if (z.kind === 'abyss') { this.blast(z.x, z.y, z.r / p.stats.area, 70, '#ff3b6b'); this.shake(8); }
@@ -1207,6 +1253,23 @@ class Game {
       if (z.rallyT > 0) z.rallyT -= dt0;
       const dt = (z.rallyT > 0 ? dt0 * 2 : dt0) * (z.cardRate || 1);
       const power = p.power * (z.cardPower || 1);
+      if (z.directTarget) {
+        const o = this.targetObj(z.directTarget);
+        if (o.dead) { z.dead = true; continue; }
+        if (z.directFrozen) continue;
+        const tick = { poison: [0.5, 6], blades: [0.2, 8], slime: [0.5, 5], abyss: [0.4, 8] }[z.kind];
+        if (tick && (z.tick -= dt) <= 0) {
+          z.tick += tick[0];
+          this.damageTarget(z.directTarget, tick[1] * (z.cardPower || 1), 0, z.kind === 'poison' ? 'poison' : null);
+        }
+        if (['vortex', 'abyss', 'ward'].includes(z.kind) && o !== p) {
+          const dx = p.x - o.x || 1, dy = p.y - o.y, d = Math.hypot(dx, dy);
+          const amount = Math.min(Math.max(0, d - 20), 260 * dt) * (z.kind === 'ward' ? -1 : 1);
+          o.x += dx / d * amount; o.y += dy / d * amount;
+          if (o.follow) o.follow = null;
+        }
+        continue;
+      }
       switch (z.kind) {
         case 'poison':
           if ((z.tick -= dt) <= 0) {
@@ -1519,8 +1582,8 @@ class Game {
     const p = this.player;
     for (const h of this.hazards) {
       if (h.dead) continue;
-      if (h.freezeT > 0) h.freezeT -= dt;   // 빙결: 제자리에 멈춘다
-      else { h.x += h.vx * dt * (h.cardMove || 1); h.y += h.vy * dt * (h.cardMove || 1); }
+      if (h.freezeT > 0 || h.directFrozen) h.freezeT = Math.max(0, (h.freezeT || 0) - dt);
+      else { h.x += h.vx * dt * (h.cardMove || 1) * (h.directMove ?? 1); h.y += h.vy * dt * (h.cardMove || 1) * (h.directMove ?? 1); }
       if ((h.life -= dt) <= 0) { h.dead = true; continue; }
       // 적의 불탄도 화약통에 불을 붙인다 — 적 무리 사이에서 터지게 유도할 수 있다
       for (const o of this.objects) {

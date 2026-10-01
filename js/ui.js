@@ -368,7 +368,7 @@ const UI = {
       return `<span class="step${s.ok ? '' : ' bad'}">${who} → <b class="${s.flow ? 'c-flow' : 'c-action'}">${CARDS[s.action].name}</b></span>`;
     }).join('');
     const warns = pv.warns.map((w) => `<span class="warn">⚠ ${w}</span>`).join('');
-    return `${over}${steps}<span class="muted">1회 ${pv.time.toFixed(2)}초 · 쿨타임 ${pv.cooldown.toFixed(1)}초</span>${warns}`;
+    return `${over}${steps}<span class="muted">기본 실행 ${pv.time.toFixed(2)}초 · 기본 쿨타임 ${pv.baseCooldown.toFixed(1)}초 + 대상 수·반복 추가${slot.extraCooldown > 0 ? ` (최근 총 ${pv.cooldown.toFixed(1)}초)` : ''}</span>${warns}`;
   },
 
   showEditor(g) {

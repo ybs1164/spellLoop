@@ -146,7 +146,7 @@ class Player {
     const a = Input.axis();
     this.moving = a.x !== 0 || a.y !== 0;
     if (this.moving) this.facing = a;
-    const sp = this.baseSpeed * this.stats.moveSpeed;
+    const sp = this.baseSpeed * this.stats.moveSpeed * (this.directMove ?? 1);
     this.x += a.x * sp * dt;
     this.y += a.y * sp * dt;
 
@@ -158,7 +158,7 @@ class Player {
     this.refreshStats();
     if (this.stats.regen > 0) this.heal(this.stats.regen * dt);
 
-    this.deck.update(dt, game, this);
+    if (!this.directFrozen) this.deck.update(dt, game, this);
   }
 
   heal(n) { this.hp = Math.min(this.stats.maxHp, this.hp + n); }
@@ -302,6 +302,7 @@ class Enemy {
   /** chase: 쫓아갈 대상 (보통 플레이어, 미끼가 있으면 미끼) */
   update(dt, chase, game) {
     const player = game.player, def = this.def;
+    if (this.directFrozen) return;
     if (this.rootT > 0) this.rootT -= dt;
     if (this.fearT > 0) this.fearT -= dt;
     if (this.markT > 0) this.markT -= dt;
@@ -338,7 +339,7 @@ class Enemy {
       mx = (dx / d) * radial - (dy / d) * this.strafe * 0.6;
       my = (dy / d) * radial + (dx / d) * this.strafe * 0.6;
     }
-    const sp = this.rootT > 0 ? 0 : this.speed;
+    const sp = this.rootT > 0 ? 0 : this.speed * (this.directMove ?? 1);
     this.x += (mx * sp + this.kx) * dt;
     this.y += (my * sp + this.ky) * dt;
     this.kx *= decay; this.ky *= decay;
@@ -495,6 +496,7 @@ class Ally {
     for (const k of ['freezeT', 'rootT', 'fearT', 'burnT']) if (this[k] > 0) this[k] -= dt;
     if (this.burnT <= 0) this.burnDps = 0;
     const rally = this.rallyT > 0 ? 2 : 1;
+    if (this.directFrozen) return;
     this.cd -= dt * rally;
 
     const target = def.damage ? game.nearestEnemies(this.x, this.y, 1, def.sight)[0] : null;
@@ -502,8 +504,8 @@ class Ally {
     if (target) { tx = target.x; ty = target.y; stop = def.keep || target.radius + def.reach * 0.6; }
     const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy) || 1;
     if (d > stop) {
-      this.x += (dx / d) * def.speed * (this.cardMove || 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
-      this.y += (dy / d) * def.speed * (this.cardMove || 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
+      this.x += (dx / d) * def.speed * (this.cardMove || 1) * (this.directMove ?? 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
+      this.y += (dy / d) * def.speed * (this.cardMove || 1) * (this.directMove ?? 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
     }
     if (Math.abs(dx) > 2) this.flip = dx < 0;
 
@@ -696,7 +698,7 @@ class Projectile {
   }
 
   update(dt, game) {
-    if (this.freezeT > 0) {
+    if (this.freezeT > 0 || this.directFrozen) {
       this.freezeT -= dt;
       if ((this.life -= dt) <= 0) this.dead = true;
       return;
@@ -724,8 +726,8 @@ class Projectile {
         this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
       }
     }
-    this.x += this.vx * dt * (this.cardMove || 1);
-    this.y += this.vy * dt * (this.cardMove || 1);
+    this.x += this.vx * dt * (this.cardMove || 1) * (this.directMove ?? 1);
+    this.y += this.vy * dt * (this.cardMove || 1) * (this.directMove ?? 1);
     this.life -= dt;
     if (this.life <= 0) this.dead = true;
   }
@@ -794,7 +796,7 @@ class Pickup {
     if (this.pulled) {
       this.speed = Math.min(this.speed + 1500 * dt, 1100);
       const d = Math.sqrt(d2) || 1;
-      const step = Math.min(d, this.speed * dt * (this.cardMove || 1));
+      const step = Math.min(d, this.speed * dt * (this.cardMove || 1) * (this.directMove ?? 1));
       this.x += (p.x - this.x) / d * step;
       this.y += (p.y - this.y) / d * step;
     }

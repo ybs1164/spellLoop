@@ -60,8 +60,9 @@ get(`
   deck.runCard('all', ctx, env, 0, queue);
   deck.runCard('heal', ctx, env, 1, queue);
 `);
-assert.equal(get('queue.length'), 4, 'all + heal queues only health-bearing targets');
-get("game.enemies[0].targetFeatures = { health: false }; const before = game.enemies[0].hp; deck.runStep(queue[1], { fired: 0, hit: new Set() }, env)");
+assert.equal(get('queue.length'), 1, 'all + heal queues one simultaneous batch');
+assert.equal(get('queue[0].targets.length'), 4, 'the batch contains only health-bearing targets');
+get("game.enemies[0].targetFeatures = { health: false }; const before = game.enemies[0].hp; deck.runStep(queue[0], { fired: 0, hit: new Set() }, env)");
 assert.equal(get('game.enemies[0].hp === before'), true, 'queued actions recheck feature switches');
 get("game.absorb(game.pickups[1], { kind: 'pickup', g: game.pickups[1] })");
 assert.equal(get('game.pickups[1].dead'), true);
@@ -69,6 +70,52 @@ get("game.split({ kind: 'gem', g: game.pickups[0] })");
 assert.equal(get("game.pickups.filter(o => o.kind === 'gem').reduce((n, o) => n + o.value, 0)"), 4, 'splitting gems preserves XP');
 get("game.detonate(game.enemies[0], { kind: 'enemy', e: game.enemies[0] })");
 assert.equal(get('game.enemies[0].dead'), true);
+get(`
+  game.state = 'playing'; game.events = new EventBus();
+  game.player.hp = 70; game.player.invuln = 0;
+  const untouched = game.enemies[1].hp;
+  CARDS.explode.run([{ kind: 'self' }], env);
+`);
+assert.equal(get('game.player.hp'), 44, 'self damage applies to self');
+assert.equal(get('game.enemies[1].hp'), get('untouched'), 'self explosion does not hit another entity');
+get("game.castBuff('amplify', { kind: 'self' })");
+assert.ok(Math.abs(get('game.player.radius') - 18.2) < 1e-9);
+assert.equal(get('game.player.stats.area'), 1, 'self size buff does not amplify later spells');
+for (const id of ['prolong', 'harvest', 'rage', 'focus', 'magnet']) {
+  assert.equal(get(`actionApplies(CARDS.${id}, { kind: 'self' }, env)`), false, `${id} needs a directly applicable target`);
+}
+get(`
+  const selected = new Pickup('gem', 50, 50), other = new Pickup('gem', 51, 50);
+  game.pickups.push(selected, other);
+  game.magnet(selected);
+`);
+assert.equal(get('selected.pulled'), true);
+assert.equal(get('other.pulled'), false, 'magnet does not query neighboring gems');
+get('game.enemies[1].hp = 3; game.player.hp = 40; game.mend(game.player)');
+assert.equal(get('game.player.hp'), 60);
+assert.equal(get('game.enemies[1].hp'), 3, 'mend heals only the selected target');
+get('const playerPosition = game.player.x; const enemyPosition = game.enemies[1].x; game.blink(game.enemies[1], { kind: "enemy", e: game.enemies[1] })');
+assert.equal(get('game.player.x'), get('playerPosition'), 'moving another target does not move the caster');
+assert.equal(get('game.enemies[1].x'), get('enemyPosition + 160'));
+get(`
+  game.projectiles.push(new Projectile({ x: 200, y: 200, vx: 100, vy: 0 }));
+  const frozenShot = game.projectiles[1];
+  CARDS.frost.run([{ kind: 'shot', s: frozenShot }], env);
+  game.updateTargetBuffs(0.1); frozenShot.update(0.1, game);
+`);
+assert.equal(get('frozenShot.dead'), false, 'freezing a shot preserves it');
+assert.equal(get('frozenShot.x'), 200, 'selected shot stops moving');
+get(`
+  const recipient = new Enemy('brute', 100, 100, 1);
+  game.enemies.push(recipient);
+  const neighbor = new Enemy('brute', 101, 100, 1);
+  game.enemies.push(neighbor);
+  game.zones = [];
+  const z = game.addZone('poison', recipient, { kind: 'enemy', e: recipient });
+  game.updateZones(0.1);
+`);
+assert.equal(get('recipient.hp'), get('recipient.maxHp - 6'), 'attached poison ticks on its selected target');
+assert.equal(get('neighbor.hp'), get('neighbor.maxHp'), 'attached poison ignores nearby entities');
 get(`
   globalThis.UI = { hideOverlay() {}, showHud() {}, showLevelUp() {} };
   const simulation = Object.create(Game.prototype);
