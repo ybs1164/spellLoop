@@ -125,13 +125,13 @@ class Game {
     const notes = this.levelNotes, leveled = this.leveledUp;
     this.levelNotes = [];
     this.leveledUp = false;
-    const show = () => UI.showLevelUp(this.player, rollRewards(this.player, 3), notes, leveled, (r) => {
+    const show = () => UI.showLevelUp(this.player, rollRewards(this.player, REWARD_CHOICES), notes, leveled, (r) => {
       applyReward(this.player, r, this);
       this.pendingLevelUps--;
       if (this.pendingLevelUps > 0) this.openLevelUp();
       else this.resume();
     }, () => {
-      // 코스트 포인트 1로 보상 카드 3장을 다시 뽑는다
+      // 코스트 포인트 1로 보상 카드를 다시 뽑는다
       if (this.player.deck.spendRefresh()) show();
     });
     show();
@@ -170,8 +170,9 @@ class Game {
         if (Input.consume('Escape') || Input.consume('KeyE') || Input.consume('Tab')) this.resume();
         break;
       case 'levelup':
-        for (let i = 0; i < 3; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickLevelUp(i);
+        for (let i = 0; i < REWARD_CHOICES; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickLevelUp(i);
         if (Input.consume('KeyR')) UI.refreshLevelUp();
+        if (Input.consume('KeyE') || Input.consume('Tab')) UI.toggleLevelUpInventory();
         break;
       case 'gameover':
       case 'victory':

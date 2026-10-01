@@ -4,7 +4,7 @@
  * 레벨업 보상
  *  - 매 레벨: 코스트 포인트 +1 (편집기에서 원하는 슬롯의 제한 코스트 +1 에 사용)
  *  - 5레벨마다: 실행 리스트에 슬롯 +1 (SkillDeck.onLevelUp)
- *  - 그리고 카드 3장 중 1장 선택. 능력치 강화는 없다 — 모든 능력치 효과는 행동 카드로 존재한다.
+ *  - 그리고 카드 REWARD_CHOICES장 중 1장 선택. 능력치 강화는 없다 — 모든 능력치 효과는 행동 카드로 존재한다.
  */
 
 function rollCard(exclude) {
@@ -20,6 +20,9 @@ function rollCard(exclude) {
 }
 
 /** 보상 카드 n장 (중복 없음) */
+/** 보상·레벨업 때 제시하는 카드 수 */
+const REWARD_CHOICES = 5;
+
 function rollRewards(player, n) {
   const used = new Set();
   const out = [];
