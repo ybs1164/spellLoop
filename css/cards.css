@@ -9,9 +9,7 @@
 }
 .t-target { --c: var(--target); }
 .t-action { --c: var(--action); }
-.t-filter { --c: var(--filter); }
 .t-flow { --c: var(--flow); }
-b.c-filter { color: var(--filter); }
 b.c-target { color: var(--target); }
 b.c-action { color: var(--action); }
 b.c-flow { color: var(--flow); }
@@ -214,23 +212,11 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
   box-shadow: 2px 2px 0 rgba(0, 0, 0, .5);
 }
 
-/* ---------- 대상 조건 카드 ---------- */
-.pcard .cost.neg, .bigcard .cost.neg { background: #5be37a; }
-.pcard .cost.zero, .bigcard .cost.zero { background: #9aa3b8; }
-/* →N·↺: 대상 카드 가격을 바꾸는 조건 */
-.pcard .cost.cap, .bigcard .cost.cap { width: auto; min-width: 22px; padding: 0 4px; background: #6ee7c8; letter-spacing: -1px; }
-.bigcard .cost.cap { min-width: 28px; }
-/* 슬롯 안에서 실제 코스트가 적힌 값과 다를 때: 적힌 값에 줄을 긋고 실제 값을 쓴다 */
 .codex-note { font-size: 12px; text-align: center; }
 .codex-example .pcard { width: 66px; }
 .btn.reroll { margin-top: 16px; }
 .btn.reroll:disabled { opacity: .45; cursor: default; border-color: var(--line); }
 
-/* ---------- 저주 카드: 보라색, 떨린다 ---------- */
-.curse { --c: #b39dff; }
-.pcard.curse { cursor: not-allowed; animation: cursed .4s steps(2) infinite; }
-.mini.curse { animation: cursed .4s steps(2) infinite; }
-@keyframes cursed { 50% { transform: translateX(2px); } }
 
 /* ---------- 던전 기믹 (도감) ---------- */
 .gimmicks { display: grid; gap: 10px; margin-top: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }

@@ -189,6 +189,7 @@ class Game {
 
     this.updateSpawns(dt);
     this.updateBarrels(dt);
+    this.updateTargetBuffs(dt);
     p.update(dt, this);
     for (const e of this.enemies) e.update(dt, this.chaseTarget(e), this);
 
@@ -405,6 +406,8 @@ class Game {
     return {
       at: obj,
       alive: (t) => !obj(t).dead,
+      features: (t) => targetFeatures(t, obj(t)),
+      allTargets: () => g.allTargets(),
 
       /* ---- 대상 카드 ---- */
       enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map((e) => ({ kind: 'enemy', e })),
@@ -416,6 +419,7 @@ class Game {
       /** 시야 r 안의 탄 — 내 투사체와 적 탄을 함께, 가까운 순 */
       shots: (r) => g.inRange([...g.projectiles, ...g.hazards], r).map((s) => ({ kind: 'shot', s })),
       gems: (r) => g.inRange(g.pickups.filter((pk) => pk.kind === 'gem'), r).map((gem) => ({ kind: 'gem', g: gem })),
+      pickups: (r) => g.inRange(g.pickups.filter(pk => pk.kind !== 'gem'), r).map(pk => ({ kind: 'pickup', g: pk })),
       /** 시야 r 안에서 반경 near 안에 다른 적이 가장 많은 적의 위치 */
       clusterPoint: (r, near) => {
         let best = null, bestN = -1;
@@ -455,7 +459,7 @@ class Game {
       bossAlive: () => g.enemies.some((e) => e.boss && !e.dead),
 
       flag: (ts, id) => g.markTargets(ts, id),
-      buff: (kind) => g.castBuff(kind),
+      buff: (kind, t) => g.castBuff(kind, t),
       /** 지금 실행하는 행동의 피해 배율 (「일점 집중」·「연타」) */
       setMul: (m) => { p.cardMul = m; },
       // 대상에서 효과로 이어지는 행동들은 Game 의 같은 이름 메서드로 넘긴다
@@ -467,6 +471,61 @@ class Game {
     if (t.kind === 'self') return this.player;
     const key = TARGET_KINDS[t.kind]?.key;
     return key ? t[key] : t;
+  }
+
+  allTargets() {
+    const wrap = (list, kind, key) => list.filter(o => !o.dead).map(o => ({ kind, [key]: o }));
+    return [
+      { kind: 'self' }, ...wrap(this.enemies, 'enemy', 'e'),
+      ...wrap(this.objects, 'object', 'o'), ...wrap(this.allies, 'ally', 'a'),
+      ...wrap(this.zones, 'zone', 'z'), ...wrap([...this.projectiles, ...this.hazards], 'shot', 's'),
+      ...this.pickups.filter(o => !o.dead).map(g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g })),
+    ];
+  }
+
+  healTarget(o, n) {
+    if (o.dead || !Number.isFinite(o.hp)) return;
+    if (o === this.player) o.heal(n);
+    else this.healEnemy(o, n);
+  }
+
+  consumeTarget(o) {
+    if (o === this.player || o.dead) return;
+    if (o instanceof Enemy) this.killEnemy(o);
+    else o.dead = true;
+  }
+
+  // 필드 값을 누적 곱하지 않고 활성 버프의 배율만 적용하고 만료 시 복구한다.
+  syncTargetBuffs(o) {
+    const active = k => o.cardBuffs?.[k] > 0;
+    const scale = (key, factor) => {
+      if (!Number.isFinite(o[key])) return;
+      o.cardScales ||= {};
+      const old = o.cardScales[key] || 1;
+      o[key] = o[key] / old * factor;
+      o.cardScales[key] = factor;
+    };
+    for (const key of ['radius', 'r']) scale(key, active('amplify') ? 1.4 : 1);
+    // 적은 speed를, 아군·탄환·아이템은 이동 계산의 cardMove를 사용한다.
+    if (o instanceof Enemy) scale('speed', active('haste') ? 1.4 : 1);
+    for (const key of ['damage', 'xp', 'value']) scale(key, key === 'damage' ? (active('rage') ? 1.5 : 1) : (active('harvest') ? 1.5 : 1));
+    o.cardMove = active('haste') ? 1.4 : 1;
+    o.cardPower = active('rage') ? 1.5 : 1;
+    o.cardRate = active('focus') ? 1 / 0.65 : 1;
+    o.cardArmor = active('armor') ? 5 : 0;
+  }
+
+  updateTargetBuffs(dt) {
+    for (const t of this.allTargets()) {
+      const o = this.targetObj(t);
+      if (o === this.player || !o.cardBuffs) continue;
+      if (o.cardBuffs.regen > 0) this.healTarget(o, 2 * Math.min(dt, o.cardBuffs.regen));
+      for (const k of Object.keys(o.cardBuffs)) o.cardBuffs[k] = Math.max(0, o.cardBuffs[k] - dt);
+      if (!(o.cardBuffs.shield > 0)) o.cardShield = 0;
+      this.syncTargetBuffs(o);
+      // 공격·소환·설치물 타이머만 가속하고 수명은 정상 속도로 흐른다.
+      for (const k of ['cd', 'shootCd', 'summonCd']) if (Number.isFinite(o[k])) o[k] -= dt * (o.cardRate - 1);
+    }
   }
 
   /** 살아 있고 플레이어 반경 r 안에 있는 것들, 가까운 순 */
@@ -607,15 +666,26 @@ class Game {
 
   summonKnight(o) { this.summonAlly('knight', o); }
 
-  castBuff(kind) {
+  castBuff(kind, t = { kind: 'self' }) {
     const p = this.player;
-    p.applyBuff(kind, this);
-    if (kind === 'heal') this.purifyPlayer();
+    const o = this.targetObj(t);
+    if (o.dead) return;
+    if (o === p) p.applyBuff(kind, this);
+    else if (kind === 'heal') this.healTarget(o, 15);
+    else if (kind === 'prolong') {
+      const key = Number.isFinite(o.life) ? 'life' : 'escT';
+      o[key] *= 1.5;
+    } else {
+      o.cardBuffs ||= {};
+      o.cardBuffs[kind] = Math.max(o.cardBuffs[kind] || 0, (BUFFS[kind]?.dur ?? 6) * p.stats.duration);
+      if (kind === 'shield') o.cardShield = Math.max(o.cardShield || 0, 25);
+      this.syncTargetBuffs(o);
+    }
     const b = BUFFS[kind];
     const color = kind === 'heal' ? '#5be37a' : kind === 'shield' ? '#7fb2ff' : b.color;
-    this.circleFx(p.x, p.y, 34, color, { life: 0.35, follow: p, style: 'wave' });
-    if (b) this.addText(p.x, p.y - 44, b.name, color);
-    else if (kind === 'shield') this.addText(p.x, p.y - 44, '보호막', color);
+    this.circleFx(o.x, o.y, 34, color, { life: 0.35, follow: o, style: 'wave' });
+    if (b) this.addText(o.x, o.y - 44, b.name, color);
+    else if (kind === 'shield') this.addText(o.x, o.y - 44, '보호막', color);
   }
 
   /** 치유의 빛: 반경 안의 모두(나 포함)를 치유한다. */
@@ -625,18 +695,9 @@ class Game {
       p.heal(n);
       this.addText(p.x, p.y - 28, `+${Math.round(n)}`, '#5be37a');
     }
-    if (dist2(o.x, o.y, p.x, p.y) <= (r + p.radius) ** 2) this.purifyPlayer();
     this.hitCircle(o.x, o.y, r, 0, 0, (e) => this.healEnemy(e, n));
     this.circleFx(o.x, o.y, r, '#7dff9a', { life: 0.4, fill: 0.45, spark: '#eaffef' });
     this.burst(o.x, o.y, '#b6ffc8', 8);
-  }
-
-  /** 치유의 힘이 덱의 저주 카드 하나를 태운다 */
-  purifyPlayer() {
-    const p = this.player;
-    if (!p.deck.purify()) return;
-    this.addText(p.x, p.y - 54, '정화!', '#eaffef');
-    this.circleFx(p.x, p.y, 44, '#eaffef', { life: 0.5, follow: p, style: 'wave', sparks: 10 });
   }
 
   /* ---------------- 1차: 능력치 → 행동 ---------------- */
@@ -681,13 +742,13 @@ class Game {
     if (obj.dead) return;
     if (t?.kind === 'zone') { this.endZone(obj, true); return; }
     if (obj.kind === 'barrel') { this.explodeBarrel(obj); return; }
-    obj.dead = true;
+    this.consumeTarget(obj);
     this.blast(obj.x, obj.y, 100, 45, '#ffb347');
   }
 
   launch(obj) {
     if (obj.dead) return;
-    obj.dead = true;
+    this.consumeTarget(obj);
     const p = this.player;
     const e = this.nearestEnemies(obj.x, obj.y, 1, 600)[0];
     const a = e ? Math.atan2(e.y - obj.y, e.x - obj.x) : Math.random() * TAU;
@@ -918,16 +979,18 @@ class Game {
 
   sacrifice(a) {
     if (a.dead) return;
-    a.dead = true;
+    this.consumeTarget(a);
     this.blast(a.x, a.y, 90, 40, '#ff5c5c');
   }
 
   /** 격려: 아군·설치물(화약통 제외)·장판의 공격·작동 속도 2배, 수명 +3초. 탄환은 1.5배 빨라진다. */
   rally(a) {
-    if (a.dead || a.neutral) return;
-    if (a.vx !== undefined) { a.vx *= 1.5; a.vy *= 1.5; }   // 탄환
-    else a.rallyT = 5 * this.player.stats.duration;
-    a.life += 3;
+    if (a.dead) return;
+    const t = this.allTargets().find(t => this.targetObj(t) === a);
+    if (!t) return;
+    for (const kind of ['haste', 'focus']) if (actionApplies(CARDS[kind], t, this.cardEnv())) this.castBuff(kind, t);
+    if (Number.isFinite(a.life)) a.life += 3;
+    else if (a.def?.escape) a.escT += 3;
     if (a.max !== undefined) a.max = Math.max(a.max, a.life);
     this.circleFx(a.x, a.y, 26, '#ffd166', { life: 0.35, follow: a, style: 'wave' });
   }
@@ -977,8 +1040,8 @@ class Game {
 
   refresh(o) {
     if (o.dead) return;
-    if (o instanceof Ally) o.life = Math.max(o.life, ALLY_LIFE);
-    else o.life = Math.max(o.life, o.max);   // 설치물·장판·탄환
+    if (Number.isFinite(o.life)) o.life = Math.max(o.life, o.max ?? o.life);
+    else if (o.def?.escape) o.escT = Math.max(o.escT, o.def.escape);
     this.circleFx(o.x, o.y, 24, '#b8f0ff', { life: 0.3, follow: o, style: 'wave' });
   }
 
@@ -1013,6 +1076,12 @@ class Game {
         c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
         c.kx = Math.cos(a) * 240; c.ky = Math.sin(a) * 240;
         break;
+      case 'gem':
+      case 'pickup':
+        if (o.kind === 'gem') o.value /= 2;
+        c = new Pickup(o.kind, at.x, at.y, o.value);
+        this.pickups.push(c);
+        break;
       default: return;
     }
     this.addFx({ kind: 'beam', x: o.x, y: o.y, x1: c.x, y1: c.y, color: '#d9a8ff', w: 2, life: 0.25 });
@@ -1026,12 +1095,13 @@ class Game {
     const rot = (vx, vy, a) => [vx * Math.cos(a) - vy * Math.sin(a), vx * Math.sin(a) + vy * Math.cos(a)];
     [o.vx, o.vy] = rot(o.vx, o.vy, -0.3);
     const [vx, vy] = rot(o.vx, o.vy, 0.6);
+    const opts = { ...o, vx, vy, cardBuffs: o.cardBuffs && { ...o.cardBuffs }, cardScales: o.cardScales && { ...o.cardScales }, targetFeatures: o.targetFeatures && { ...o.targetFeatures } };
     if (!mine) {
-      const c = { ...o, vx, vy };
+      const c = opts;
       this.hazards.push(c);
       return c;
     }
-    const c = this.spawnProjectile({ ...o, vx, vy });
+    const c = this.spawnProjectile(opts);
     c.hitSet = new Set(o.hitSet);
     return c;
   }
@@ -1043,9 +1113,9 @@ class Game {
   absorb(obj, t) {
     if (obj.dead) return;
     const p = this.player;
-    obj.dead = true;
+    this.consumeTarget(obj);
     this.addFx({ kind: 'beam', x: obj.x, y: obj.y, x1: p.x, y1: p.y, color: '#5be37a', w: 3, life: 0.25 });
-    if (t?.kind === 'gem') { obj.collect(this); return; }
+    if (t?.kind === 'gem' || t?.kind === 'pickup') { obj.collect(this); return; }
     const n = t?.kind === 'zone' ? Math.max(1, Math.round(6 * obj.life / obj.max)) : t?.kind === 'shot' ? 2 : 6;
     p.heal(n);
     this.addText(p.x, p.y - 30, `+${n}`, '#5be37a');
@@ -1135,13 +1205,14 @@ class Game {
       if ((z.life -= dt0) <= 0) { this.endZone(z); continue; }
       // 격려받은 장판은 작동(틱·회전·끌어당김) 속도 2배
       if (z.rallyT > 0) z.rallyT -= dt0;
-      const dt = z.rallyT > 0 ? dt0 * 2 : dt0;
+      const dt = (z.rallyT > 0 ? dt0 * 2 : dt0) * (z.cardRate || 1);
+      const power = p.power * (z.cardPower || 1);
       switch (z.kind) {
         case 'poison':
           if ((z.tick -= dt) <= 0) {
             z.tick += 0.5;
             let lit = false;   // 불타는 적(화상 · 화염 속성)이 들어오면 인화
-            this.hitCircle(z.x, z.y, z.r, 6 * p.power, 0, (e) => { if (e.burnT > 0 || e.traits.includes('fire')) lit = true; }, 'poison');
+            this.hitCircle(z.x, z.y, z.r, 6 * power, 0, (e) => { if (e.burnT > 0 || e.traits.includes('fire')) lit = true; }, 'poison');
             if (lit) this.ignitePoison(z.x, z.y, 0);
           }
           break;
@@ -1151,18 +1222,18 @@ class Game {
             z.tick += 0.2;
             for (let k = 0; k < 3; k++) {
               const a = z.spin + k * (TAU / 3);
-              this.hitCircle(z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, 14, 8 * p.power, 90);
+              this.hitCircle(z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, 14, 8 * power, 90);
             }
           }
           break;
         case 'slime':
           if ((z.tick -= dt) <= 0) {
             z.tick += 0.5;
-            this.hitCircle(z.x, z.y, z.r, 5 * p.power, 0);
+            this.hitCircle(z.x, z.y, z.r, 5 * power, 0);
           }
           break;
         case 'abyss':
-          if ((z.tick -= dt) <= 0) { z.tick += 0.4; this.hitCircle(z.x, z.y, z.r, 8 * p.power, 0); }
+          if ((z.tick -= dt) <= 0) { z.tick += 0.4; this.hitCircle(z.x, z.y, z.r, 8 * power, 0); }
           // falls through — 소용돌이처럼 끌어당긴다
         case 'vortex': {
           // 중심으로 끌어당긴다 (보스는 거의 버팀)
@@ -1382,7 +1453,13 @@ class Game {
       if (Math.random() < 0.5) this.burst(e.x + c * e.radius, e.y + s * e.radius * 0.5, '#fff3c4', 2);
     }
     const aff = Math.max(1, e.affinityOf(elem));
-    this.hurtEnemy(e, dmg * aff, dirX, dirY, knockback, aff > 1 ? '#ffe45c' : color);
+    let amount = Math.max(1, dmg * aff - (e.cardArmor || 0));
+    if (e.cardShield > 0) {
+      const absorbed = Math.min(e.cardShield, amount);
+      e.cardShield -= absorbed;
+      amount -= absorbed;
+    }
+    if (amount > 0) this.hurtEnemy(e, amount, dirX, dirY, knockback, aff > 1 ? '#ffe45c' : color);
   }
 
   /** 적을 치유. */
@@ -1438,23 +1515,12 @@ class Game {
     }
   }
 
-  /** 저주탄: 느려서 피할 수 있다. 맞으면 덱에 저주 카드가 끼어든다 */
-  enemyCurse(e, s) {
-    if (this.hazards.length >= MAX_HAZARDS) return;
-    const p = this.player, a = Math.atan2(p.y - e.y, p.x - e.x);
-    this.hazards.push({
-      x: e.x, y: e.y, vx: Math.cos(a) * s.speed, vy: Math.sin(a) * s.speed,
-      r: 9, damage: 4 * this.stage.dmgMul, life: 5, max: 5, color: '#b39dff', curse: true, dead: false,
-    });
-    this.circleFx(e.x, e.y, e.radius + 16, '#b39dff', { life: 0.3, style: 'pulse' });
-  }
-
   updateHazards(dt) {
     const p = this.player;
     for (const h of this.hazards) {
       if (h.dead) continue;
       if (h.freezeT > 0) h.freezeT -= dt;   // 빙결: 제자리에 멈춘다
-      else { h.x += h.vx * dt; h.y += h.vy * dt; }
+      else { h.x += h.vx * dt * (h.cardMove || 1); h.y += h.vy * dt * (h.cardMove || 1); }
       if ((h.life -= dt) <= 0) { h.dead = true; continue; }
       // 적의 불탄도 화약통에 불을 붙인다 — 적 무리 사이에서 터지게 유도할 수 있다
       for (const o of this.objects) {
@@ -1464,10 +1530,7 @@ class Game {
       const rr = h.r + p.radius * 0.8;
       if (dist2(h.x, h.y, p.x, p.y) < rr * rr) {
         h.dead = true;
-        if (h.curse && p.invuln <= 0 && p.deck.addCurse()) {
-          this.addText(p.x, p.y - 44, '저주 카드!', '#b39dff');
-          this.circleFx(p.x, p.y, 40, '#b39dff', { life: 0.5, follow: p, fill: 0.4 });
-        }
+
         p.takeDamage(h.damage, this);
         this.burst(h.x, h.y, h.color, 5);
         if (this.state !== 'playing') return;
@@ -1478,13 +1541,7 @@ class Game {
   drawHazards(ctx) {
     for (const h of this.hazards) {
       if (!this.inView(h.x, h.y, 20)) continue;
-      if (h.curse) {
-        // 저주탄: 흔들리는 보라 해골
-        ctx.fillStyle = Px.dither(ctx, 'rgba(179,157,255,0.55)');
-        Px.disc(ctx, h.x, h.y, h.r + 6);
-        if (!Sprites.icon(ctx, 'curse', h.x, h.y + Math.sin(this.clock * 12 + h.x) * 2, 2)) { ctx.fillStyle = h.color; Px.disc(ctx, h.x, h.y, h.r); }
-        continue;
-      }
+
       const s = h.r + Math.sin(this.clock * 20 + h.x) * 1.5;
       ctx.fillStyle = `${h.color}55`;
       ctx.fillRect(Math.round(h.x - s - 3), Math.round(h.y - s - 3), (s + 3) * 2, (s + 3) * 2);

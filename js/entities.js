@@ -30,7 +30,6 @@ const BOSS_FREEZE = 0.4;   // 보스가 받는 빙결 시간 배율
 /*
  * sprites: Tiny Dungeon 타일 후보(개체마다 무작위), scale: 도트 확대 배율(정수)
  * ai: chase(기본) | keep(거리 유지) | flee(도망, escape 초 뒤 사라짐 · loot: 잡으면 보물 상자) · summon: 주기적으로 부하 소환 · shoot: 주기적으로 탄 발사
- * curse: 주기적으로 저주탄 발사 — 맞으면 덱에 저주 카드가 끼어든다
  * split: 죽으면 작은 적으로 분열 · elite: 체력바 표시 · tint: 스프라이트 색조
  */
 const ENEMY_TYPES = {
@@ -46,9 +45,9 @@ const ENEMY_TYPES = {
   ghost:     { name: '유령',       hp: 16,   speed: 78,  radius: 11, damage: 8,  xp: 2,  color: '#cfd6e6', sprites: [TD.ghost], scale: 3, traits: ['undead'] },
   plagueRat: { name: '역병 쥐',    hp: 8,    speed: 140, radius: 8,  damage: 5,  xp: 1,  color: '#9aa4b8', sprites: [TD.rat2], scale: 2, traits: ['undead'] },
   necro:     { name: '사령술사',   hp: 60,   speed: 60,  radius: 13, damage: 10, xp: 8,  color: '#b39dff', sprites: [TD.cultist], scale: 3, traits: ['undead'], elite: true,
-               ai: 'keep', keep: 240, summon: { type: 'ghost', n: 3, cd: 6 }, curse: { cd: 7, speed: 150 } },
+               ai: 'keep', keep: 240, summon: { type: 'ghost', n: 3, cd: 6 } },
   lich:      { name: '망령 군주',  hp: 2200, speed: 46,  radius: 36, damage: 30, xp: 0,  color: '#b39dff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
-               summon: { type: 'ghost', n: 6, cd: 5 }, curse: { cd: 4.5, speed: 170 } },
+               summon: { type: 'ghost', n: 6, cd: 5 } },
 
   /* 3단계 · 불타는 심연 (화염 · 갑주) */
   imp:       { name: '화염 마귀',  hp: 26,   speed: 100, radius: 12, damage: 10, xp: 2,  color: '#ff7b2e', sprites: [TD.demon], scale: 3, traits: ['fire'] },
@@ -63,7 +62,7 @@ const ENEMY_TYPES = {
   overlord:  { name: '심연 군주',  hp: 3600, speed: 52,  radius: 42, damage: 34, xp: 0,  color: '#ff3b6b', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire', 'armored'],
                shoot: { cd: 3, n: 14, speed: 180, damage: 16, ring: true } },
 };
-const MAX_ENEMY_RADIUS = 44;
+const MAX_ENEMY_RADIUS = 64; // 증폭으로 커진 보스의 충돌 범위도 포함
 
 function xpForLevel(level) {
   return Math.floor(5 + (level - 1) * 6 + Math.pow(level - 1, 1.5));
@@ -284,7 +283,6 @@ class Enemy {
     this.tint = def.tint || (this.traits.includes('fire') ? '#ff6a2a' : this.traits.includes('undead') ? '#9d7dff' : null);
     this.summonCd = def.summon ? def.summon.cd * rand(0.4, 0.8) : 0;
     this.shootCd = def.shoot ? def.shoot.cd * rand(0.5, 1) : 0;
-    this.curseCd = def.curse ? def.curse.cd * rand(0.5, 1) : 0;
     this.strafe = Math.random() < 0.5 ? 1 : -1;
     this.escT = def.escape || 0;   // flee: 남은 도주 시간
     this.healT = 0;     // 회복 섬광
@@ -356,10 +354,7 @@ class Enemy {
       this.shootCd = def.shoot.cd;
       game.enemyShoot(this, def.shoot, player);
     }
-    if (def.curse && (this.curseCd -= dt) <= 0) {
-      this.curseCd = def.curse.cd;
-      game.enemyCurse(this, def.curse);
-    }
+
   }
 
   /** (dirX, dirY) 로 날아온 피해를 방패가 막는가. 피해가 정면(바라보는 쪽)에서 왔을 때만 막는다. */
@@ -507,14 +502,14 @@ class Ally {
     if (target) { tx = target.x; ty = target.y; stop = def.keep || target.radius + def.reach * 0.6; }
     const dx = tx - this.x, dy = ty - this.y, d = Math.hypot(dx, dy) || 1;
     if (d > stop) {
-      this.x += (dx / d) * def.speed * (this.rallyT > 0 ? 1.4 : 1) * dt;
-      this.y += (dy / d) * def.speed * (this.rallyT > 0 ? 1.4 : 1) * dt;
+      this.x += (dx / d) * def.speed * (this.cardMove || 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
+      this.y += (dy / d) * def.speed * (this.cardMove || 1) * (this.rallyT > 0 ? 1.4 : 1) * dt;
     }
     if (Math.abs(dx) > 2) this.flip = dx < 0;
 
     if (!target || this.cd > 0 || d > target.radius + def.reach) return;
     this.cd = def.attackCd;
-    const dmg = def.damage * p.power * rally;
+    const dmg = def.damage * p.power * rally * (this.cardPower || 1);
     if (this.kind === 'knight') {
       this.swing = 0.15;
       game.damageEnemy(target, dmg, dx, dy, 120);
@@ -605,7 +600,7 @@ class Placed {
     switch (this.kind) {
       case 'orb':
         this.cd = 0.4;
-        game.hitCircle(this.x, this.y, this.radius, 6 * p.power, 40);
+        game.hitCircle(this.x, this.y, this.radius, 6 * p.power * (this.cardPower || 1), 40);
         break;
       case 'mine':
         if (game.nearestEnemies(this.x, this.y, 1, 26 + MAX_ENEMY_RADIUS * 0.5).length) {
@@ -620,7 +615,7 @@ class Placed {
         const a = Math.atan2(e.y - this.y, e.x - this.x);
         game.spawnProjectile({
           x: this.x, y: this.y - 6, vx: Math.cos(a) * 460, vy: Math.sin(a) * 460,
-          radius: 4, damage: 9 * p.power, life: 1, pierce: 0, knockback: 90, color: '#8be9ff',
+          radius: 4, damage: 9 * p.power * (this.cardPower || 1), life: 1, pierce: 0, knockback: 90, color: '#8be9ff',
         });
         break;
       }
@@ -729,8 +724,8 @@ class Projectile {
         this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
       }
     }
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    this.x += this.vx * dt * (this.cardMove || 1);
+    this.y += this.vy * dt * (this.cardMove || 1);
     this.life -= dt;
     if (this.life <= 0) this.dead = true;
   }
@@ -799,7 +794,7 @@ class Pickup {
     if (this.pulled) {
       this.speed = Math.min(this.speed + 1500 * dt, 1100);
       const d = Math.sqrt(d2) || 1;
-      const step = Math.min(d, this.speed * dt);
+      const step = Math.min(d, this.speed * dt * (this.cardMove || 1));
       this.x += (p.x - this.x) / d * step;
       this.y += (p.y - this.y) / d * step;
     }

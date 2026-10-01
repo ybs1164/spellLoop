@@ -71,20 +71,19 @@ const UI = {
   /** eff: 슬롯 안에서 실제로 매겨진 코스트 (costBreakdown). 없으면 카드에 적힌 코스트 */
   miniHtml(id, eff) {
     const c = CARDS[id];
-    const cost = c.type === 'filter' ? `대상 코스트 →${c.targetCost}` : `코스트 ${costLabel(eff ?? c.cost)}`;
-    return `<span class="mini t-${c.type}${c.curse ? ' curse' : ''}" title="${c.name} (${cost})">${this.iconHtml(id, 16)}</span>`;
+    const cost = `코스트 ${costLabel(eff ?? c.cost)}`;
+    return `<span class="mini t-${c.type}" title="${c.name} (${cost})">${this.iconHtml(id, 16)}</span>`;
   },
 
   /** 편집기용 작은 카드. eff 를 주면 슬롯 안의 실제 코스트로 표시한다 */
   cardHtml(id, attrs, eff) {
     const c = CARDS[id];
-    return `<div class="pcard t-${c.type}${c.curse ? ' curse' : ''}" draggable="${c.curse ? 'false' : 'true'}" ${attrs} title="[${CARD_TYPES[c.type].label}] ${c.desc}">
+    return `<div class="pcard t-${c.type}" draggable="true" ${attrs} title="[${CARD_TYPES[c.type].label}] ${c.desc}">
       ${this.costHtml(c, eff)}${this.iconHtml(id, 32)}<span class="nm">${c.name}</span></div>`;
   },
 
-  /** 조건은 대상 코스트 지정값을, 대상은 갱신된 숫자 하나를 표시한다. */
+  /** 카드의 실제 코스트를 표시한다. */
   costHtml(c, eff) {
-    if (c.type === 'filter') return `<span class="cost cap" title="대상 카드 코스트를 ${c.targetCost}로 지정">→${c.targetCost}</span>`;
     const v = eff ?? c.cost;
     const cls = v < 0 ? ' neg' : v === 0 ? ' zero' : '';
     return `<span class="cost${cls}" title="코스트 ${costLabel(v)}">${costLabel(v)}</span>`;
@@ -100,13 +99,13 @@ const UI = {
   acceptsText(c) {
     const kinds = (list) => `<b>${list.map((k) => KIND_LABEL[k]).join('·')}</b>`;
     if (c.type === 'target') {
-      return kinds([c.kind]);
+      const features = KIND_FEATURES[c.kind];
+      return kinds([c.kind]) + (features ? '<br>' + Object.entries(TARGET_FEATURES).map(([k, label]) => `${label} ${features[k] ? 'ON' : 'OFF'}`).join(' · ') + (c.kind === 'enemy' ? ' (도주 상자는 제한시간 ON)' : '') : ' · 모든 실제 개체');
     }
-    if (c.type === 'filter') {
-      const note = `대상 코스트 →${c.targetCost}`;
-      return c.kinds.length === ALL_KINDS.length ? note : `${kinds(c.kinds)} 전용${note ? ` · ${note}` : ''}`;
-    }
-    if (c.type === 'flow' || c.accepts.length === ALL_KINDS.length) return '';
+
+    if (c.type === 'flow') return '';
+    if (c.requires) return (c.requires.length ? c.requires.map(k => TARGET_FEATURES[k] + ' ON').join(' · ') : '자신 / 제한시간 ON') + (c.supports && c.requires.length ? ' · 해당 능력을 가진 대상' : '') + (c.exclude ? ` · ${kinds(c.exclude)} 제외` : '');
+    if (c.accepts.length === ALL_KINDS.length) return '';
     if (c.accepts.length === ALL_KINDS.length - 1) return `${kinds(ALL_KINDS.filter((k) => !c.accepts.includes(k)))} 제외`;
     return `${kinds(c.accepts)} 전용`;
   },
@@ -248,12 +247,11 @@ const UI = {
         <h1>SPELL<br>LOOP</h1>
         <p class="sub">카드를 쌓아 나만의 주문을 조립하라</p>
         <div class="title-cards">
-          ${['enemies', 'fNearest', 'bolt', 'self', 'heal'].map((id) => this.miniHtml(id)).join('')}
+          ${['nearestEnemy', 'bolt', 'self', 'heal'].map((id) => this.miniHtml(id)).join('')}
         </div>
         <div class="keys">
           <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 방향키 이동</span>
           <span><kbd>E</kbd> 카드 편집</span>
-          <span><kbd>Space</kbd> 이벤트 슬롯 호출</span>
           <span><kbd>Esc</kbd> 일시정지</span>
           <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 레벨업 선택</span>
         </div>
@@ -269,12 +267,8 @@ const UI = {
   showCodex() {
     this.codexBack = this.mode;
     const grid = (ids) => `<div class="bigcards">${ids.map((id) =>
-      `<div class="bigcard t-${CARDS[id].type}${CARDS[id].curse ? ' curse' : ''}">${this.bigCardHtml(id)}</div>`).join('')}</div>`;
+      `<div class="bigcard t-${CARDS[id].type}">${this.bigCardHtml(id)}</div>`).join('')}</div>`;
     const ids = Object.keys(CARDS);
-    const filters = FILTER_GROUPS.map((g) => {
-      const list = ids.filter((id) => CARDS[id].type === 'filter' && CARDS[id].group === g.id);
-      return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
-    }).join('');
     const actions = CARD_GROUPS.map((g) => {
       const list = ids.filter((id) => CARDS[id].type === 'action' && CARDS[id].group === g.id);
       return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
@@ -284,8 +278,6 @@ const UI = {
         <h2>카드 도감</h2>
         <div class="section-title">대상 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'target').length}장</span></div>
         ${grid(ids.filter((id) => CARDS[id].type === 'target'))}
-        <h3 class="codex-h">조건 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'filter').length}장</span></h3>
-        ${filters}
         <h3 class="codex-h">행동 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'action').length}장</span></h3>
         ${actions}
         <h3 class="codex-h">반복 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'flow').length}장</span></h3>
@@ -371,7 +363,7 @@ const UI = {
       ? `<span class="warn">⚠ 코스트 초과 (${cardsCost(slot.cards)} / ${slot.limit}) — 실행 시 건너뜁니다</span>` : '';
     const steps = pv.steps.map((s) => {
       const who = s.chain
-        ? s.chain.map((id, k) => `<b class="${k ? 'c-filter' : 'c-target'}">${CARDS[id].name}</b>`).join(' › ')
+        ? s.chain.map((id, k) => `<b class="c-target">${CARDS[id].name}</b>`).join(' › ')
         : '<b class="c-target">?</b>';
       return `<span class="step${s.ok ? '' : ' bad'}">${who} → <b class="${s.flow ? 'c-flow' : 'c-action'}">${CARDS[s.action].name}</b></span>`;
     }).join('');
@@ -415,7 +407,6 @@ const UI = {
         <div class="inventory dropzone" data-zone="inv">${inv}</div>
         <div class="legend">
           <span><i style="background:${CARD_TYPES.target.color}"></i>대상 카드</span>
-          <span><i style="background:${CARD_TYPES.filter.color}"></i>대상 조건 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
           <span><i style="background:${CARD_TYPES.flow.color}"></i>반복 카드</span>
         </div>

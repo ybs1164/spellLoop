@@ -64,8 +64,6 @@ const STAGES = [
 const GIMMICKS = [
   { icon: 'fBarrels', name: '화약통', stages: [0, 1, 2],
     desc: `${PLACED_TYPES.barrel.desc}. 불이 옆 화약통으로 번져 연쇄 폭발한다.` },
-  { icon: 'curse', name: '저주 카드', stages: [1],
-    desc: '사령술사·망령 군주의 보라 해골탄에 맞으면 슬롯에 「저주」 카드가 끼어든다.' },
   { icon: 'frost', name: '원소 반응', stages: [0, 1, 2],
     desc: '증기 폭발 — 불타는 적(화상·화염)에게 빙결. 인화 — 독 장판에 화상·유성·화약통, 또는 불타는 적이 닿으면 폭발한다.' },
   { icon: 'chest', name: '달아나는 보물 상자', stages: [0, 1, 2],

@@ -1,34 +1,9 @@
 'use strict';
 
-/*
- * 카드 스택 시스템
- *
- *  SkillDeck.slots (실행 리스트)
- *   ├─ 슬롯 1 [제한 4]: [적][눈앞의 적][마탄]                 ← 카드를 왼쪽부터 순차 실행
- *   ├─ 슬롯 2 [제한 5]: [전방 지점 1][부유 구체 2][설치물 1][기폭 1] ← 구체를 깔고 그 구체를 터뜨린다
- *   └─ ...
- *  슬롯은 서로 기다리지 않고 각자 실행된다. 쿨타임이 풀린 슬롯은 곧바로 다시 실행된다.
- *
- *  - 대상 카드: "현재 대상"을 지정(교체)한다. 자신 / 적 / 지점 / 설치물 / 아군 / 장판 / 탄환 / 보석 여덟 종류와,
- *    이들을 한꺼번에 고르는 「전체」가 있다. 대상 카드는 "어디서" 고를지만 정하고, "몇 개·누구"는 조건 카드가 정한다.
- *    조건으로 만들 수 있는 대상(눈앞의 적 등)은 대상 카드로 따로 두지 않는다.
- *    「전체」로 고른 대상에는 조건·행동이 그 대상 종류에 맞는 것에만 걸린다.
- *  - 대상 조건 카드: 현재 대상 중 일부를 지운다. 예) [적][눈앞의 적] = 가장 가까운 적 하나.
- *    모든 조건은 targetCost로 대상 카드 코스트를 지정한다. 조건 자체의 코스트는 0이며 행동 코스트는 깎지 않는다.
- *    여러 조건은 순서대로 지정하며, 행동마다 사용한 대상 코스트 중 가장 큰 값으로 계산한다.
- *  - 행동 카드: 현재 대상 각각에게 효과를 실행한다. 대상 종류에 따라 쓸 수 없는 카드도 있다.
- *    대상이 여럿이면 한꺼번에가 아니라 하나씩 차례로 실행하고, 대상마다 그 카드의 딜레이만큼 기다린다.
- *  - 반복 카드: 실행 흐름을 바꾼다. 대상 카드로 되돌아가거나(추격·되감기), 뒤 카드들을 대상마다 따로 돌리거나(차례로),
- *    직전 행동을 같은 대상에게 몰아친다(연타).
- *  - 쿨타임: 슬롯마다 실행을 마친 뒤 코스트에 비례한 쿨타임이 돌고, 풀리면 그 슬롯만 다시 실행된다.
- *    행동이 하나도 실행되지 않은 슬롯(대상 없음·조건 불성립)은 짧은 쿨타임(FIZZLE_CD)만 받는다.
- *  - 모든 카드는 코스트가 있고, 한 슬롯의 코스트 합이 그 슬롯의 제한 코스트를 넘으면 그 슬롯은 실행되지 않는다.
- *  - 레벨업마다 코스트 포인트 1을 받아 원하는 슬롯의 제한을 올리거나 보상 카드를 새로고침하고, 5레벨마다 슬롯이 하나 늘어난다.
- */
+/* 슬롯은 독립 실행하며 대상 카드가 선택 조건을 포함한다. */
 
 const CARD_TYPES = {
   target: { label: '대상', color: '#ffd166' },
-  filter: { label: '조건', color: '#6ee7c8' },
   action: { label: '행동', color: '#ff7a8a' },
   flow: { label: '반복', color: '#8fb8ff' },
 };
@@ -46,18 +21,41 @@ const TARGET_KINDS = {
   object: { label: '설치물', key: 'o', card: 'objects', inAll: true },
   ally: { label: '아군', key: 'a', card: 'allies', inAll: true },
   zone: { label: '장판', key: 'z', card: 'zones', inAll: true },
-  shot: { label: '탄환', key: 's', card: 'shots' },
-  gem: { label: '보석', key: 'g', card: 'gems' },
+  shot: { label: '탄환', key: 's', card: 'shots', inAll: true },
+  gem: { label: '보석', key: 'g', card: 'gems', inAll: true },
+  pickup: { label: '아이템', key: 'g', card: 'pickups', inAll: true },
 };
 
 const KIND_LABEL = { ...Object.fromEntries(Object.entries(TARGET_KINDS).map(([k, v]) => [k, v.label])), all: '전체' };
 const ALL_KINDS = Object.keys(TARGET_KINDS);
-const SELF = ['self'];
-const SPATIAL = ['enemy', 'object', 'ally'];   // 여러 개를 고르는 대상 (수량·거리 조건이 의미 있음)
+const TARGET_FEATURES = { health: '체력', area: '범위', position: '위치', lifetime: '제한시간' };
+const KIND_FEATURES = {
+  self: { health: true, area: true, position: true, lifetime: false },
+  enemy: { health: true, area: true, position: true, lifetime: false },
+  point: { health: false, area: false, position: true, lifetime: false },
+  object: { health: false, area: true, position: true, lifetime: true },
+  ally: { health: false, area: true, position: true, lifetime: true },
+  zone: { health: false, area: true, position: true, lifetime: true },
+  shot: { health: false, area: true, position: true, lifetime: true },
+  gem: { health: false, area: true, position: true, lifetime: false },
+  pickup: { health: false, area: true, position: true, lifetime: false },
+};
+function targetFeatures(t, o) {
+  return {
+    health: Number.isFinite(o.hp) && Number.isFinite(o.maxHp ?? o.stats?.maxHp),
+    area: Number.isFinite(o.r) || Number.isFinite(o.radius) || Number.isFinite(o.stats?.area),
+    position: Number.isFinite(o.x) && Number.isFinite(o.y),
+    lifetime: Number.isFinite(o.life) || (o.def?.escape > 0 && Number.isFinite(o.escT)),
+    ...o.targetFeatures,
+  };
+}
+function actionApplies(card, t, env) {
+  if (!card.requires) return card.accepts.includes(t.kind);
+  const f = env.features(t);
+  return card.requires.every(k => f[k]) && (!card.exclude || !card.exclude.includes(t.kind)) && (!card.supports || card.supports(t, env.at(t)));
+}
 const MIN_CHAIN_COST = 1;
 
-// 도감에서 대상 조건 카드를 묶어 보여주는 분류
-const FILTER_GROUPS = [{ id: 1, name: '대상 고르기' }];
 
 // 도감에서 행동 카드를 묶어 보여주는 분류
 const CARD_GROUPS = [
@@ -67,9 +65,8 @@ const CARD_GROUPS = [
   { id: 3, name: '3차 확장 — 투사체 변주' },
   { id: 4, name: '4차 확장 — 제어·약화' },
   { id: 5, name: '5차 확장 — 이동·아군·메타' },
-  { id: 6, name: '6차 확장 — 대상 조건 연계' },
+  { id: 6, name: '6차 확장 — 대상 조작' },
   { id: 7, name: '7차 확장 — 보스의 힘' },
-  { id: 8, name: '저주 — 망자가 덱에 끼워 넣는 카드' },
 ];
 
 const MAX_SLOTS = 6;
@@ -77,8 +74,6 @@ const START_SLOT_LIMIT = 4;
 const MAX_SLOT_LIMIT = 15;
 const SLOT_EVERY_LEVELS = 5;
 const MAX_JUMPS = 8;         // 슬롯 한 번 실행 중 반복 카드로 되돌아갈 수 있는 총 횟수 (무한 반복 방지)
-const MAX_CURSES = 3;        // 덱에 동시에 끼어 있을 수 있는 저주 카드 수
-const CURSE_RUNS = 3;        // 저주 카드가 이만큼 실행되면 하나 사라진다
 const SLOT_CD_PER_COST = 0.35;   // 슬롯 쿨타임(초) = 슬롯 코스트 × 이 값
 const SLOT_CD_MIN = 0.6;         // 슬롯 쿨타임 최소
 const FIZZLE_CD = 0.5;           // 행동이 하나도 실행되지 않은 슬롯의 쿨타임
@@ -86,11 +81,10 @@ const FIZZLE_CD = 0.5;           // 행동이 하나도 실행되지 않은 슬�
 // 대상 각각의 위치(env.at)로 env[fn] 을 호출하는 행동
 const each = (fn) => (ts, env) => ts.forEach((t) => env[fn](env.at(t), t));
 // 자신에게 버프를 거는 행동
-const buff = (kind) => (ts, env) => env.buff(kind);
+const buff = (kind) => (ts, env) => ts.forEach(t => env.buff(kind, t));
 
 /**
  * 카드 정의
- *  조건: apply(targets, env, ctx) → 줄어든 대상 목록. kinds 에 있는 대상 종류에만 걸린다. targetCost 는 대상 카드에 지정할 코스트이며 조건 자체의 cost 는 0이다.
  *  대상: resolve(env, ctx) → 대상 목록
  *        {kind:'self'} | {kind:'enemy', e} | {kind:'point', x, y} | {kind:'object', o} | {kind:'ally', a}
  *        | {kind:'zone', z} | {kind:'shot', s} | {kind:'gem', g}   (종류 목록은 TARGET_KINDS)
@@ -168,20 +162,24 @@ const CARDS = {
   },
   all: {
     type: 'target', kind: 'all', name: '전체', cost: 5, weight: 1,
-    desc: '자신과 시야 안의 적·설치물·아군·장판을 모두 고른다.',
-    resolve: (env) => [...env.enemiesInSight(600), ...env.objects(), ...env.allies(), ...env.zones(), { kind: 'self' }],
+    desc: '거리 제한 없이 현재 존재하는 자신·적·설치물·아군·장판·내 탄환·적 탄환·보석·아이템을 모두 고른다.',
+    resolve: env => env.allTargets(),
   },
 
-  /* 조건 자체는 비용 없이 대상 카드 코스트를 지정한다. */
-  fNearest: {
-    type: 'filter', group: 1, name: '눈앞의 적', cost: 0, targetCost: 1, cap: 1, weight: 3, kinds: SPATIAL,
-    desc: '가장 가까운 대상 하나를 노린다.',
-    apply: (ts, env) => env.byDist(ts).slice(0, 1),
+  nearestEnemy: {
+    type: 'target', kind: 'enemy', name: '가장 가까운 적', cost: 1, weight: 3,
+    desc: '시야 안에서 가장 가까운 적 하나를 고른다.',
+    resolve: env => env.byDist(env.enemiesInSight(600)).slice(0, 1),
   },
-  fLowHp: {
-    type: 'filter', group: 1, name: '마무리', cost: 0, targetCost: 3, weight: 2, kinds: ['enemy'],
-    desc: '체력이 30% 이하인 적만 노린다.',
-    apply: ts => ts.filter(t => t.e.hp <= t.e.maxHp * 0.3),
+  woundedEnemies: {
+    type: 'target', kind: 'enemy', name: '마무리 대상', cost: 3, weight: 2,
+    desc: '시야 안에서 체력이 30% 이하인 적을 모두 고른다.',
+    resolve: env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.3),
+  },
+  pickups: {
+    type: 'target', kind: 'pickup', name: '아이템', cost: 2, weight: 1,
+    desc: '시야 안의 하트·자석·보물 상자를 모두 고른다.',
+    resolve: env => env.pickups(600),
   },
 
   /* ================= 행동 카드: 기본 ================= */
@@ -219,7 +217,7 @@ const CARDS = {
     desc: '10초간 싸우는 기사를 소환한다(아군 최대 6).', run: each('summonKnight'),
   },
   heal: {
-    type: 'action', group: 0, name: '치유', cost: 3, delay: 0.3, weight: 1, accepts: SELF,
+    type: 'action', group: 0, name: '치유', cost: 3, delay: 0.3, weight: 1, accepts: ALL_KINDS,
     desc: '체력 15 회복.', run: buff('heal'),
   },
   mend: {
@@ -227,15 +225,15 @@ const CARDS = {
     desc: '반경 80 안의 모두를 20 치유.', run: each('mend'),
   },
   shield: {
-    type: 'action', group: 0, name: '보호막', cost: 2, delay: 0.3, weight: 2, accepts: SELF,
+    type: 'action', group: 0, name: '보호막', cost: 2, delay: 0.3, weight: 2, accepts: ALL_KINDS,
     desc: '6초간 피해 25 흡수.', run: buff('shield'),
   },
   haste: {
-    type: 'action', group: 0, name: '질주', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 0, name: '질주', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '4초간 이동 속도 +40%.', run: buff('haste'),
   },
   rage: {
-    type: 'action', group: 0, name: '분노', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 0, name: '분노', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '5초간 모든 피해 +50%.', run: buff('rage'),
   },
 
@@ -251,23 +249,23 @@ const CARDS = {
     run: (ts, env) => ts.forEach((t) => env.lance(t)),
   },
   focus: {
-    type: 'action', group: 1, name: '집중', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '집중', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '5초간 실행 간격 -35%.', run: buff('focus'),
   },
   amplify: {
-    type: 'action', group: 1, name: '증폭', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '증폭', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '6초간 범위 +40%.', run: buff('amplify'),
   },
   prolong: {
-    type: 'action', group: 1, name: '연장', cost: 1, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '연장', cost: 1, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '8초간 지속시간 +50%.', run: buff('prolong'),
   },
   regen: {
-    type: 'action', group: 1, name: '재생', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '재생', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '8초간 초당 2 회복.', run: buff('regen'),
   },
   armor: {
-    type: 'action', group: 1, name: '철갑', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '철갑', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '6초간 받는 피해 -5.', run: buff('armor'),
   },
   magnet: {
@@ -275,7 +273,7 @@ const CARDS = {
     desc: '반경 260 보석을 끌어옴.', run: each('magnet'),
   },
   harvest: {
-    type: 'action', group: 1, name: '수확', cost: 2, delay: 0.2, weight: 1, accepts: SELF,
+    type: 'action', group: 1, name: '수확', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
     desc: '10초간 경험치 획득 +50%.', run: buff('harvest'),
   },
 
@@ -385,7 +383,7 @@ const CARDS = {
   sacrifice: {
     type: 'action', group: 5, name: '희생', cost: 1, delay: 0.2, weight: 1, accepts: ['ally'],
     desc: '아군을 폭파해 반경 90에 피해 40을 준다.',
-    run: (ts, env) => ts.forEach((t) => env.sacrifice(t.a)),
+    run: (ts, env) => ts.forEach((t) => env.sacrifice(env.at(t), t)),
   },
   rally: {
     type: 'action', group: 5, name: '격려', cost: 2, delay: 0.2, weight: 1, accepts: ['object', 'ally', 'zone', 'shot'],
@@ -397,7 +395,7 @@ const CARDS = {
     desc: '3초간 반경 120의 결계를 만들어 적의 접근을 막는다.', run: each('ward'),
   },
 
-  /* ================= 6차: 대상 조건 연계 ================= */
+  /* ================= 6차: 대상 조작 ================= */
   spread: {
     type: 'action', group: 6, name: '전염', cost: 1, delay: 0.2, weight: 2, accepts: ALL_KINDS,
     keys: ['status'], desc: '상태 이상을 주변 적에게 옮긴다.',
@@ -458,12 +456,6 @@ const CARDS = {
     desc: '슬롯 실행당 한 번, 마지막 대상 카드부터 다시 실행한다.',
   },
 
-  /* ================= 저주: 보상으로 나오지 않는다 ================= */
-  curse: {
-    type: 'action', group: 8, name: '저주', cost: 0, delay: 1.2, weight: 0, accepts: ALL_KINDS, curse: true,
-    desc: '이 슬롯의 실행을 1.2초 멈추며, 이동할 수 없고 3번 실행하거나 치유로 정화하면 사라진다.',
-    run: () => {},   // SkillDeck.update 에서 처리
-  },
   abyssGate: {
     type: 'action', group: 7, name: '심연의 문', cost: 6, delay: 0.4, weight: 1, accepts: ALL_KINDS,
     desc: '2초간 적을 빨아들이고 붕괴 시 피해 70.',
@@ -471,14 +463,49 @@ const CARDS = {
   },
 };
 
+// 행동별 필수 속성: 실제 개체의 ON/OFF 값을 확인한다.
+const ACTION_RULES = {
+  heal: { requires: ['health'] }, shield: { requires: ['health'] },
+  regen: { requires: ['health'] }, armor: { requires: ['health'] },
+  amplify: { requires: ['area'] },
+  prolong: { requires: [], supports: (t, o) => t.kind === 'self' || targetFeatures(t, o).lifetime },
+  refresh: { requires: ['lifetime'] },
+  haste: { requires: ['position'], supports: (t, o) => t.kind === 'self' || t.kind === 'ally' || 'speed' in o || 'vx' in o },
+  rage: { requires: ['position'], supports: (t, o) => t.kind === 'self' || t.kind === 'ally' || t.kind === 'zone' || 'damage' in o || t.kind === 'object' },
+  focus: { requires: ['position'], supports: (t, o) => t.kind === 'self' || ['cd', 'tick', 'shootCd', 'summonCd'].some(k => Number.isFinite(o[k])) },
+  harvest: { requires: ['position'], supports: (t, o) => t.kind === 'self' || t.kind === 'gem' || Number.isFinite(o.xp) },
+  detonate: { requires: ['position'], exclude: ['self', 'point'] },
+  launch: { requires: ['position'], exclude: ['self', 'point'] },
+  sacrifice: { requires: ['position'], exclude: ['self', 'point'] },
+  absorb: { requires: ['position'], exclude: ['self', 'point'] },
+  split: { requires: ['position'], exclude: ['point'] },
+  swap: { requires: ['position'], exclude: ['self'] },
+};
+for (const [id, c] of Object.entries(CARDS)) {
+  if (c.type !== 'action') continue;
+  Object.assign(c, ACTION_RULES[id] || { requires: ['position'] });
+  c.accepts = ALL_KINDS.filter(k => (!c.exclude || !c.exclude.includes(k)) && (c.requires.every(f => KIND_FEATURES[k][f]) || k === 'enemy' && c.requires.includes('lifetime')));
+}
+CARDS.heal.desc = '체력이 있는 대상의 체력을 15 회복한다.';
+CARDS.shield.desc = '체력이 있는 대상에게 6초간 피해 25를 흡수하는 보호막을 건다.';
+CARDS.regen.desc = '체력이 있는 대상에게 8초간 초당 2 회복을 건다.';
+CARDS.armor.desc = '체력이 있는 대상에게 6초간 받는 피해 -5를 건다.';
+CARDS.amplify.desc = '자신은 6초간 주문 범위 +40%, 다른 대상은 6초간 범위·크기 +40%.';
+CARDS.prolong.desc = '자신은 8초간 주문 지속시간 +50%, 제한시간이 있는 대상은 남은 시간을 50% 늘린다.';
+CARDS.refresh.desc = '제한시간이 있는 대상의 남은 시간을 처음으로 되돌린다.';
+CARDS.haste.desc = '4초간 대상의 이동 속도를 40% 늘린다.';
+CARDS.rage.desc = '5초간 대상의 피해를 50% 늘린다.';
+CARDS.focus.desc = '5초간 대상의 공격·작동 간격을 35% 줄인다.';
+CARDS.harvest.desc = '자신은 10초간 경험치 획득 +50%, 적·보석은 경험치 가치 +50%.';
+CARDS.detonate.desc = '자신과 지점을 제외한 대상을 소모해 폭발한다. 적은 처치하고 장판은 마무리 효과를 발동한다.';
+CARDS.launch.desc = '자신과 지점을 제외한 대상을 소모해 피해 30의 관통탄으로 사출한다.';
+CARDS.sacrifice.desc = '자신과 지점을 제외한 대상을 소모해 반경 90에 피해 40을 준다.';
+CARDS.absorb.desc = '자신과 지점을 제외한 대상을 회수해 체력을 회복하며, 보석·아이템은 즉시 획득한다.';
+
 const TARGET_DELAY = 0.05;
 
 function cardDelay(id) { return CARDS[id].delay ?? TARGET_DELAY; }
-/**
- * 조건은 대상 카드 코스트를 순서대로 지정한다. 조건 자체의 비용은 0이다.
- * 행동이 받는 대상의 지정 코스트 중 최댓값을 대상 배지와 슬롯 합계에 사용한다.
- * 뒤의 조건으로 앞서 실행하는 행동의 대상 코스트를 깎지 않는다.
- */
+/** 대상·행동 묶음의 코스트를 합산한다. */
 const ALL_TARGET_KINDS = Object.keys(TARGET_KINDS).filter((k) => TARGET_KINDS[k].inAll);
 
 function costBreakdown(ids) {
@@ -499,12 +526,7 @@ function costBreakdown(ids) {
       chain = { t: c, at: i, kinds: c.kind === 'all' ? [...ALL_TARGET_KINDS] : [c.kind], currentPrice: c.cost, usedPrice: null, rest: 0 };
       return;
     }
-    if (c.type === 'filter') {
-      if (!chain || !chain.kinds.some(k => c.kinds.includes(k))) return;
-      chain.kinds = chain.kinds.filter(k => c.kinds.includes(k));
-      chain.currentPrice = c.targetCost;
-      return;
-    }
+
     cards[i] = c.cost;
     if (!chain) { total += cards[i]; return; }
     chain.rest += cards[i];
@@ -523,10 +545,10 @@ class SkillDeck {
     this.prey = null;         // 「사냥감」으로 정한 적
     this.lastEnemy = null;    // 가장 최근에 행동을 받은 적 (「직전 표적」)
     this.slots = [
-      { limit: START_SLOT_LIMIT, cards: ['enemies', 'fNearest', 'bolt'] },
+      { limit: START_SLOT_LIMIT, cards: ['nearestEnemy', 'bolt'] },
       { limit: START_SLOT_LIMIT, cards: ['ahead', 'orb'] },
     ];
-    this.inventory = ['objects', 'detonate', 'fLowHp'];
+    this.inventory = ['objects', 'detonate', 'woundedEnemies'];
     this.costPoints = 0;      // 레벨업마다 +1, 슬롯 제한 코스트를 올리는 데 쓴다
     this.timer = 0.4;         // 시작 직후 잠깐 기다렸다가 실행
     this.version = 0;         // 구성이 바뀔 때마다 증가 (HUD 갱신용)
@@ -599,8 +621,7 @@ class SkillDeck {
       if (this.seqNext(c)) continue;
       if (c.i >= c.cards.length) break;
       const at = c.i, id = c.cards[c.i++], card = CARDS[id];
-      if (card.curse) { this.curseTick(slot, game); c.wait += cardDelay(id) * cd; }
-      else if (card.type === 'flow') { this.runFlow(id, at, c); c.wait += cardDelay(id) * cd; }
+      if (card.type === 'flow') { this.runFlow(id, at, c); c.wait += cardDelay(id) * cd; }
       // 행동이 대기열에 들어갔으면 기다리는 시간은 대상마다 대기열이 맡는다
       else if (!this.runCard(id, c.ctx, c.env, at, c.queue)) c.wait += cardDelay(id) * cd;
     }
@@ -610,7 +631,7 @@ class SkillDeck {
   /** 대기열의 행동 하나를 대상 하나에게 실행하고, 기다릴 시간을 돌려준다 (이미 쓰러진 대상은 0초로 건너뜀) */
   runStep(step, ctx, env) {
     const t = step.t;
-    if (!env.alive(t)) return 0;
+    if (!env.alive(t) || !actionApplies(CARDS[step.act], t, env)) return 0;
     env.setMul(step.mul);
     CARDS[step.act].run([t], env);
     env.setMul(1);
@@ -682,7 +703,7 @@ class SkillDeck {
   }
 
   /**
-   * 대상·조건 카드는 즉시 적용한다.
+   * 대상 카드는 즉시 적용한다.
    * 행동 카드는 대상마다 하나씩 queue 에 넣는다. 넣었으면 true.
    */
   runCard(id, ctx, env, at, queue) {
@@ -697,22 +718,14 @@ class SkillDeck {
       ctx.mul = 1;
       return false;
     }
-    if (card.type === 'filter') {
-      // 「전체」면 이 조건을 걸 수 있는 종류만 남긴 뒤 조건을 적용한다
-      if (ctx.targets && (ctx.kind === 'all' || card.kinds.includes(ctx.kind))) {
-        ctx.targets = card.apply(ctx.targets.filter((t) => env.alive(t) && card.kinds.includes(t.kind)), env, ctx);
-        ctx.flag = id;
-      }
-      return false;
-    }
     const act = id;
     ctx.last = id;
     // 대상마다 종류를 확인한다 (「전체」면 이 행동을 쓸 수 있는 대상에게만 실행)
-    const live = ctx.targets?.filter((t) => env.alive(t) && CARDS[act].accepts.includes(t.kind)) || [];
+    const live = ctx.targets?.filter((t) => env.alive(t) && actionApplies(CARDS[act], t, env)) || [];
     ctx.lastTargets = live;
     ctx.lastKills = 0;
     if (!live.length) return false;
-    // 최종 대상 위에 마지막으로 쓴 대상/조건 카드 아이콘을 띄운다
+    // 최종 대상 위에 마지막으로 쓴 대상 카드 아이콘을 띄운다
     if (ctx.flag) { env.flag(live, ctx.flag); ctx.flag = null; }
     const delay = cardDelay(id);
     for (const t of live) queue.push({ act, t, delay, mul: ctx.mul });
@@ -720,8 +733,8 @@ class SkillDeck {
   }
 
   /**
-   * 편집기용 정적 분석: 대상 → 조건 → 행동 흐름과 경고
-   * steps: [{ chain: [대상, 조건...], action, ok }] / warns: 문자열 목록
+   * 편집기용 정적 분석: 대상 → 행동 흐름과 경고
+   * steps: [{ chain: [대상], action, ok }] / warns: 문자열 목록
    */
   preview(slotIdx, stats) {
     const slot = this.slots[slotIdx], cards = slot.cards;
@@ -735,24 +748,17 @@ class SkillDeck {
         chain = [id]; kind = c.kind; used = false;
         continue;
       }
-      if (c.type === 'filter') {
-        if (!chain) { warns.push(`조건 「${c.name}」 앞에 대상 카드가 없습니다 (대상 코스트 지정 없음)`); continue; }
-        if (kind !== 'all' && !c.kinds.includes(kind)) warns.push(`조건 「${c.name}」은(는) ${KIND_LABEL[kind]} 대상에 걸 수 없어 무시됩니다`);
-        else chain = [...chain, id];
-        continue;
-      }
       if (c.type === 'flow') {
         if (!chain) warns.push(`「${c.name}」 앞에 대상 카드가 없습니다`);
         else if ((id === 'pursue' || id === 'flurry') && !last) warns.push(`「${c.name}」 앞에 되풀이할 행동 카드가 없습니다`);
         steps.push({ chain, action: id, ok: !!chain, flow: true });
         continue;
       }
-      if (c.curse) { warns.push(`저주 — ${c.delay}초 멈춤`); continue; }
       used = true;
       const act = id;
       last = id;
       if (!chain) { steps.push({ chain: null, action: id, ok: false }); warns.push(`「${c.name}」 앞에 대상 카드가 없습니다`); continue; }
-      const ok = kind === 'all' || CARDS[act].accepts.includes(kind);
+      const ok = (kind === 'all' ? ALL_TARGET_KINDS : [kind]).some(k => CARDS[act].accepts.includes(k));
       steps.push({ chain, action: id, ok });
       if (!ok) warns.push(`「${CARDS[act].name}」은(는) ${KIND_LABEL[kind]} 대상에 쓸 수 없습니다`);
     }
@@ -791,39 +797,6 @@ class SkillDeck {
     return true;
   }
 
-  /* ---------------- 저주 ---------------- */
-  curseCount() { return this.slots.reduce((n, s) => n + s.cards.filter((id) => CARDS[id].curse).length, 0); }
-
-  /** 저주 카드를 무작위 슬롯의 무작위 위치에 끼워 넣는다 (코스트 제한 무시). 넣었으면 true */
-  addCurse() {
-    if (this.curseCount() >= MAX_CURSES) return false;
-    const pool = this.slots.filter((s) => SkillDeck.runnable(s));
-    const slot = pick(pool.length ? pool : this.slots);
-    slot.cards.splice(randInt(0, slot.cards.length), 0, 'curse');
-    this.version++;
-    return true;
-  }
-
-  /** 실행된 저주: 슬롯마다 세다가 CURSE_RUNS 번째에 하나 사라진다 */
-  curseTick(slot, game) {
-    const p = game.player;
-    game.circleFx(p.x, p.y, 30, '#b39dff', { life: 0.5, follow: p, style: 'pulse' });
-    slot.curseRuns = (slot.curseRuns || 0) + 1;
-    if (slot.curseRuns < CURSE_RUNS) return;
-    slot.curseRuns = 0;
-    const k = slot.cards.findIndex((id) => CARDS[id].curse);
-    if (k >= 0) { slot.cards.splice(k, 1); this.version++; game.addText(p.x, p.y - 40, '저주가 풀렸다', '#d9ccff'); }
-  }
-
-  /** 정화: 저주 카드 하나를 없앤다. 없앴으면 true */
-  purify() {
-    for (const s of this.slots) {
-      const k = s.cards.findIndex((id) => CARDS[id].curse);
-      if (k >= 0) { s.cards.splice(k, 1); s.curseRuns = 0; this.version++; return true; }
-    }
-    return false;
-  }
-
   /* ---------------- 편집 연산 ---------------- */
   /**
    * 구성이 바뀌면 실행 중인 슬롯을 모두 끊는다. 이미 행동을 실행한 슬롯은 쿨타임을 받는다 (편집으로 쿨타임을 건너뛰지 못하게).
@@ -858,7 +831,6 @@ class SkillDeck {
     const src = from.src === 'inv' ? this.inventory : this.slots[from.slot].cards;
     const id = src[from.idx];
     if (id === undefined) return null;
-    if (CARDS[id].curse) return '저주 카드는 옮길 수 없습니다';
 
     // 코스트 제한은 막지 않는다 — 제한을 넘은 슬롯은 실행되지 않을 뿐이다
     const next = new Map();

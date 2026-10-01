@@ -2,36 +2,30 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const context = vm.createContext({ console, TD: new Proxy({}, { get: () => 0 }) });
-for (const path of ['js/util.js', 'js/entities.js', 'js/cards.js', 'js/stages.js', 'js/ui.js']) {
+for (const path of ['js/util.js', 'js/entities.js', 'js/cards.js', 'js/game.js', 'js/stages.js', 'js/icons.js', 'js/ui.js']) {
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 const get = expression => vm.runInContext(expression, context);
-assert.equal(get("Object.entries(CARDS).filter(([, c]) => c.type === 'filter').map(([id]) => id).join(',')"), 'fNearest,fLowHp');
-assert.equal(get('new SkillDeck().slots.every(s => s.cards.every(id => CARDS[id]))'), true);
+assert.equal(get("Object.values(CARDS).some(c => c.type === 'filter' || c.curse)"), false);
+assert.equal(get('new SkillDeck().slots.every(s => s.cards.every(id => CARDS[id]) && SkillDeck.runnable(s))'), true);
 assert.equal(get('new SkillDeck().inventory.every(id => CARDS[id])'), true);
-assert.equal(get("CARDS.fLowHp.apply([{ e: { hp: 30, maxHp: 100 } }, { e: { hp: 31, maxHp: 100 } }]).length"), 1);
-const checkCost = (ids, total, target) => {
+assert.equal(get("cardsCost(['nearestEnemy', 'bolt'])"), 2);
+assert.equal(get("cardsCost(['woundedEnemies', 'bolt'])"), 4);
+assert.equal(get("cardsCost(['enemies', 'bolt'])"), 7);
+assert.equal(get("cardsCost(['all', 'heal'])"), 8);
+for (const ids of [['nearestEnemy', 'bolt', 'self', 'heal'], ['all', 'prolong'], ['ahead', 'orb']]) {
   const result = get(`costBreakdown(${JSON.stringify(ids)})`);
-  assert.equal(result.total, total, ids.join(' > '));
-  assert.equal(result.cards[ids.indexOf('enemies')], target);
-  assert.equal(result.cards.reduce((sum, n, i) => sum + n + result.floors[i], 0), total);
-};
-checkCost(['enemies', 'fNearest', 'bolt'], 2, 1);
-checkCost(['enemies', 'fLowHp', 'bolt'], 4, 3);
-checkCost(['enemies', 'fLowHp', 'fNearest', 'bolt'], 2, 1);
-checkCost(['enemies', 'fNearest', 'fLowHp', 'bolt'], 4, 3);
-checkCost(['enemies', 'bolt', 'fNearest', 'bolt'], 8, 6);
-checkCost(['fLowHp', 'enemies', 'bolt'], 7, 6);
-assert.equal(get("cardsCost(['enemies', 'fNearest', 'bolt', 'self', 'heal'])"), get('3 + CARDS.heal.cost'));
-assert.equal(get("Object.values(CARDS).filter(c => c.type === 'filter').every(c => c.cost === 0 && Number.isInteger(c.targetCost) && c.targetCost > 0)"), true);
-assert.equal(get("cardsCost(['all', 'fLowHp', 'execute'])"), get('3 + CARDS.execute.cost'));
-assert.equal(get("cardsCost(['self', 'fLowHp', 'heal'])"), get('1 + CARDS.heal.cost'));
-assert.equal(get("CARDS.fNearest.apply([{ kind: 'enemy' }, { kind: 'enemy' }], { byDist: ts => ts }).length"), 1);
-const badge = get('UI.costHtml(CARDS.enemies, 1)');
-assert.match(badge, />1<\/span>$/);
-assert.doesNotMatch(badge, /<s>|>6</);
-assert.match(get('UI.costHtml(CARDS.fLowHp)'), />→3<\/span>$/);
-assert.equal(get("'greedy' in ENEMY_TYPES"), false);
+  assert.equal(result.cards.reduce((sum, n, i) => sum + n + result.floors[i], 0), result.total);
+}
+assert.match(get('UI.costHtml(CARDS.nearestEnemy)'), />1<\/span>$/);
+assert.equal(get('Object.keys(CARDS).every(id => iconIndex(id) >= 0)'), true);
+assert.equal(get('Object.values(ENEMY_TYPES).some(e => e.curse)'), false);
 assert.equal(get('STAGES.every(s => s.pool.every(([kind]) => ENEMY_TYPES[kind]))'), true);
-assert.equal(get("GIMMICKS.some(g => g.name === '탐욕 슬라임')"), false);
-console.log('Card cost, badge, and enemy removal checks passed.');
+let codex;
+context.capture = html => { codex = html; };
+get('UI.open = capture; UI.showCodex()');
+assert.match(codex, /ON/);
+assert.match(codex, /OFF/);
+get('UI.showHud = () => {}; UI.showTitle()');
+assert.match(codex, /SPELL/);
+console.log('Card cost, codex, icons, and curse removal checks passed.');

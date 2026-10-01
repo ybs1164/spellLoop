@@ -88,7 +88,7 @@ ICONS = [
     ('echo',      'ob', 822,  '#e8ecf5'),
     # 대상 조건 (청록)
     ('enemies',     'ob', 722,  '#ffd166'),
-    ('fNearest',    'ob', 713,  '#6ee7c8'),
+    ('nearestEnemy',    'ob', 713,  '#ffd166'),
     ('fPack',       'ob', 828,  '#6ee7c8'),
     ('fRandom',     'ob', 780,  '#6ee7c8'),
     ('fFarthest',   'ob', 1008, '#6ee7c8'),
@@ -101,7 +101,7 @@ ICONS = [
     ('fCrowded',    'ob', 829,  '#6ee7c8'),
     ('fIsolated',   'ob', 1007, '#6ee7c8'),
     ('fStrongest',  'ob', 622,  '#6ee7c8'),
-    ('fLowHp',      'ob', 531,  None),
+    ('woundedEnemies',      'ob', 531,  None),
     ('fFullHp',     'ob', 770,  '#6ee7c8'),
     ('fElite',      'ob', 1075, '#6ee7c8'),
     ('fMinion',     'ob', 1071, '#6ee7c8'),
@@ -138,7 +138,7 @@ ICONS = [
     ('mend',        'ob', 529,  '#7dff9a'),
     # 던전 기믹
     ('fBarrels',    'td', 82,   '#6ee7c8'),
-    ('curse',       'ob', 622,  '#b39dff'),
+    ('pickups',       'td', 89,   None),
     ('fExposed',    'ob', 1055, '#6ee7c8'),
     ('fallen',      'td', 64,   '#ffd166'),
     ('fHurt',       'ob', 1067, '#6ee7c8'),
