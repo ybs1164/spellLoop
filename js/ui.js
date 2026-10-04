@@ -382,29 +382,38 @@ const UI = {
   codexCardsHtml() {
     const grid = (ids) => `<div class="bigcards">${ids.map((id) =>
       `<div class="bigcard t-${CARDS[id].type}">${this.bigCardHtml(id)}</div>`).join('')}</div>`;
-    const ids = this.codexCardIds();
+    const ids = CODEX_CARD_IDS.filter((id) => CARDS[id]);
+    const variants = this.codexVariantIds();
+    const ofType = (list, type) => list.filter((id) => CARDS[id].type === type);
     const actions = CARD_GROUPS.map((g) => {
-      const list = ids.filter((id) => CARDS[id].type === 'action' && CARDS[id].group === g.id);
+      const list = ofType(ids, 'action').filter((id) => CARDS[id].group === g.id);
       return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
     }).join('');
+    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['filter', '대상 필터 카드']].map(([type, label]) => {
+      const list = ofType(variants, type);
+      return list.length ? `<div class="section-title">${label} <span class="muted">· ${list.length}장</span></div>${grid(list)}` : '';
+    }).join('');
     return `
-      <div class="section-title">대상 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'target').length}장</span></div>
-      ${grid(ids.filter((id) => CARDS[id].type === 'target'))}
-      <h3 class="codex-h">행동 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'action').length}장</span></h3>
+      <div class="section-title">대상 카드 <span class="muted">· ${ofType(ids, 'target').length}장</span></div>
+      ${grid(ofType(ids, 'target'))}
+      <h3 class="codex-h">행동 카드 <span class="muted">· ${ofType(ids, 'action').length}장</span></h3>
       ${actions}
-      <h3 class="codex-h">대상 필터 카드 <span class="muted">· ${ids.filter((id) => CARDS[id].type === 'filter').length}장</span></h3>
-      ${grid(ids.filter((id) => CARDS[id].type === 'filter'))}`;
+      <h3 class="codex-h">대상 필터 카드 <span class="muted">· ${ofType(ids, 'filter').length}장</span></h3>
+      ${grid(ofType(ids, 'filter'))}
+      <h3 class="codex-h">개체 변형 카드 <span class="muted">· ${variants.length}장</span></h3>
+      <p class="sub">개체 도감의 슬롯에만 있는, 개체별 수치가 적용된 카드입니다.</p>
+      ${variantSections}`;
   },
 
-  /** 기본 카드에 개체 도감 슬롯에만 있는 변형 카드를 더한 목록 */
-  codexCardIds() {
-    const ids = new Set(CODEX_CARD_IDS);
+  /** 개체 도감 슬롯에만 있고 기본 카드 목록에는 없는 변형 카드 */
+  codexVariantIds() {
+    const base = new Set(CODEX_CARD_IDS), ids = new Set();
     for (const e of this.codexEntities()) {
       const o = e.owner;
       const slots = e.cat === 'player' ? [...o.deck.fixedSlots, ...o.deck.slots] : o.slots || [];
-      for (const slot of slots) for (const id of slot.cards) ids.add(id);
+      for (const slot of slots) for (const id of slot.cards) if (!base.has(id) && CARDS[id]) ids.add(id);
     }
-    return [...ids].filter((id) => CARDS[id]);
+    return [...ids];
   },
 
   /** 도감용 표본 개체. 실제 생성자로 한 번만 만들어 기본 스탯과 슬롯을 그대로 보여 준다. */
