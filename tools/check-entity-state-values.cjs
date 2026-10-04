@@ -35,5 +35,22 @@ vm.runInContext(`
   entitySlot(hazard, 'shot');
   assert.equal(shot.slot.effect('entityHit').pierce, 1); assert.equal(hazard.slot.effect('entityHit').pierce, 0);
   assert.equal(cardOf(shot, 'entityHit'), cardOf(hazard, 'entityHit'), 'pierce lives in the pierce state');
+  // 공용 카드: 충돌 피해·공전·철갑·소용돌이·결계는 기본 카드를 그대로 쓴다.
+  assert.equal(cardOf(bastion, 'entityHit'), 'entityHit');
+  assert.equal(cardOf(bastion, 'armor'), cardOf(new Enemy('mimic', 0, 0, 1), 'armor')); assert.equal(bastion.slot.effect('armor').reduction, 4);
+  assert.equal(cardOf(blades, 'orbit'), 'orbit');
+  UI.hideOverlay = UI.showHud = () => {};
+  const game = Object.create(Game.prototype);
+  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+  game.w = 1000; game.h = 800; game.clock = 0; game.start(); game.player.deck.slots = [];
+  game.burst = game.addText = game.addFx = game.circleFx = () => {};
+  game.player.x = 5000;
+  const step = (zone, enemy) => { game.enemies = [enemy]; game.rebuildHash(); game.zones = [zone]; game.updateZones(0.1); };
+  const vortex = game.addZone('vortex', { x: 0, y: 0 }); assert.equal(cardOf(vortex, 'vortex'), 'vortex');
+  const pulled = new Enemy('grunt', 100, 0, 1); step(vortex, pulled); assert.ok(pulled.x < 100, 'vortex zone pulls every frame');
+  const ward = game.addZone('ward', { x: 0, y: 0 }); assert.equal(cardOf(ward, 'ward'), 'ward');
+  const pushed = new Enemy('grunt', 50, 0, 1); step(ward, pushed); assert.ok(pushed.x > 50, 'ward zone pushes every frame');
+  const spinning = game.addZone('blades', { x: 0, y: 0 }), spin = spinning.spin;
+  step(spinning, new Enemy('grunt', 900, 0, 1)); assert.ok(spinning.spin > spin, 'orbit reads the base card effect');
 `, context);
 console.log('Entity state values: keep distance, sight, xp, shot speed/count, pierce, summon count and knockback resolved from states passed.');
