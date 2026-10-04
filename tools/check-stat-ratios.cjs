@@ -102,7 +102,7 @@ vm.runInContext(`
   game.endZone(meteor); close(hits.at(-1).damage, 52);
 
   const pyro = new Enemy('pyro', 100, 0, 1);
-  pyro.combatStats.attackPower *= 2; pyro.combatStats.moveSpeed *= 2;
+  pyro.combatStats.attackPower *= 2; pyro.combatStats.shotPower *= 2; pyro.combatStats.moveSpeed *= 2;
   game.enemies = [pyro]; pyro.shootCd = 0;
   pyro.update(0.01, p, game);
   close(game.hazards.at(-1).slot.effect('entityHit').damage, 24);

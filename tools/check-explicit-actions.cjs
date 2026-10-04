@@ -14,21 +14,20 @@ vm.runInContext(`
   game.burst = game.addText = game.addFx = game.circleFx = () => {};
   const mechanicCard = (owner, mechanic) => owner.slot.cards.find(id => CARDS[id].mechanic === mechanic);
   // 주기 카드는 행동과 같은 슬롯의 조건 칸에 있다.
-  const slotInterval = (owner, action) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === action)).cards.map(id => CARDS[id].interval).find(v => v != null);
   const necro = new Enemy('necro', 100, 0, 1);
   const lich = new Enemy('lich', 100, 0, 1);
   const summonCard = CARDS[necro.slot.cards.find(id => cardBaseId(id) === 'summon')];
   assert.equal(summonCard.name, ENEMY_TYPES.ghost.name + ' 소환');
   assert.equal(summonCard.group, 'entity');
-  assert.equal(summonCard.desc, ENEMY_TYPES.ghost.name + ' 소환 수만큼 소환한다.');
+  assert.equal(summonCard.desc, ENEMY_TYPES.ghost.name + '을 소환한다.');
   assert.equal(summonCard.entityOnly, true);
   assert.equal(CARDS.summon.name, '기사 소환');
   assert.equal(entityActionConfig(necro, 'summon').n, 3);
-  assert.equal(slotInterval(necro, 'summon'), 6);
+  assert.equal(entityStats(necro).summonPeriod, 6);
   assert.equal(entityActionConfig(lich, 'summon').n, 6);
-  assert.equal(slotInterval(lich, 'summon'), 5);
+  assert.equal(entityStats(lich).summonPeriod, 5);
   assert.ok(necro.slot.cards.some(cardId => cardBaseId(cardId) === 'summon') && lich.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
-  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'pierce', 'maxHp']);
+  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp']);
   assert.equal(entityStats(game.player).moveSpeed, 170);
   assert.equal(entityStats(game.player).attackPower, 10);
   assert.equal(entityStats(game.player).maxHp, 100);
@@ -58,7 +57,9 @@ vm.runInContext(`
   const overlord = new Enemy('overlord', 100, 0, 1);
   game.hazards = []; overlord.shootCd = 0; overlord.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 14);
-  assert.equal(entityActionConfig(overlord, 'bolt').ring, true);
+  assert.equal(entityActionConfig(overlord, 'bolt').ring, 'auto', 'several shots fire as a ring');
+  const angles = game.hazards.map(h => Math.atan2(h.vy, h.vx)).sort((a, b) => a - b);
+  assert.ok(angles.at(-1) - angles[0] > Math.PI, 'ring shots cover the full circle');
   const archer = new Ally('archer', 0, 0);
   archer.kind = 'knight'; archer.def = { ...archer.def, damage: 999, attackCd: 999 };
   const target = new Enemy('brute', 30, 0, 1);

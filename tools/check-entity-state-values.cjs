@@ -35,6 +35,16 @@ vm.runInContext(`
   entitySlot(hazard, 'shot');
   assert.equal(shot.slot.effect('entityHit').pierce, 1); assert.equal(hazard.slot.effect('entityHit').pierce, 0);
   assert.equal(cardOf(shot, 'entityHit'), cardOf(hazard, 'entityHit'), 'pierce lives in the pierce state');
+  // 주기·사거리·탄 공격력도 상태이며 행동 카드는 개체끼리 공유한다.
+  const mother = new Enemy('bloomMatriarch', 0, 0, 1), tyrant = new Enemy('cinderTyrant', 0, 0, 1), oracle = new Enemy('bindingOracle', 0, 0, 1);
+  assert.equal(entityStats(mother).summonPeriod, 9); assert.equal(entityStats(mother).supportPeriod, 12);
+  assert.equal(entityStats(tyrant).attackPeriod, 4); assert.equal(entityStats(tyrant).summonPeriod, 12);
+  assert.equal(entityStats(oracle).reach, 170); assert.equal(entityStats(knight).reach, 26); assert.equal(entityStats(turret).reach, 420);
+  for (const o of [mother, tyrant, oracle, knight, archer, turret]) assert.ok(o.slots.every(s => s.cards.every(id => CARDS[id].interval == null)), 'no interval cards remain');
+  assert.equal(entityStats(bastion).shotPower, 10); assert.equal(entityActionConfig(bastion, 'bolt').damageStat, 'shotPower');
+  assert.equal(cardOf(bastion, 'bolt'), cardOf(oracle, 'bolt'), 'single and ring shots share one card');
+  const slime = createZone('slime', player, { x: 0, y: 0 }, null), abyss = createZone('abyss', player, { x: 0, y: 0 }, null);
+  assert.equal(entityStats(slime).attackPower, 5); assert.equal(entityStats(abyss).attackPower, 8);
   // 공용 카드: 충돌 피해·공전·철갑·소용돌이·결계는 기본 카드를 그대로 쓴다.
   assert.equal(cardOf(bastion, 'entityHit'), 'entityHit');
   assert.equal(cardOf(bastion, 'armor'), cardOf(new Enemy('mimic', 0, 0, 1), 'armor')); assert.equal(bastion.slot.effect('armor').reduction, 4);
@@ -52,5 +62,8 @@ vm.runInContext(`
   const pushed = new Enemy('grunt', 50, 0, 1); step(ward, pushed); assert.ok(pushed.x > 50, 'ward zone pushes every frame');
   const spinning = game.addZone('blades', { x: 0, y: 0 }), spin = spinning.spin;
   step(spinning, new Enemy('grunt', 900, 0, 1)); assert.ok(spinning.spin > spin, 'orbit reads the base card effect');
+  const blasts = []; game.blast = (x, y, r, damage) => blasts.push(damage);
+  const fading = game.addZone('slime', { x: 0, y: 0 }); fading.dead = true; fading.slot.onDeath(game);
+  assert.equal(blasts.at(-1), game.actionValue('explode', 'damage', game.player), 'zone explosions use the creator attack power');
 `, context);
-console.log('Entity state values: keep distance, sight, xp, shot speed/count, pierce, summon count and knockback resolved from states passed.');
+console.log('Entity state values: keep distance, sight, xp, shot speed/count, pierce, summon count, knockback, periods, reach and shot power resolved from states passed.');

@@ -225,7 +225,7 @@ vm.runInContext(`
   game.player.hp -= 1;
   shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 2);
-  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), Math.max(SLOT_CD_MIN, CARDS[shotAction].cost * SLOT_CD_PER_COST), 'removing interval restores cost cooldown');
+  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), entityStats(shooter).attackPeriod, 'removing the interval card falls back to the attack period state');
   const redirected = new Placed('turret', 0, 0, 1);
   assert.ok(redirected.slot.defaults.includes('nearestEnemy'));
   assert.ok(summoner.slot.defaults.includes('self'));
@@ -261,9 +261,9 @@ vm.runInContext(`
   const initialHp = orbVictim.hp;
   orb.update(0.01, game);
   assert.equal(orbVictim.hp, initialHp - 6);
-  const orbInterval = orb.slot.cards.findIndex(id => CARDS[id].interval != null);
-  assert.ok(orbInterval >= 0, 'continuous mechanics expose their interval too');
-  orb.slot.cards[orbInterval] = entityChainCard('interval', 2); orb.slot.changed(); orb.cd = 0;
+  assert.equal(entityStats(orb).attackPeriod, 0.4, 'continuous mechanics expose their interval as the attack period state');
+  const orbAction = orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe');
+  orb.slot.cards.splice(orbAction, 0, entityChainCard('interval', 2)); orb.slot.changed(); orb.cd = 0;
   orb.update(0.01, game);
   assert.equal(orb.slot.cooldowns.get(orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe')), 2);
   assert.equal(orbVictim.hp, initialHp - 12);
