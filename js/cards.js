@@ -1274,7 +1274,6 @@ function entityChainCard(type, value, radius = false) {
     name: type === 'interval' ? `주기 ${value}초` : `거리 ${value} 이내`,
     desc: type === 'interval' ? `뒤 행동의 반복 주기를 ${value}초로 정한다.` : `슬롯 주인과 거리 ${value}${radius ? ' + 대상 반경' : ''} 이내인 대상만 고른다.`,
     ...(type === 'enemyNear' ? { name: `거리 ${value} 이내 적 존재`, desc: `슬롯 주인과 거리 ${value} 이내에 살아 있는 적이 있을 때만 실행한다.`, test: (t, env) => env.game.nearestEnemies(env.owner.x, env.owner.y, 1, value).length > 0 }
-      : type === 'elapsed' ? { name: `설치 대기 ${value}초`, icon: 'mine', desc: `설치되고 ${value}초가 지나야 작동한다.`, test: (t, env) => env.owner.slotAge >= value }
       : type === 'interval' ? { interval: value } : { test: (t, env) => {
       const o = env.at(t);
       return dist2(env.owner.x, env.owner.y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
@@ -1562,13 +1561,12 @@ const ENTITY_CARD_LOOKS = {
   curseShot: ['속박탄 발사', 'root', '주변 적에게 표식·속박을 거는 속박탄을 쏜다.'],
   arrowShot: ['화살 사격', 'lance', '대상에게 화살을 쏜다.'],
   turretShot: ['포탑 사격', 'turret', '대상에게 포탄을 쏜다.'],
-  meleeStrike: ['근접 베기', 'slash', '대상을 근접 공격한다.'],
-  orbTick: ['구체 타격', 'orb', '범위 안의 적을 공격력만큼 타격한다.'],
-  zoneTick: ['장판 피해', 'zones', '범위 안의 적에게 장판 공격력만큼 피해를 준다.'],
+  // 근접 아군·구체·장판의 타격은 같은 직접 피해 행동이며 넉백 비율만 수치로 다르다.
+  strike: ['타격', 'directHit', '대상에게 공격력만큼 피해를 준다.'],
   poisonTick: ['독 피해', 'poison', '범위 안의 적에게 공격력 60%의 독 피해를 준다.'],
   bladeCut: ['칼날 베기', 'blades', '공전하는 칼날에 닿은 적을 벤다. 같은 대상은 0.2초마다 다시 벤다.'],
   burningTrail: ['화상 장판 남기기', 'burn', '그 자리에 화상 장판을 남긴다.'],
-  boomerangReturn: ['부메랑 귀환', 'boomerang', '날아가던 탄이 잠시 뒤 감속하며 플레이어에게 돌아온다.'],
+  boomerangReturn: ['부메랑 귀환', 'boomerang', '탄이 플레이어 쪽으로 계속 가속되어, 멀어지다 느려진 뒤 되돌아온다.'],
   homingTurn: ['적 추적', 'homing', '탄이 가까운 적 쪽으로 방향을 튼다.'],
 };
 function entityConfiguredCard(cardId, values, native = false) {
@@ -1581,7 +1579,7 @@ function entityConfiguredCard(cardId, values, native = false) {
   const descriptions = {
     snipe: '선택한 대상에게 직접 피해를 준다.',
     explode: '대상 위치에서 폭발 피해를 준다.', summon: '대상 위치에 개체를 소환한다.', spawnOrb: '대상 위치에 보상을 생성한다.',
-    armor: '받는 피해를 감소시킨다.', boomerang: '발사된 탄환을 감속시킨 뒤 선택한 대상에게 귀환시킨다.',
+    armor: '받는 피해를 감소시킨다.', boomerang: '발사된 탄환을 선택한 대상 쪽으로 가속시켜 귀환시킨다.',
     homing: '발사된 탄환을 가까운 적 방향으로 회전시킨다.',
     vortex: '범위 안 대상을 중심으로 끌어당긴다.', ward: '범위 안 대상을 바깥으로 밀어낸다.', poison: '독 장판을 생성한다.',
   };
@@ -1646,7 +1644,7 @@ function koreanObjectParticle(word) {
 function entityCardParametersText(effect) {
   const labels = { damageRatio: '피해/공격력', playerDamageRatio: '플레이어 피해/공격력', knockbackRatio: '타격 넉백/넉백', speedRatio: '작동 속도/넉백', radiusRatio: '폭발 반경/범위',
     damage: '피해', knockback: '타격 넉백', speed: '속도', radius: '반경', range: '감지 거리', life: '수명', pierce: '관통 횟수', n: '수량',
-    count: '칼날 수', hitRadius: '충돌 반경', repeatCd: '대상별 타격 간격', after: '귀환 대기', deceleration: '감속률', collectRange: '회수 거리', turn: '회전 속도',
+    count: '칼날 수', hitRadius: '충돌 반경', repeatCd: '대상별 타격 간격', acceleration: '귀환 가속도', maxSpeed: '최대 속도', collectRange: '회수 거리', turn: '회전 속도',
     initialSpeedRatio: '초기 속도/이동 속도', accelerationRatio: '가속도/이동 속도', maxSpeedRatio: '최대 속도/이동 속도', value: '보상량', magnetChance: '자석 확률',
     distance: '유지 거리', reduction: '방어량', frontDot: '정면 판정', freezeMultiplier: '빙결 시간 배율', multiplier: '원소 피해 배율', offsetY: '발사 높이' };
   const rows = [];
@@ -1764,7 +1762,9 @@ function entitySlot(owner, kind) {
     }
   }
   if (kind === 'shot' && owner.boomerang) {
-    settings.boomerang ??= { passive: true, playerTargeted: true, after: owner.outT, deceleration: 2.2, collectRange: 18, look: 'boomerangReturn' };
+    // 귀환은 대상 쪽 가속도로만 처리한다. 기본값은 던진 속도를 returnTime 초 만에 상쇄해 되돌아오게 한다.
+    const launchSpeed = Math.hypot(owner.vx, owner.vy);
+    settings.boomerang ??= { passive: true, playerTargeted: true, acceleration: launchSpeed / (owner.returnTime || 0.5), maxSpeed: launchSpeed, collectRange: 18, look: 'boomerangReturn' };
     chain.push('self', 'boomerang', 'entitySelf');
   }
   if (kind === 'shot' && owner.homing) {
@@ -1810,13 +1810,13 @@ function entitySlot(owner, kind) {
       radius: 4, life: 0.8, pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
       statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
     } : {
-      damageRatio: 1, playerPower: true, afterMovement: true, melee: true, look: 'meleeStrike',
+      damageRatio: 1, playerPower: true, afterMovement: true, look: 'strike',
       statRatios: { knockback: { stat: 'knockback', ratio: 1 } },
     };
     chain.push(...entityReachCards(owner, owner.def.reach), 'nearestEnemy', ...entityPeriodCards(owner, action, owner.def.attackCd), action, 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'abyss') {
-    settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, look: 'zoneTick', statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
+    settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, look: 'strike', statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', 0.4), 'snipe', 'entitySelf');
   }
   if (owner.kind === 'turret' && kind === 'object') {
@@ -1826,14 +1826,14 @@ function entitySlot(owner, kind) {
   }
   if (owner.kind === 'orb' && kind === 'object' || owner.kind === 'slime' && kind === 'zone') {
     const orb = owner.kind === 'orb';
-      settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, ...(orb ? { look: 'orbTick' } : { afterMovement: true, look: 'zoneTick' }), statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
+      settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, look: 'strike', statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', orb ? 0.4 : 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'pickup') chain.push('ifPlayerContact', 'entitySelf', 'absorb');
   if (owner.kind === 'mine' && kind === 'object') {
     owner.reach ??= 58;
-    chain.push(entityChainCard('elapsed', 0.5), 'entityEnemyInReach', 'entitySelf', 'explode', 'entitySelf');
-    chain.push(entityChainCard('elapsed', 0.5), 'entityEnemyInReach', 'entitySelf', 'disappear', 'entitySelf');
+    chain.push('entityEnemyInReach', 'entitySelf', 'explode', 'entitySelf');
+    chain.push('entityEnemyInReach', 'entitySelf', 'disappear', 'entitySelf');
   }
   if (kind === 'zone' && ['meteor', 'slime', 'abyss'].includes(owner.kind) || kind === 'shot' && owner.blastOnEnd || kind === 'object' && owner.kind === 'barrel') {
     chain.push('ifExpiring', 'entitySelf', 'explode', 'entitySelf');
@@ -2026,7 +2026,6 @@ class EntitySlot {
   update(dt, game, context = {}) {
     const owner = this.owner;
     if (owner.dead && !context.deathEvent) return;
-    if (!context.deathEvent && !context.sharedEffects) owner.slotAge = (owner.slotAge || 0) + dt;
     const enabled = context.sharedEnabled || new Set();
     const effects = context.sharedEffects || new Map();
     const baseEnv = game.cardEnv(owner);
@@ -2175,7 +2174,6 @@ class EntitySlots extends EntitySlot {
   }
   update(dt, game, context = {}) {
     if (this.owner.dead && !context.deathEvent) return;
-    if (!context.deathEvent) this.owner.slotAge = (this.owner.slotAge || 0) + dt;
     const enabled = new Set(), effects = new Map(), afterMovement = [];
     for (const slot of this.slots) slot.update(dt, game, { ...context, sharedEnabled: enabled, sharedEffects: effects, sharedAfterMovement: afterMovement, deferTick: true });
     this.enabled = enabled; this.effects = effects;
