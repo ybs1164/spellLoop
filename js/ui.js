@@ -515,7 +515,8 @@ const UI = {
     add('기본 수명', Number.isFinite(st.lifetime) ? sec(st.lifetime) : '무제한', 'uiTime');
     add('범위', st.range, 'uiRange');
     if (st.sight > 0) add('시야', st.sight, 'fFar');
-    if (st.reach > 0) add('사거리', st.reach, 'fNear');
+    if (st.reach > 0) add('사거리', Number.isFinite(st.reach) ? st.reach : '무한', 'fNear');
+    if (st.defense > 0) add('방어력', st.defense, 'armor');
     if (st.keepDistance > 0) add('유지 거리', +st.keepDistance.toFixed(2), 'fAway');
     if (st.shotPower > 0) add('탄 공격력', st.shotPower, 'uiAtk');
     if (st.shotSpeed > 0) { add('탄속', st.shotSpeed, 'bolt'); if (o.def?.shoot) add('발사 수', st.shotCount, 'scatter'); }

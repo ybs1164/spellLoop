@@ -606,7 +606,7 @@ for (const [id, speed] of Object.entries({ bolt: 420, scatter: 400, lance: 900, 
   delete ACTION_STAT_RATIOS[id].speed;
 }
 const STAT_RATIO_LABELS = { attackPower: '공격력', moveSpeed: '이동 속도', maxHp: '최대 체력', knockback: '넉백',
-  sight: '시야', reach: '사거리', shotPower: '탄 공격력', keepDistance: '유지 거리', xpReward: '경험치', shotSpeed: '탄속', shotCount: '발사 수', pierce: '관통', summonCount: '소환 수' };
+  sight: '시야', reach: '사거리', defense: '방어력', shotPower: '탄 공격력', keepDistance: '유지 거리', xpReward: '경험치', shotSpeed: '탄속', shotCount: '발사 수', pierce: '관통', summonCount: '소환 수' };
 function statRatioText(stat, ratio) {
   return `${STAT_RATIO_LABELS[stat]} ${Number((ratio * 100).toFixed(3))}%`;
 }
@@ -1341,6 +1341,8 @@ function entityStats(owner) {
     set shotCount(value) { owner.shotCount = Math.max(1, Math.round(value)); },
     get summonCount() { return owner.summonCount; },
     set summonCount(value) { owner.summonCount = Math.max(1, Math.round(value)); },
+    get defense() { return owner.armor ?? 0; },
+    set defense(value) { owner.armor = Math.max(0, value); },
     get shotPower() { return owner.shotPower; },
     set shotPower(value) { owner.shotPower = Math.max(0, Math.round(value)); },
     get reach() { return owner.reach ?? 0; },
@@ -1514,7 +1516,7 @@ function entityReachCards(owner, reach) {
 function entityInitialCard(id, owner, kind) {
   const behavior = (action, values) => entityBehaviorCard(action, values, owner);
   switch (id) {
-    case 'entityMove': return behavior(id, { speed: kind === 'enemy' || kind === 'ally' ? owner.def.speed : entityNumber(Math.hypot(owner.vx, owner.vy)) });
+    case 'entityMove': return behavior(id, { speed: kind === 'enemy' || kind === 'ally' ? owner.def.speed : kind === 'pickup' ? owner.baseSpeed : entityNumber(Math.hypot(owner.vx, owner.vy)) });
     case 'entityKeep': return behavior(id, { distance: owner.def.keep });
     case 'entityHit': return behavior(id, { damage: owner.damage, knockback: owner.knockback ?? 0, pierce: null });
     default: return behavior(id, {});
@@ -1555,7 +1557,7 @@ function freezeEntityValues(value) {
 const ENTITY_CARD_LOOKS = {
   chestDrop: ['보물 상자 드롭', 'chest', '쓰러진 자리에 보물 상자 1개를 떨어뜨린다.'],
   xpDrop: ['경험치 드롭', 'gems', '쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다.'],
-  innateArmor: ['상시 철갑', 'armor', '받는 피해를 항상 4 줄인다.'],
+  innateArmor: ['상시 철갑', 'armor', '받는 피해를 타격마다 방어력만큼 줄인다. 최소 1은 받는다.'],
   enemyShot: ['적탄 발사', 'shots', '탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다.'],
   curseShot: ['속박탄 발사', 'root', '주변 적에게 표식·속박을 거는 속박탄을 쏜다.'],
   arrowShot: ['화살 사격', 'lance', '대상에게 화살을 쏜다.'],
@@ -1568,7 +1570,6 @@ const ENTITY_CARD_LOOKS = {
   burningTrail: ['화상 장판 남기기', 'burn', '그 자리에 화상 장판을 남긴다.'],
   boomerangReturn: ['부메랑 귀환', 'boomerang', '날아가던 탄이 잠시 뒤 감속하며 플레이어에게 돌아온다.'],
   homingTurn: ['적 추적', 'homing', '탄이 가까운 적 쪽으로 방향을 튼다.'],
-  pickupAttract: ['플레이어에게 끌림', 'magnet', '플레이어가 사거리 안에 들어오면 살짝 튕긴 뒤 빨라지며 플레이어에게 날아간다.'],
 };
 function entityConfiguredCard(cardId, values, native = false) {
   const base = CARDS[cardId], actionId = cardBaseId(cardId);
@@ -1700,6 +1701,8 @@ function entitySlot(owner, kind) {
   if (kind === 'ally' && owner.def.damage) { owner.knockback ??= owner.kind === 'archer' ? 80 : 120; owner.shotSpeed ??= 520; }
   if (kind === 'object' && owner.kind === 'turret') { owner.knockback ??= 90; owner.shotSpeed ??= 460; }
   if (kind === 'object' && owner.kind === 'orb') owner.knockback ??= 40;
+  // 아이템의 이동 속도와 끌려오기 시작하는 사거리. 경험치 보석은 일반 아이템의 20배 거리에서 다가온다.
+  if (kind === 'pickup') { owner.baseSpeed ??= 1100; owner.reach ??= owner.kind === 'gem' ? 90 * 20 : 90; }
   if (kind === 'shot') owner.pierceLimit ??= owner.cardTick && Number.isFinite(owner.pierce) ? owner.pierce : owner.cardTick ? Infinity : 0;
   owner.knockback ??= kind === 'shot' && !owner.cardTick ? 0 : 100;
   entityStats(owner);
@@ -1724,6 +1727,8 @@ function entitySlot(owner, kind) {
     if (owner.kind === 'blades') cards.push('entityHit');
   } else if (kind === 'shot') {
     cards.push('entityMove', 'entityHit');
+  } else if (kind === 'pickup') {
+    cards.push('entityMove');
   }
   const chain = [];
   const temporaryCards = new Set();
@@ -1735,6 +1740,8 @@ function entitySlot(owner, kind) {
       if (id === 'entityMove') {
         if (kind === 'enemy') chain.push('self');
         if (kind === 'ally') chain.push('entityMovementDistance', 'entityMovementTarget');
+        // 아이템은 플레이어가 사거리 안에 들어오면 이동 속도로 플레이어에게 다가간다.
+        if (kind === 'pickup') chain.push('entityInReach', 'self');
         chain.push(initial, 'entitySelf');
         continue;
       }
@@ -1752,7 +1759,7 @@ function entitySlot(owner, kind) {
       ? { kind: 'chest', value: 0, magnetChance: 0 }
       : { kind: 'gem', magnetChance: 0 }, look: owner.boss || owner.def.loot ? 'chestDrop' : 'xpDrop' };
     if (owner.armor) {
-      settings.armor ??= { passive: true, reduction: 4, look: 'innateArmor' };
+      settings.armor ??= { passive: true, look: 'innateArmor', statRatios: { reduction: { stat: 'defense', ratio: 1 } } };
       chain.push('entitySelf', 'armor', 'entitySelf');
     }
   }
@@ -1771,14 +1778,6 @@ function entitySlot(owner, kind) {
   if (kind === 'zone' && owner.kind === 'blades') {
     chain.push('entitySelf', 'orbit', 'entitySelf');
     settings.entityHit ??= { repeatCd: 0.2, playerPower: true, look: 'bladeCut' };
-  }
-  if (kind === 'pickup') {
-    // 플레이어에게 끌려가기 시작하는 거리는 사거리 상태다. 경험치 보석은 일반 아이템의 20배.
-    owner.reach ??= owner.kind === 'gem' ? 90 * 20 : 90;
-    settings.pull ??= { continuous: true, mode: 'approach', statRatios: { range: { stat: 'reach', ratio: 1 } },
-      initialSpeedRatio: -200 / 170, accelerationRatio: 1500 / 170, maxSpeedRatio: 1100 / 170,
-      afterMovement: true, scaleRate: false, look: 'pickupAttract' };
-    chain.push('entitySelf', 'pull', 'entitySelf');
   }
   if (kind === 'zone' && CARDS.ward.zoneKinds.includes(owner.kind)) chain.push('entitySelf', 'ward', 'entitySelf');
   if (kind === 'zone' && CARDS.vortex.zoneKinds.includes(owner.kind)) chain.push('entitySelf', 'vortex', 'entitySelf');

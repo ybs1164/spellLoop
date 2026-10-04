@@ -27,7 +27,7 @@ vm.runInContext(`
   assert.equal(entityActionConfig(lich, 'summon').n, 6);
   assert.equal(entityStats(lich).summonPeriod, 5);
   assert.ok(necro.slot.cards.some(cardId => cardBaseId(cardId) === 'summon') && lich.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
-  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp']);
+  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'defense', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp']);
   assert.equal(entityStats(game.player).moveSpeed, 170);
   assert.equal(entityStats(game.player).attackPower, 10);
   assert.equal(entityStats(game.player).maxHp, 100);
@@ -68,9 +68,12 @@ vm.runInContext(`
   assert.equal(game.projectiles.length, 1, 'attack mode comes from the card, not the ally kind');
   assert.equal(game.projectiles[0].slot.effect('entityHit').damage, 10);
   assert.equal(target.hp, target.maxHp);
-  const armored = new Enemy('mimic', 100, 0, 1); armored.armor = 99;
+  const armored = new Enemy('mimic', 100, 0, 1);
+  assert.equal(entityStats(armored).defense, 4, 'armored trait sets the defense state');
   game.damageEnemy(armored, 10, 1, 0, 0);
-  assert.equal(armored.hp, armored.maxHp - 6, 'armor reduction is the card value 4');
+  assert.equal(armored.hp, armored.maxHp - 6, 'armor reduction reads the defense state');
+  entityStats(armored).defense = 99; armored.slot.changed(); game.damageEnemy(armored, 10, 1, 0, 0);
+  assert.equal(armored.hp, armored.maxHp - 7, 'damage after defense is at least 1');
   const guarded = new Enemy('darkKnight', 100, 0, 1); guarded.guard = 0; guarded.ang = 0;
   game.damageEnemy(guarded, 100, -1, 0, 0);
   assert.ok(Math.abs(guarded.hp - (guarded.maxHp - 15)) < 1e-8);

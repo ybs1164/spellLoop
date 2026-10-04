@@ -806,8 +806,6 @@ class Pickup {
     this.value = value;
     this.name = kind === 'vitalGem' ? '생명의 보석' : undefined;
     this.radius = kind === 'gem' ? 5 : 9;
-    this.pulled = false;
-    this.speed = 0;
     this.t = Math.random() * TAU;
     this.dead = false;
     entitySlot(this, "pickup");
@@ -819,6 +817,12 @@ class Pickup {
 
   cardTick(dt, game) {
     this.t += dt * 4;
+    const move = this.slot.effect('entityMove'), target = move?.targets?.[0] && game.targetObj(move.targets[0]);
+    if (!target || target === this) return;
+    const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy);
+    if (!d) return;
+    const step = Math.min(d, move.speed * (this.cardMove || 1) * (this.directMove ?? 1) * dt);
+    this.x += dx / d * step; this.y += dy / d * step;
   }
 
   collect(game) {
@@ -827,7 +831,7 @@ class Pickup {
       case 'vitalGem': p.gainXp(this.value, game); break;
       case 'gem': p.gainXp(this.value, game); break;
       case 'magnet':
-        for (const pk of game.pickups) if (pk.kind === 'gem' && !pk.pulled) { pk.pulled = true; pk.speed = 0; }
+        for (const pk of game.pickups) if (pk.kind === 'gem') entityStats(pk).reach = Infinity;
         break;
       case 'chest':
         // 보물 상자: 카드 선택 1회 + 코스트 포인트 1
