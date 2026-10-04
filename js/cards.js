@@ -603,7 +603,8 @@ for (const [id, speed] of Object.entries({ bolt: 420, scatter: 400, lance: 900, 
   CARDS[id].projectileSpeed = speed;
   delete ACTION_STAT_RATIOS[id].speed;
 }
-const STAT_RATIO_LABELS = { attackPower: '공격력', moveSpeed: '이동 속도', maxHp: '최대 체력', knockback: '넉백' };
+const STAT_RATIO_LABELS = { attackPower: '공격력', moveSpeed: '이동 속도', maxHp: '최대 체력', knockback: '넉백',
+  sight: '시야', keepDistance: '유지 거리', xpReward: '경험치', shotSpeed: '탄속', shotCount: '발사 수', pierce: '관통', summonCount: '소환 수' };
 function statRatioText(stat, ratio) {
   return `${STAT_RATIO_LABELS[stat]} ${Number((ratio * 100).toFixed(3))}%`;
 }
@@ -1215,12 +1216,13 @@ function entityEffectText(id, e) {
   switch (id) {
     case 'entityFollow': return ['부착 대상 위치 복사', '장판 생성 행동이 지정한 개체의 X·Y 좌표를 매 프레임 복사한다. 지정한 개체가 사라지면 좌표 복사를 멈춘다.'];
     case 'entityMove': return [`속도 ${n(e.speed)} 이동`, `선택한 대상 쪽으로 초당 ${n(e.speed)} 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.`];
-    case 'entityKeep': return [`거리 ${e.distance} 유지`, `추적 대상과 거리 ${scaled(e.distance, 0.8)} 미만이면 후퇴하고 ${scaled(e.distance, 1.15)} 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.`];
+    case 'entityKeep': if (typeof e.distance === 'string') return ['거리 유지', '추적 대상과 거리가 유지 거리 상태의 80% 미만이면 후퇴하고 115% 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.'];
+      return [`거리 ${e.distance} 유지`, `추적 대상과 거리 ${scaled(e.distance, 0.8)} 미만이면 후퇴하고 ${scaled(e.distance, 1.15)} 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.`];
     case 'entityFlee': return e.seconds != null
       ? [`${e.seconds}초 도주`, `플레이어 반대 방향으로 지그재그 이동한다. ${e.seconds}초가 지나면 보상을 주지 않고 사라진다. 이동 카드가 필요하다.`]
       : ['도주', '플레이어 반대 방향으로 지그재그 이동한다. 이동 카드가 필요하다.'];
     case 'entityDecoy': return [`반경 ${e.range} 유인`, `반경 ${e.range} 안의 적이 플레이어 대신 이 개체를 쫓게 한다. 유인 대상이 여러 개면 가장 가까운 것을 쫓는다.`];
-    case 'entityHit': return [`충돌 피해 ${n(e.damage)}`, `타격 조건에 맞는 충돌 대상에게 피해 ${n(e.damage)}, 넉백 ${e.knockback}을 적용한다. 탄환은 같은 대상을 한 번만 타격하고 접촉·공전 개체는 각자의 재타격 간격을 따른다. ${e.pierce == null ? '관통 횟수 제한 없음.' : `탄환은 관통 ${e.pierce}회 이후 소멸한다.`}`];
+    case 'entityHit': return [`충돌 피해 ${n(e.damage)}`, `타격 조건에 맞는 충돌 대상에게 피해 ${n(e.damage)}, 넉백 ${e.knockback}을 적용한다. 탄환은 같은 대상을 한 번만 타격하고 접촉·공전 개체는 각자의 재타격 간격을 따른다. ${e.pierce == null ? '관통 횟수 제한 없음.' : typeof e.pierce === 'string' ? '탄환은 관통 상태 횟수만큼 관통한 뒤 소멸한다.' : `탄환은 관통 ${e.pierce}회 이후 소멸한다.`}`];
     case 'entityResistance': return ['상태 저항', `빙결 지속시간을 ${scaled(e.freezeMultiplier, 100)}%로 줄이고${e.fearImmune ? ' 공포를 무효화한다' : ''}.`];
     case 'entityAffinity': return ['빙결 취약', `빙결 원소 피해를 ${e.multiplier}배 받는다.`];
     case 'entityGuard': return [`정면 방어 ${scaled(e.reduction, 100)}%`, `정면에서 날아온 타격 피해를 ${scaled(e.reduction, 100)}% 막는다. 독·방향 없는 피해·빙결 중에는 막지 못한다.`];
@@ -1300,6 +1302,12 @@ function entityStats(owner) {
   owner.knockbackResistance ??= 0;
   owner.max ??= Number.isFinite(owner.life) ? owner.life : owner.def?.escape || Infinity;
   owner.range ??= Math.max(0, Math.round(owner.r ?? owner.radius ?? 0));
+  owner.sight ??= owner.def?.sight ?? (owner.def?.shoot || owner.def?.summon ? 560 : 0);
+  owner.keepDistance ??= owner.def?.keep || (owner.def?.reach ?? 0) * 0.6;
+  owner.shotSpeed ??= owner.def?.shoot?.speed ?? 0;
+  owner.shotCount ??= owner.def?.shoot?.n ?? 1;
+  owner.summonCount ??= owner.def?.summon?.n ?? 1;
+  owner.pierceLimit ??= Infinity;
   owner.combatStats = {
     get knockbackResistance() { return owner.knockbackResistance; },
     set knockbackResistance(value) { owner.knockbackResistance = clamp(value, 0, 1); },
@@ -1318,6 +1326,20 @@ function entityStats(owner) {
     set attackPower(value) { owner.damage = Math.round(value); },
     get knockback() { return Math.round(owner.knockback); },
     set knockback(value) { owner.knockback = Math.round(value); },
+    get sight() { return owner.sight; },
+    set sight(value) { owner.sight = Math.max(0, Math.round(value)); },
+    get keepDistance() { return owner.keepDistance; },
+    set keepDistance(value) { owner.keepDistance = Math.max(0, value); },
+    get xpReward() { return owner instanceof Enemy ? owner.xp : 0; },
+    set xpReward(value) { if (owner instanceof Enemy) owner.xp = Math.max(0, Math.round(value)); },
+    get shotSpeed() { return owner.shotSpeed; },
+    set shotSpeed(value) { owner.shotSpeed = Math.max(0, Math.round(value)); },
+    get shotCount() { return owner.shotCount; },
+    set shotCount(value) { owner.shotCount = Math.max(1, Math.round(value)); },
+    get summonCount() { return owner.summonCount; },
+    set summonCount(value) { owner.summonCount = Math.max(1, Math.round(value)); },
+    get pierce() { return owner.pierceLimit; },
+    set pierce(value) { owner.pierceLimit = Math.max(0, value); },
     get maxHp() { return Math.round(owner.stats?.maxHp ?? owner.maxHp ?? 0); },
     set maxHp(value) { value = Math.round(value); if (owner.stats) owner.stats.maxHp = value; else owner.maxHp = value; if (Number.isFinite(owner.hp)) owner.hp = Math.min(owner.hp, value); },
   };
@@ -1329,6 +1351,8 @@ function entityRatioFields(id, effect) {
   for (const field of ['damage', 'playerDamage']) if (effect[field] != null) fields[field] = 'attackPower';
   if (id === 'entityMove') if (effect.speed != null) fields.speed = id === 'entityMove' ? 'moveSpeed' : 'knockback';
   if (id === 'entityHit' && effect.knockback != null) fields.knockback = 'knockback';
+  if (id === 'entityHit' && 'pierce' in effect) fields.pierce = 'pierce';
+  if (id === 'entityKeep' && effect.distance != null) fields.distance = 'keepDistance';
   return fields;
 }
 function entityResolvedEffect(owner, id, effect) {
@@ -1345,7 +1369,7 @@ function entityBehaviorCard(id, values = {}, owner) {
   const stats = owner && entityStats(owner);
   for (const [field, stat] of Object.entries(entityRatioFields(id, effect))) {
     if (!ratios[field]) {
-      const basic = id === 'entityHit' && field === 'knockback' || id === 'entityMove' && field === 'speed' || ENTITY_BASIC_DAMAGE.has(id) && field === 'damage';
+      const basic = id === 'entityHit' && (field === 'knockback' || field === 'pierce') || id === 'entityKeep' || id === 'entityMove' && field === 'speed' || ENTITY_BASIC_DAMAGE.has(id) && field === 'damage';
       const calibrated = stat === 'maxHp' || id === 'entityHit';
       const basis = calibrated && stats?.[stat] || (stat === 'attackPower' ? 10 : stat === 'moveSpeed' ? 170 : 100);
       ratios[field] = { stat, ratio: basic ? 1 : effect[field] / basis };
@@ -1393,41 +1417,40 @@ function entityMovementDirection(owner, move, game) {
     : owner.ang ?? (owner.flip ? Math.PI : 0);
   return { x: Math.cos(angle), y: Math.sin(angle) };
 }
-function entityMovementTarget(owner) {
-  const sight = owner.def.sight;
-  const id = `entityMovementTarget_${sight}`;
-  CARDS[id] ??= {
-    type: 'target', entityOnly: true, cost: 1, weight: 0, icon: 'nearest',
-    name: `가까운 적 ${sight} / 없으면 플레이어`,
-    desc: `반경 ${sight}의 가장 가까운 적을 고르고, 적이 없으면 플레이어를 고른다.`,
-    resolve: env => {
-      const enemy = env.game.nearestEnemies(env.owner.x, env.owner.y, 1, sight)[0];
-      return [enemy ? { kind: 'enemy', e: enemy } : env.playerTarget()];
-    },
-  };
-  return id;
-}
-function entityMovementDistance(owner) {
-  const keep = owner.def.keep || owner.def.reach * 0.6;
-  const id = `entityMovementDistance_${keep}`;
-  CARDS[id] ??= {
-    type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNearEnemy',
-    name: `적 거리 ${keep} / 플레이어 거리 60 초과`,
-    desc: `적과 거리 ${keep} + 적 반경, 플레이어와 거리 60보다 멀 때만 이동한다.`,
-    test: (t, env) => {
-      const target = env.at(t);
-      const stop = t.playerSelection ? 60 : keep + (target.radius || 0);
-      return Math.hypot(target.x - env.owner.x, target.y - env.owner.y) > stop;
-    },
-  };
-  return id;
-}
+// 아군 이동 대상·정지 거리는 개체의 시야·유지 거리 상태를 읽는다.
+CARDS.entityMovementTarget = {
+  type: 'target', entityOnly: true, cost: 1, weight: 0, icon: 'nearest',
+  name: '시야 내 가까운 적 / 없으면 플레이어',
+  desc: '시야 상태 안의 가장 가까운 적을 고르고, 적이 없으면 플레이어를 고른다.',
+  resolve: env => {
+    const enemy = env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).sight)[0];
+    return [enemy ? { kind: 'enemy', e: enemy } : env.playerTarget()];
+  },
+};
+CARDS.entityMovementDistance = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNearEnemy',
+  name: '유지 거리 밖 / 플레이어 거리 60 초과',
+  desc: '적과 거리 유지 거리 상태 + 적 반경, 플레이어와 거리 60보다 멀 때만 이동한다.',
+  test: (t, env) => {
+    const target = env.at(t);
+    const stop = t.playerSelection ? 60 : entityStats(env.owner).keepDistance + (target.radius || 0);
+    return Math.hypot(target.x - env.owner.x, target.y - env.owner.y) > stop;
+  },
+};
+CARDS.entityInSight = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNearEnemy',
+  name: '시야 이내', desc: '슬롯 주인과 거리가 시야 상태 이내인 대상만 고른다.',
+  test: (t, env) => {
+    const o = env.at(t), sight = entityStats(env.owner).sight;
+    return dist2(env.owner.x, env.owner.y, o.x, o.y) <= sight ** 2;
+  },
+};
 function entityInitialCard(id, owner, kind) {
   const behavior = (action, values) => entityBehaviorCard(action, values, owner);
   switch (id) {
     case 'entityMove': return behavior(id, { speed: kind === 'enemy' || kind === 'ally' ? owner.def.speed : entityNumber(Math.hypot(owner.vx, owner.vy)) });
     case 'entityKeep': return behavior(id, { distance: owner.def.keep });
-    case 'entityHit': return behavior(id, { damage: owner.damage, knockback: owner.knockback ?? 0, pierce: owner.cardTick ? Number.isFinite(owner.pierce) ? owner.pierce : null : 0 });
+    case 'entityHit': return behavior(id, { damage: owner.damage, knockback: owner.knockback ?? 0, pierce: null });
     default: return behavior(id, {});
   }
 }
@@ -1489,7 +1512,7 @@ function entityConfiguredCard(cardId, values) {
     card.group = 'entity';
     card.entityOnly = true;
     card.weight = 0;
-    card.desc = `${name} ${summon?.n ?? 1}체를 소환한다.`;
+    card.desc = summon?.n != null ? `${name} ${summon.n}체를 소환한다.` : `${name} 소환 수만큼 소환한다.`;
     if (effect.type && effect.death) {
       const deathName = ENEMY_TYPES[effect.death.type]?.name || effect.death.type;
       card.desc += ` 사망 시 ${deathName} ${effect.death.n}체 소환.`;
@@ -1499,7 +1522,7 @@ function entityConfiguredCard(cardId, values) {
   if (actionId === 'spawnOrb') {
     const reward = effect.reward;
     card.desc = reward?.kind === 'chest' ? '보물 상자 1개를 생성한다.'
-      : `경험치 ${reward?.value ?? 1}을 생성한다.${reward?.magnetChance ? ` 자석 확률 ${entityNumber(reward.magnetChance * 100)}%.` : ''}`;
+      : `경험치 ${reward?.value ?? '상태만큼'}을 생성한다.${reward?.magnetChance ? ` 자석 확률 ${entityNumber(reward.magnetChance * 100)}%.` : ''}`;
   }
   if (actionId === 'snipe') {
     card.name = '직접 타격';
@@ -1551,11 +1574,13 @@ function entityCardParametersText(effect) {
 }
 function entityActionConfig(owner, id, activeCard) {
   if (!owner) return undefined;
-  if (activeCard) return cardBaseIdOfCard(activeCard) === id || id === 'summon' && activeCard.actionId === 'spawnOrb' ? activeCard.effect : undefined;
+  // 카드가 상태를 참조하는 수치(statRatios)는 실행하는 개체의 상태로 풀어 준다.
+  const resolve = effect => effect?.statRatios ? entityResolvedEffect(owner, id, effect) : effect;
+  if (activeCard) return cardBaseIdOfCard(activeCard) === id || id === 'summon' && activeCard.actionId === 'spawnOrb' ? resolve(activeCard.effect) : undefined;
   const ids = owner.slots?.flatMap(slot => slot.cards) || owner.slot?.cards || [];
   const cardId = ids.find(cardId => cardBaseId(cardId) === id && CARDS[cardId].configured)
     ?? (id === 'summon' ? ids.find(cardId => cardBaseId(cardId) === 'spawnOrb') : undefined);
-  return cardId ? CARDS[cardId].effect : undefined;
+  return cardId ? resolve(CARDS[cardId].effect) : undefined;
 }
 function cardBaseIdOfCard(card) { return card.actionId || card.mechanic; }
 function setEntityActionConfig(owner, id, values) {
@@ -1577,6 +1602,11 @@ function entitySlot(owner, kind) {
   owner.team ??= owner.source?.team ?? (kind === 'enemy' || (kind === 'shot' && !owner.cardTick) ? 'hostile' : kind === 'object' && owner.kind === 'barrel' ? 'neutral' : 'friendly');
   if (owner.slot?.owner === owner) return owner.slot;
   if (owner.combatStats) delete owner.combatStats;
+  // 카드에서 덜어 낸 개체별 수치는 상태로 둔다.
+  if (kind === 'ally' && owner.def.damage) { owner.knockback ??= owner.kind === 'archer' ? 80 : 120; owner.shotSpeed ??= 520; }
+  if (kind === 'object' && owner.kind === 'turret') { owner.knockback ??= 90; owner.shotSpeed ??= 460; }
+  if (kind === 'object' && owner.kind === 'orb') owner.knockback ??= 40;
+  if (kind === 'shot') owner.pierceLimit ??= owner.cardTick && Number.isFinite(owner.pierce) ? owner.pierce : owner.cardTick ? Infinity : 0;
   owner.knockback ??= kind === 'shot' && !owner.cardTick ? 0 : 100;
   entityStats(owner);
   const inherited = owner.slot?.cards.slice();
@@ -1610,7 +1640,7 @@ function entitySlot(owner, kind) {
     {
       if (id === 'entityMove') {
         if (kind === 'enemy') chain.push('self');
-        if (kind === 'ally') chain.push(entityMovementDistance(owner), entityMovementTarget(owner));
+        if (kind === 'ally') chain.push('entityMovementDistance', 'entityMovementTarget');
         chain.push(initial, 'entitySelf');
         continue;
       }
@@ -1625,10 +1655,9 @@ function entitySlot(owner, kind) {
   }
   if (kind === 'enemy') {
     settings.entityHit ??= { contact: true };
-    settings.summon ??= {};
-    settings.summon.reward ??= owner.boss || owner.def.loot
+    settings.spawnOrb ??= { reward: owner.boss || owner.def.loot
       ? { kind: 'chest', value: 0, magnetChance: 0 }
-      : { kind: 'gem', value: owner.xp, magnetChance: 0.004 };
+      : { kind: 'gem', magnetChance: 0.004 } };
     if (owner.armor) {
       settings.armor ??= { passive: true, statRatios: { reduction: { stat: 'maxHp', ratio: 4 / entityStats(owner).maxHp } } };
       chain.push('entitySelf', 'armor', 'entitySelf');
@@ -1649,7 +1678,7 @@ function entitySlot(owner, kind) {
   if (kind === 'zone' && owner.kind === 'blades') {
     settings.orbit ??= { count: 3, speed: 4, hitRadius: 14 };
     chain.push('entitySelf', 'orbit', 'entitySelf');
-    settings.entityHit ??= { damageRatio: 0.8, knockbackRatio: 0.9, repeatCd: 0.2, playerPower: true };
+    settings.entityHit ??= { repeatCd: 0.2, playerPower: true };
   }
   if (kind === 'pickup') {
     settings.pull ??= { continuous: true, mode: 'approach', range: 90,
@@ -1669,14 +1698,15 @@ function entitySlot(owner, kind) {
     for (const [definition, action] of [[owner.def.shoot, 'bolt'], [owner.def.summon, 'summon']]) {
       if (!definition) continue;
       if (action === 'bolt') settings.bolt ??= {
-        damageRatio: definition.damage / owner.def.damage, speed: definition.speed,
-        n: definition.n, ring: !!definition.ring, hazard: true, radius: 7, life: 3.5,
+        damageRatio: definition.damage / owner.def.damage, ring: !!definition.ring, hazard: true, radius: 7, life: 3.5,
         knockback: 0, pierce: 0, blockFear: true, afterMovement: true, projectileKind: definition.projectileKind,
+        statRatios: { speed: { stat: 'shotSpeed', ratio: 1 }, n: { stat: 'shotCount', ratio: 1 } },
       };
       else settings.summon = {
-        type: definition.type, n: definition.n, minions: true, blockFear: true, afterMovement: true, ...settings.summon,
+        type: definition.type, minions: true, blockFear: true, afterMovement: true, ...settings.summon,
+        statRatios: { n: { stat: 'summonCount', ratio: 1 } },
       };
-      chain.push(entityChainCard('range', definition.range ?? 560), 'self', entityChainCard('interval', definition.cd), action, 'entitySelf');
+      chain.push('entityInSight', 'self', entityChainCard('interval', definition.cd), action, 'entitySelf');
     }
     if (owner.def.split) {
       settings.summon ??= {};
@@ -1688,23 +1718,25 @@ function entitySlot(owner, kind) {
   if (kind === 'ally' && owner.def.damage) {
     const ranged = owner.kind === 'archer', action = ranged ? 'bolt' : 'snipe';
     settings[action] ??= {
-      damageRatio: 1, knockback: ranged ? 80 : 120, playerPower: true, rallyPower: true,
-      afterMovement: true, melee: !ranged, speed: 520, radius: 4, life: 0.8,
+      damageRatio: 1, playerPower: true, rallyPower: true,
+      afterMovement: true, melee: !ranged, radius: 4, life: 0.8,
       pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
+      statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
     };
     chain.push(entityChainCard('range', owner.def.reach, true), 'nearestEnemy', entityChainCard('interval', owner.def.attackCd), action, 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'abyss') {
-    settings.snipe ??= { damageRatio: 0.8, knockback: 0, playerPower: !owner.directTarget, afterMovement: true };
+    settings.snipe ??= { damageRatio: 0.8, playerPower: !owner.directTarget, afterMovement: true, statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', 0.4), 'snipe', 'entitySelf');
   }
   if (owner.kind === 'turret' && kind === 'object') {
-      settings.bolt ??= { damageRatio: 1, speed: 460, knockback: 90, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true };
+      settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true,
+        statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } } };
     chain.push(entityChainCard('range', 420), 'nearestEnemy', entityChainCard('interval', 0.7), 'bolt', 'entitySelf');
   }
   if (owner.kind === 'orb' && kind === 'object' || owner.kind === 'slime' && kind === 'zone') {
     const orb = owner.kind === 'orb';
-      settings.snipe ??= { damageRatio: orb ? 1 : 0.5, knockback: orb ? 40 : 0, playerPower: !owner.directTarget };
+      settings.snipe ??= { damageRatio: orb ? 1 : 0.5, playerPower: !owner.directTarget, statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', orb ? 0.4 : 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'pickup') chain.push('ifPlayerContact', 'entitySelf', 'absorb');
@@ -1738,7 +1770,7 @@ function entitySlot(owner, kind) {
   for (const slot of owner.slots) {
     const configure = cardId => {
       const id = cardBaseId(cardId);
-      const config = settings[id === 'spawnOrb' ? 'summon' : id];
+      const config = settings[id];
       if (!inherited && config && CARDS[cardId].type === 'action') return entityConfiguredCard(cardId, config);
       if (inherited && CARDS[cardId].configured) return entityConfiguredCard(cardId, CARDS[cardId].effect);
       return cardId;

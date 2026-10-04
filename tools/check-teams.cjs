@@ -52,7 +52,7 @@ vm.runInContext(`
   assert.equal(game.spawnProjectile({ source: turret, vx: 0, vy: 0, life: 5 }).team, 'friendly');
   const shot = game.spawnProjectile({ x: 0, y: 0, vx: 0, vy: 0, life: 5 });
   entityStats(shot).attackPower = 5;
-  shot.slot.cards = ['entitySelf', 'entityHitTeam_opposing', entityBehaviorCard('entityHit', { pierce: 1 }, shot)]; shot.slot.changed();
+  shot.slot.cards = ['entitySelf', 'entityHitTeam_opposing', entityBehaviorCard('entityHit', {}, shot)]; entityStats(shot).pierce = 1; shot.slot.changed();
   game.player.x = 1000; game.player.y = 1000;
   game.objects = []; game.allies = []; game.enemies = [enemy]; game.rebuildHash();
   shot.update(0.01, game); game.collideShot(shot);

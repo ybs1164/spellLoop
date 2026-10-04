@@ -20,7 +20,7 @@ vm.runInContext(`
   const summonCard = CARDS[necro.slot.cards.find(id => cardBaseId(id) === 'summon')];
   assert.equal(summonCard.name, ENEMY_TYPES.ghost.name + ' 소환');
   assert.equal(summonCard.group, 'entity');
-  assert.equal(summonCard.desc, ENEMY_TYPES.ghost.name + ' 3체를 소환한다.');
+  assert.equal(summonCard.desc, ENEMY_TYPES.ghost.name + ' 소환 수만큼 소환한다.');
   assert.equal(summonCard.entityOnly, true);
   assert.equal(CARDS.summon.name, '기사 소환');
   assert.equal(entityActionConfig(necro, 'summon').n, 3);
@@ -28,7 +28,7 @@ vm.runInContext(`
   assert.equal(entityActionConfig(lich, 'summon').n, 6);
   assert.equal(slotInterval(lich, 'summon'), 5);
   assert.ok(necro.slot.cards.some(cardId => cardBaseId(cardId) === 'summon') && lich.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
-  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'maxHp']);
+  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'pierce', 'maxHp']);
   assert.equal(entityStats(game.player).moveSpeed, 170);
   assert.equal(entityStats(game.player).attackPower, 10);
   assert.equal(entityStats(game.player).maxHp, 100);
@@ -41,12 +41,13 @@ vm.runInContext(`
   necro.update(0.01, game.player, game);
   assert.equal(game.enemies.length, 4, 'summon reads the card, not the owner definition');
   assert.equal(necro.slot.cooldowns.get(necro.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'summon')), 6);
-  assert.ok(game.enemies.slice(1).every(e => e.type === 'ghost' && entityActionConfig(e, 'summon').reward.value === 0));
+  assert.ok(game.enemies.slice(1).every(e => e.type === 'ghost' && entityStats(e).xpReward === 0));
   const grunt = new Enemy('grunt', 100, 0, 1);
   const transferredSummon = entityConfiguredCard(lich.slot.cards.find(id => cardBaseId(id) === 'summon'), { n: 3 });
   grunt.slot.cards = ['self', entityChainCard('interval', 6), transferredSummon]; grunt.slot.changed();
   game.enemies = [grunt]; grunt.update(0.01, game.player, game);
-  assert.equal(game.enemies.length, 4, 'transferred summon retains its card parameters');
+  assert.equal(game.enemies.length, 2, 'transferred summon reads the receiving owner summon count state');
+  assert.equal(game.enemies[1].type, 'ghost', 'transferred summon keeps its card type');
   const pyro = new Enemy('pyro', 100, 0, 1);
   pyro.def = { ...pyro.def, shoot: { n: 99, damage: 999, cd: 999, speed: 999 } };
   game.hazards = []; pyro.shootCd = 0; pyro.update(0.01, game.player, game);
@@ -113,7 +114,7 @@ vm.runInContext(`
   assert.equal(xp, 999, 'absorb uses the pickup reward stat');
   const dropper = new Enemy('brute', 100, 0, 1); dropper.xp = 999;
   game.pickups = []; game.killEnemy(dropper);
-  assert.equal(game.pickups.find(p => p.kind === 'gem').value, 6);
+  assert.equal(game.pickups.find(p => p.kind === 'gem').value, 999, 'death reward reads the experience state');
   const king = new Enemy('slimeKing', 100, 0, 1);
   king.def = { ...king.def, split: { type: 'rat', n: 99 } };
   game.enemies = [king]; game.killEnemy(king);
