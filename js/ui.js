@@ -170,7 +170,7 @@ const UI = {
 
   cardDescriptionText(c) {
     if (c.type !== 'action') return c.desc;
-    if (c.configured && c.actionId !== 'bolt') return c.desc;
+    if (c.configured && (c.actionId !== 'bolt' || c.effect?.look)) return c.desc;
     const id = c.actionId || c.mechanic || Object.keys(CARDS).find(id => CARDS[id] === c);
     const descriptions = {
       bolt: '마력탄을 발사한다.', slash: '반경 70을 즉시 베어 피해를 준다.',

@@ -1274,7 +1274,7 @@ function entityChainCard(type, value, radius = false) {
     name: type === 'interval' ? `주기 ${value}초` : `거리 ${value} 이내`,
     desc: type === 'interval' ? `뒤 행동의 반복 주기를 ${value}초로 정한다.` : `슬롯 주인과 거리 ${value}${radius ? ' + 대상 반경' : ''} 이내인 대상만 고른다.`,
     ...(type === 'enemyNear' ? { name: `거리 ${value} 이내 적 존재`, desc: `슬롯 주인과 거리 ${value} 이내에 살아 있는 적이 있을 때만 실행한다.`, test: (t, env) => env.game.nearestEnemies(env.owner.x, env.owner.y, 1, value).length > 0 }
-      : type === 'elapsed' ? { name: `생성 후 ${value}초`, desc: `슬롯 주인 생성 후 ${value}초가 지난 경우만 실행한다.`, test: (t, env) => env.owner.slotAge >= value }
+      : type === 'elapsed' ? { name: `설치 대기 ${value}초`, icon: 'mine', desc: `설치되고 ${value}초가 지나야 작동한다.`, test: (t, env) => env.owner.slotAge >= value }
       : type === 'interval' ? { interval: value } : { test: (t, env) => {
       const o = env.at(t);
       return dist2(env.owner.x, env.owner.y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
@@ -1551,7 +1551,26 @@ function freezeEntityValues(value) {
   }
   return value;
 }
-function entityConfiguredCard(cardId, values) {
+// 개체 전용 행동 카드의 이름·아이콘·설명. 기믹이 드러나도록 행동 종류 대신 쓰임새로 부른다.
+const ENTITY_CARD_LOOKS = {
+  chestDrop: ['보물 상자 드롭', 'chest', '쓰러진 자리에 보물 상자 1개를 떨어뜨린다.'],
+  xpDrop: ['경험치 드롭', 'gems', '쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다. 0.4% 확률로 자석도 떨어뜨린다.'],
+  innateArmor: ['상시 철갑', 'armor', '받는 피해를 항상 4 줄인다.'],
+  enemyShot: ['적탄 발사', 'shots', '탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다.'],
+  curseShot: ['속박탄 발사', 'root', '주변 적에게 표식·속박을 거는 속박탄을 쏜다.'],
+  arrowShot: ['화살 사격', 'lance', '대상에게 화살을 쏜다. 격려를 받으면 피해 2배.'],
+  turretShot: ['포탑 사격', 'turret', '대상에게 포탄을 쏜다.'],
+  meleeStrike: ['근접 베기', 'slash', '대상을 근접 공격한다. 격려를 받으면 피해 2배.'],
+  orbTick: ['구체 타격', 'orb', '범위 안의 적을 공격력만큼 타격한다.'],
+  zoneTick: ['장판 피해', 'zones', '범위 안의 적에게 장판 공격력만큼 피해를 준다.'],
+  poisonTick: ['독 피해', 'poison', '범위 안의 적에게 공격력 60%의 독 피해를 준다.'],
+  bladeCut: ['칼날 베기', 'blades', '공전하는 칼날에 닿은 적을 벤다. 같은 대상은 0.2초마다 다시 벤다.'],
+  burningTrail: ['화상 장판 남기기', 'burn', '그 자리에 화상 장판을 남긴다.'],
+  boomerangReturn: ['부메랑 귀환', 'boomerang', '날아가던 탄이 잠시 뒤 감속하며 플레이어에게 돌아온다.'],
+  homingTurn: ['적 추적', 'homing', '탄이 가까운 적 쪽으로 방향을 튼다.'],
+  pickupAttract: ['플레이어에게 끌림', 'magnet', '플레이어가 가까이 오면 살짝 튕긴 뒤 빨라지며 플레이어에게 날아간다.'],
+};
+function entityConfiguredCard(cardId, values, native = false) {
   const base = CARDS[cardId], actionId = cardBaseId(cardId);
   if (actionId === 'explode') return 'explode';
   const effect = freezeEntityValues(copyEntityValues({ ...base.effect, ...values }));
@@ -1601,6 +1620,9 @@ function entityConfiguredCard(cardId, values) {
     delete card.fixedValues;
     delete card.statRatios;
   }
+  const look = ENTITY_CARD_LOOKS[effect.look];
+  // 개체 기본 설정이면 쓰임새 설명만, 편집된 수치면 설정값을 덧붙인다.
+  if (look) [card.name, card.icon, card.desc] = [look[0], look[1], native ? look[2] : `${look[2]} ${entityCardParametersText(effect)}`];
   if (base.mechanic) card.run = (targets, env) => {
     if (env.enableMechanic && entityMechanicTargets(effect, targets, env)) env.enableMechanic(actionId, effect, targets);
   };
@@ -1728,32 +1750,32 @@ function entitySlot(owner, kind) {
   if (kind === 'enemy') {
     settings.spawnOrb ??= { reward: owner.boss || owner.def.loot
       ? { kind: 'chest', value: 0, magnetChance: 0 }
-      : { kind: 'gem', magnetChance: 0.004 } };
+      : { kind: 'gem', magnetChance: 0.004 }, look: owner.boss || owner.def.loot ? 'chestDrop' : 'xpDrop' };
     if (owner.armor) {
-      settings.armor ??= { passive: true, reduction: 4 };
+      settings.armor ??= { passive: true, reduction: 4, look: 'innateArmor' };
       chain.push('entitySelf', 'armor', 'entitySelf');
     }
   }
   if (kind === 'shot' && owner.boomerang) {
-    settings.boomerang ??= { passive: true, playerTargeted: true, after: owner.outT, deceleration: 2.2, collectRange: 18 };
+    settings.boomerang ??= { passive: true, playerTargeted: true, after: owner.outT, deceleration: 2.2, collectRange: 18, look: 'boomerangReturn' };
     chain.push('self', 'boomerang', 'entitySelf');
   }
   if (kind === 'shot' && owner.homing) {
-    settings.homing ??= { passive: true, turn: owner.turn ?? 7, range: 500 };
+    settings.homing ??= { passive: true, turn: owner.turn ?? 7, range: 500, look: 'homingTurn' };
     chain.push('entitySelf', 'homing', 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'poison') {
-    settings.snipe ??= { damageRatio: 0.6, knockback: 0, elem: 'poison', playerPower: !owner.directTarget, afterMovement: true };
+    settings.snipe ??= { damageRatio: 0.6, knockback: 0, elem: 'poison', playerPower: !owner.directTarget, afterMovement: true, look: 'poisonTick' };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'blades') {
     chain.push('entitySelf', 'orbit', 'entitySelf');
-    settings.entityHit ??= { repeatCd: 0.2, playerPower: true };
+    settings.entityHit ??= { repeatCd: 0.2, playerPower: true, look: 'bladeCut' };
   }
   if (kind === 'pickup') {
     settings.pull ??= { continuous: true, mode: 'approach', range: 90,
       initialSpeedRatio: -200 / 170, accelerationRatio: 1500 / 170, maxSpeedRatio: 1100 / 170,
-      afterMovement: true, scaleRate: false };
+      afterMovement: true, scaleRate: false, look: 'pickupAttract' };
     chain.push('entitySelf', 'pull', 'entitySelf');
   }
   if (kind === 'zone' && CARDS.ward.zoneKinds.includes(owner.kind)) chain.push('entitySelf', 'ward', 'entitySelf');
@@ -1764,6 +1786,7 @@ function entitySlot(owner, kind) {
       if (action === 'bolt') settings.bolt ??= {
         damageRatio: 1, damageStat: 'shotPower', ring: 'auto', hazard: true, radius: 7, life: 3.5,
         knockback: 0, pierce: 0, blockFear: true, afterMovement: true, projectileKind: definition.projectileKind,
+        look: definition.projectileKind === 'curseBolt' ? 'curseShot' : 'enemyShot',
         statRatios: { speed: { stat: 'shotSpeed', ratio: 1 }, n: { stat: 'shotCount', ratio: 1 } },
       };
       else settings.summon = {
@@ -1781,26 +1804,28 @@ function entitySlot(owner, kind) {
   if (kind === 'enemy') chain.push('ifExpiring', 'entitySelf', 'spawnOrb', 'entitySelf');
   if (kind === 'ally' && owner.def.damage) {
     const ranged = owner.kind === 'archer', action = ranged ? 'bolt' : 'snipe';
-    settings[action] ??= {
-      damageRatio: 1, playerPower: true, rallyPower: true,
-      afterMovement: true, melee: !ranged, radius: 4, life: 0.8,
-      pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
+    settings[action] ??= ranged ? {
+      damageRatio: 1, playerPower: true, rallyPower: true, afterMovement: true, look: 'arrowShot',
+      radius: 4, life: 0.8, pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
       statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
+    } : {
+      damageRatio: 1, playerPower: true, rallyPower: true, afterMovement: true, melee: true, look: 'meleeStrike',
+      statRatios: { knockback: { stat: 'knockback', ratio: 1 } },
     };
     chain.push(...entityReachCards(owner, owner.def.reach), 'nearestEnemy', ...entityPeriodCards(owner, action, owner.def.attackCd), action, 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'abyss') {
-    settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
+    settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, look: 'zoneTick', statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', 0.4), 'snipe', 'entitySelf');
   }
   if (owner.kind === 'turret' && kind === 'object') {
-      settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true,
+      settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true, look: 'turretShot',
         statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } } };
     chain.push(...entityReachCards(owner, 420), 'nearestEnemy', ...entityPeriodCards(owner, 'bolt', 0.7), 'bolt', 'entitySelf');
   }
   if (owner.kind === 'orb' && kind === 'object' || owner.kind === 'slime' && kind === 'zone') {
     const orb = owner.kind === 'orb';
-      settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, ...(orb ? {} : { afterMovement: true }), statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
+      settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, ...(orb ? { look: 'orbTick' } : { afterMovement: true, look: 'zoneTick' }), statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', orb ? 0.4 : 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'pickup') chain.push('ifPlayerContact', 'entitySelf', 'absorb');
@@ -1818,7 +1843,7 @@ function entitySlot(owner, kind) {
     for (const [key, value] of ENTITY_VARIANTS) if (value === temporary) ENTITY_VARIANTS.delete(key);
   }
   if (kind === 'enemy' && owner.def.deathZone) {
-    settings.poison = { zoneKind: owner.def.deathZone };
+    settings.poison = { zoneKind: owner.def.deathZone, ...(owner.def.deathZone === 'burningField' ? { look: 'burningTrail' } : {}) };
     chain.push('ifExpiring', 'entitySelf', 'poison');
   }
   if (kind === 'object' && PLACED_TYPES[owner.kind]?.zoneKind) {
@@ -1836,7 +1861,7 @@ function entitySlot(owner, kind) {
     const configure = cardId => {
       const id = cardBaseId(cardId);
       const config = settings[id];
-      if (!inherited && config && CARDS[cardId].type === 'action') return entityConfiguredCard(cardId, config);
+      if (!inherited && config && CARDS[cardId].type === 'action') return entityConfiguredCard(cardId, config, true);
       if (inherited && CARDS[cardId].configured) return entityConfiguredCard(cardId, CARDS[cardId].effect);
       return cardId;
     };
