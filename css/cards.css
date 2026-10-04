@@ -368,3 +368,25 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .cx-settings summary { cursor: pointer; color: var(--muted); }
 .cx-settings > div { margin-top: 6px; padding: 4px 8px; background: #0f131d; }
 .cx-settings b { color: #e6e9f2; }
+
+/* ---------- 조건 · 대상 · 행동 카드 슬롯 ---------- */
+.slot-sections { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; min-width: 0; }
+.slot-section { min-width: 0; padding: 6px 6px 2px; background: rgba(0, 0, 0, .18); border: 2px solid var(--line); }
+.slot-section-h { font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.slot-section .slot-cards { min-height: 0; padding: 6px 2px 4px; gap: 8px; }
+.slot-section .slot-cards.dropzone { min-height: 104px; }
+.slot-section .slot-cards .cell { flex: 1 0 60px; width: auto; }
+.entity-slot .slot-section .slot-cards { margin: 0; }
+.fixed-slot { display: block; cursor: default; }
+@media (max-width: 720px) {
+  .slot-sections { grid-template-columns: 1fr; }
+}
+.slot-toggle { margin-top: 10px; }
+.slot-toggle > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #e6ebf7; user-select: none; }
+.slot-toggle > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dsep { display: inline-block; width: 2px; height: 14px; margin: 0 3px; background: var(--line); vertical-align: middle; }
+.cx-sec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+.cx-sec-label { font-style: normal; font-size: 10px; color: var(--muted); margin-right: 2px; }
+.cx-sec-condition .cx-sec-label { color: #8fb8ff; }
+.cx-sec-target .cx-sec-label { color: #ffd166; }
+.cx-sec-action .cx-sec-label { color: #ff7a8a; }

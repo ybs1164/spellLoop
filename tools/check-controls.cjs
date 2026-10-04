@@ -26,7 +26,7 @@ get(`
     if (n >= 1000) throw Error('cast did not finish');
   };
   const filter = (id, ts) => {
-    const cast = {ctx: {targets: ts}, env}; deck.applyFilter(id, cast.ctx, env); return cast.ctx.targets;
+    return deck.applyFilter(id, ts, env);
   };
 `);
 assert.equal(get("Object.values(CARDS).filter(c => c.type === 'filter' && !c.entityOnly).length"), 15);
