@@ -507,7 +507,7 @@ class Ally {
     this.hp = this.maxHp;
     this.life = this.def.life ?? ALLY_LIFE;
     this.max = this.life;
-    this.rallyT = 0;          // 격려: 공격력·공격 속도 2배
+    this.rallyT = 0;          // 격려: 공격 속도 2배
     // 머금은 상태 이상 (아군 자신에겐 영향 없음, 「전염」으로 적에게 옮긴다)
     this.freezeT = 0; this.rootT = 0; this.fearT = 0; this.markT = 0; this.burnT = 0; this.burnDps = 0;
     this.cd = 0.2;
@@ -806,8 +806,6 @@ class Pickup {
     this.value = value;
     this.name = kind === 'vitalGem' ? '생명의 보석' : undefined;
     this.radius = kind === 'gem' ? 5 : 9;
-    this.pulled = false;
-    this.speed = 0;
     this.t = Math.random() * TAU;
     this.dead = false;
     entitySlot(this, "pickup");
@@ -819,6 +817,12 @@ class Pickup {
 
   cardTick(dt, game) {
     this.t += dt * 4;
+    const move = this.slot.effect('entityMove'), target = move?.targets?.[0] && game.targetObj(move.targets[0]);
+    if (!target || target === this) return;
+    const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy);
+    if (!d) return;
+    const step = Math.min(d, move.speed * (this.cardMove || 1) * (this.directMove ?? 1) * dt);
+    this.x += dx / d * step; this.y += dy / d * step;
   }
 
   collect(game) {
@@ -827,7 +831,7 @@ class Pickup {
       case 'vitalGem': p.gainXp(this.value, game); break;
       case 'gem': p.gainXp(this.value, game); break;
       case 'magnet':
-        for (const pk of game.pickups) if (pk.kind === 'gem' && !pk.pulled) { pk.pulled = true; pk.speed = 0; }
+        for (const pk of game.pickups) if (pk.kind === 'gem') entityStats(pk).reach = Infinity;
         break;
       case 'chest':
         // 보물 상자: 카드 선택 1회 + 코스트 포인트 1

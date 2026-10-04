@@ -692,7 +692,7 @@ class Game {
     const actor = this.actionActor || p, settings = entityActionConfig(actor, id, this.actionCard);
     if (id === 'snipe' && settings) {
       if (settings.melee) actor.swing = 0.15;
-      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1);
       if (actor.dead) return;
       if (t.kind === 'enemy') this.damageEnemy(o, damage, o.x - actor.x || 1, o.y - actor.y, settings.knockback, undefined, settings.elem);
       else this.damageTarget(t, damage, settings.knockback, settings.elem, false);
@@ -841,7 +841,7 @@ class Game {
     if (settings) {
       if (settings.blockFear && hasTargetState(actor, 'fear')) return;
       const target = this.targetObj(t), base = Math.atan2(target.y - actor.y, target.x - actor.x);
-      const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1);
       const n = settings.n ?? 1, ring = settings.ring === 'auto' ? n > 1 : settings.ring;
       for (let i = 0; i < n; i++) {
         const a = base + (ring ? i / n * TAU : (i - (n - 1) / 2) * 0.2);
@@ -976,19 +976,6 @@ class Game {
   }
 
   pull(o, t, dt) {
-    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'pull', this.actionCard);
-    if (settings?.continuous && settings.mode === 'approach' && dt != null) {
-      if (o.dead) return;
-      const target = this.chaseTarget(o), d2 = dist2(o.x, o.y, target.x, target.y);
-      const moveSpeed = entityStats(actor).moveSpeed;
-      if (!o.pulled && d2 < settings.range ** 2) { o.pulled = true; o.speed = moveSpeed * settings.initialSpeedRatio; }
-      if (!o.pulled) return;
-      o.speed = Math.min(o.speed + moveSpeed * settings.accelerationRatio * dt, moveSpeed * settings.maxSpeedRatio);
-      const d = Math.sqrt(d2) || 1;
-      const step = Math.min(d, o.speed * dt * (o.cardMove || 1) * (o.directMove ?? 1));
-      o.x += (target.x - o.x) / d * step; o.y += (target.y - o.y) / d * step;
-      return;
-    }
     if (o.dead || o === this.player) return;
     const p = this.player, dx = p.x - o.x, dy = p.y - o.y;
     const distance = Math.hypot(dx, dy);
@@ -1000,8 +987,9 @@ class Game {
   }
 
   magnet(o) {
-    o.pulled = true; o.speed = 0;
-    if (o instanceof Placed) o.speed = entityStats(this.player).moveSpeed;
+    // 아이템은 사거리를 무한으로 만들어 어디서든 플레이어에게 다가오게 한다.
+    if (o instanceof Pickup) entityStats(o).reach = Infinity;
+    else { o.pulled = true; o.speed = entityStats(this.player).moveSpeed; }
     this.circleFx(o.x, o.y, (o.radius || 5) + 12, '#ffd166', { life: 0.4, style: 'pulse' });
   }
 
@@ -1848,7 +1836,7 @@ class Game {
   dropGem(x, y, value) {
     if (this.pickups.length > 350) {
       // 보석이 너무 많으면 기존 보석에 합쳐 성능을 지킨다
-      const gem = this.pickups.find((pk) => pk.kind === 'gem' && !pk.pulled);
+      const gem = this.pickups.find((pk) => pk.kind === 'gem');
       if (gem) { gem.value += value; return; }
     }
     this.pickups.push(new Pickup('gem', x, y, value));

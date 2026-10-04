@@ -31,7 +31,7 @@ vm.runInContext(`
   const baseSnipe = orb.slot.cards.find(id => cardBaseId(id) === 'snipe');
   assert.equal(CARDS.snipe.name, '저격');
   assert.equal(ACTION_STAT_RATIOS.snipe.damage, 10);
-  assert.equal(CARDS[baseSnipe].name, '직접 타격');
+  assert.equal(CARDS[baseSnipe].name, '구체 타격');
   assert.equal(CARDS[baseSnipe].group, 'entity');
   assert.equal(CARDS[baseSnipe].entityOnly, true);
   assert.notEqual(iconIndex(baseSnipe), iconIndex('snipe'));
