@@ -1511,6 +1511,7 @@ function entityConfiguredCard(cardId, values) {
     const summon = effect.type ? effect : effect.death;
     const name = ENEMY_TYPES[summon?.type]?.name || '기사';
     card.name = `${name} 소환`;
+    card.icon = { grunt: 'summonSlime', runner: 'summonBat', lavaSpider: 'summonSpider', ghost: 'summonGhost' }[summon?.type] || 'summon';
     card.group = 'entity';
     card.entityOnly = true;
     card.weight = 0;

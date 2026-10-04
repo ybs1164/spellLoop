@@ -170,6 +170,11 @@ ICONS = [
     ('uiCodex',     'ob', 290,  None),
     ('uiReroll',    'ob', 780,  '#e8ecf5'),
     ('uiPlay',      'ob', 1058, '#5be37a'),
+    # 개체 소환 카드 (소환 종류별 모습)
+    ('summonSlime',  'td', 108,  None),
+    ('summonBat',    'td', 120,  None),
+    ('summonSpider', 'td', 122,  None),
+    ('summonGhost',  'td', 121,  None),
 ]
 
 
