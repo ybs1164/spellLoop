@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const context = vm.createContext({ console });
-for (const path of ['js/util.js', 'js/cards.js']) vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
+for (const path of ['js/util.js', 'js/input.js', 'js/cards.js']) vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 const get = code => vm.runInContext(code, context);
 get(`
   const deck = new SkillDeck(), hits = [];
@@ -23,15 +23,6 @@ assert.equal(get('hits.length'), 3);
 assert.equal(get('new Set(hits.map(h => h.at)).size'), 1, 'all targets fire in the same frame');
 assert.ok(Math.abs(get('deck.slots[0].extraCooldown') - 0.4) < 1e-9);
 assert.ok(Math.abs(get('deck.slots[0].cdMax') - 1.1) < 1e-9, 'base cooldown plus saved target delays');
-get("run(['group', 'record', 'flurry'])");
-assert.equal(get('hits.length'), 9, 'flurry adds two hits for every target');
-assert.deepEqual(Array.from(get('hits.map(h => h.mul)')), [1, 1, 1, 1.2, 1.2, 1.2, 1.4, 1.4, 1.4]);
-assert.equal(get('new Set(hits.map(h => h.at)).size'), 3, 'each repeat hits the whole group simultaneously');
-assert.ok(get('deck.slots[0].extraCooldown') > 1.5);
-get("run(['group', 'sequence', 'record'])");
-assert.equal(get('hits.length'), 6, 'sequence repeats each following action once');
-get("run(['group', 'record', 'rewind'])");
-assert.equal(get('hits.length'), 6, 'rewind reselects and repeats the chain only once');
 get(`
   const ctx = { fired: 0, hit: new Set(), extraCooldown: 0, lastKills: 0 };
   targets[1].dead = true;
@@ -40,12 +31,4 @@ get(`
 assert.equal(get('ctx.fired'), 2, 'dead targets are skipped');
 assert.equal(get('ctx.extraCooldown'), 0.2, 'dead targets do not add cooldown');
 assert.equal(get('wait'), 0.2);
-get(`
-  const victims = Array.from({ length: 12 }, (_, i) => ({ kind: 'enemy', id: i, dead: false, e: { dead: false } }));
-  CARDS.victims = { type: 'target', kind: 'enemy', cost: 1, resolve: () => victims.filter(t => !t.dead).slice(0, 2) };
-  CARDS.kill = { type: 'action', cost: 1, delay: 0.2, accepts: ALL_KINDS, run: ts => ts.forEach(t => { t.dead = true; t.e.dead = true; }) };
-  run(['victims', 'kill', 'pursue']);
-`);
-assert.equal(get('victims.filter(t => t.dead).length'), 10, 'pursue works after a multi-target kill and stops after four repeats');
-assert.ok(get('deck.slots[0].extraCooldown') > 1.7, 'reselection repeats also add cooldown');
-console.log('Simultaneous target, proportional cooldown, and repeat checks passed.');
+console.log('Simultaneous target and proportional cooldown checks passed.');

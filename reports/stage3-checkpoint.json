@@ -1,0 +1,30 @@
+[
+  {
+    "seed": 1,
+    "route": [
+      "cinderCaldera"
+    ],
+    "state": "gameover",
+    "seconds": 13,
+    "kills": 2,
+    "peak": 92,
+    "stages": [
+      {
+        "stage": "cinderCaldera",
+        "seconds": 13,
+        "hp": 0,
+        "level": 1
+      }
+    ],
+    "deck": [
+      [
+        "nearestEnemy",
+        "bolt"
+      ],
+      [
+        "ahead",
+        "orb"
+      ]
+    ]
+  }
+]

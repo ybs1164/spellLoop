@@ -1,26 +1,50 @@
 'use strict';
 
 const MAX_ENEMIES = 400;
-const WIN_TIME = 15 * 60;
+const CLEAR_DELAY = 2;   // 마지막 보스가 쓰러지고 클리어 화면까지
 const SWARM_INTERVAL = 60;
 const MAX_HAZARDS = 200;
-const MAX_ALLIES = 6;
-const MAX_OBJECTS = 12;
-const MAX_ZONES = 16;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
 const CARD_EFFECTS = [
   'directAction',
-  'bolt', 'slash', 'explode', 'frost', 'shockwave', 'poison', 'vortex', 'summonKnight', 'mend',
-  'scatter', 'lance', 'magnet',
-  'placeOrb', 'placeMine', 'placeTurret', 'placeDecoy', 'detonate', 'launch',
+  'bolt', 'slash', 'explode', 'frost', 'shockwave', 'poison', 'vortex', 'summonKnight',
+  'scatter', 'lance', 'magnet', 'pull',
+  'placeOrb', 'placeMine', 'placeTurret', 'placeDecoy',
   'boomerang', 'homing', 'laser', 'chain', 'meteor', 'blades',
-  'root', 'mark', 'burn', 'fear', 'execute', 'drain',
-  'blink', 'dash', 'summonArcher', 'sacrifice', 'rally', 'ward',
+  'root', 'mark', 'burn', 'fear', 'drain',
+  'blink', 'dash', 'summonArcher', 'rally', 'ward',
   'spread', 'snipe', 'refresh', 'split', 'absorb', 'swap',
-  'kingSlime', 'soulReap', 'abyssGate',
 ];
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
+
+// 장판 종류별 기본값. s: 장판을 만드는 쪽의 능력치 배율 (범위·지속시간)
+function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
+  return {
+    healingField: { r: 120 * s.area, life: 24, name: '치유 장판' },
+    shieldField: { r: 110 * s.area, life: 20, name: '보호 장판' },
+    burningField: { r: 95 * s.area, life: 6, name: '화상 장판' },
+    poison: { r: 60 * s.area, life: 4 * s.duration, tick: 0 },
+    vortex: { r: 160 * s.area, life: 1.5 * s.duration },
+    blades: { r: 55 * s.area, life: 5 * s.duration, spin: Math.random() * TAU, bladeTime: 0 },
+    slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0 },
+    ward: { r: 120 * s.area, life: 3 * s.duration },
+    meteor: { r: 100 * s.area, life: 0.8 },
+    abyss: { r: 150 * s.area, life: 2 * s.duration, tick: 0 },
+  }[kind];
+}
+
+/** 장판 개체를 만든다. 지점이 아닌 대상(t)이면 그 대상(o)을 따라다닌다. */
+function createZone(kind, source, o, t, s) {
+  const def = zoneDefinition(kind, s);
+  const follow = t && t.kind !== 'point' ? o : null;
+  const z = { kind, source, team: entityTeam(source), x: o.x, y: o.y, follow, directTarget: follow && !['meteor', 'blades'].includes(kind) ? t : null, max: def.life, rallyT: 0, dead: false, damage: entityStats(source).attackPower, baseSpeed: entityStats(source).moveSpeed, knockback: entityStats(source).knockback, ...def };
+  entitySlot(z, 'zone');
+  return z;
+}
+
+// 도감에 보여 줄 장판 종류
+const ZONE_KINDS = ['poison', 'vortex', 'blades', 'slime', 'ward', 'meteor', 'abyss', 'healingField', 'shieldField', 'burningField'];
 
 class Game {
   constructor(canvas) {
@@ -50,7 +74,7 @@ class Game {
   /* ------------------------------------------------------------------ */
   /* 상태 전환                                                           */
   /* ------------------------------------------------------------------ */
-  start() {
+  start(route = rollStageRoute()) {
     this.events.clear();
     this.player = new Player(0, 0);
     this.enemies = [];
@@ -67,11 +91,8 @@ class Game {
     this.time = 0;
     this.kills = 0;
     this.spawnAcc = 0;
-    this.stageIdx = 0;
-    this.stage = STAGES[0];
-    this.bossSpawned = false;
-    this.lootAt = rand(70, 200);   // 단계 안에서 보물 상자가 달아나기 시작하는 시각
-    this.nextSwarmAt = SWARM_INTERVAL;
+    this.route = route;      // 단계별 STAGES 번호
+    this.enterStage(0, false);
     this.pendingLevelUps = 0;
     this.barrelCd = 4;
     this.levelNotes = [];    // 다음 레벨업 창에 보여줄 성장 알림 (슬롯 추가)
@@ -79,16 +100,42 @@ class Game {
     this.shakeMag = 0;
     this.banner = null;
     this.cam = { x: 0, y: 0 };
+    this.editorLevelUpBack = null;
     this.state = 'playing';
     UI.hideOverlay();
     UI.showHud(true);
-    this.stageBanner();
     // 시작하자마자 화약통 몇 개가 눈에 보이게 둔다
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * TAU + rand(-0.4, 0.4), d = rand(200, 330);
       this.objects.push(new Placed('barrel', Math.cos(a) * d, Math.sin(a) * d, 1));
     }
   }
+
+  /** step 단계(0부터)의 스테이지를 시작한다. 시간·적 체력 상승은 단계마다 새로 센다 */
+  enterStage(step, announce = true) {
+    // 단계 보상과 플레이어 설치물은 유지하고 이전 전투의 압박은 정리한다.
+    if (step > 0) {
+      this.enemies = [];
+      this.hazards = [];
+      this.projectiles = this.projectiles.filter(p => entityTeam(p) !== 'hostile');
+      this.zones = this.zones.filter(z => entityTeam(z) !== 'hostile');
+    }
+    this.spawnAcc = 0;
+    this.stageStep = step;
+    this.stageIdx = this.route[step];
+    this.stage = STAGES[this.stageIdx];
+    this.stageStart = this.time;
+    this.bossSpawned = false;
+    this.clearT = null;
+    this.spawnedBosses = new Set();
+    this.lootAt = rand(70, 200);   // 단계 안에서 보물 상자가 달아나기 시작하는 시각
+    this.nextSwarmAt = SWARM_INTERVAL;
+    this.stageBanner();
+    if (announce) this.shake(8);
+  }
+
+  /** 단계 시작 후 흐른 시간 */
+  stageTime() { return this.time - this.stageStart; }
 
   toTitle() {
     this.state = 'title';
@@ -103,21 +150,34 @@ class Game {
   }
 
   resume() {
+    this.editorLevelUpBack = null;
     this.state = 'playing';
     UI.hideOverlay();
   }
 
   openEditor() {
-    if (this.state !== 'playing' && this.state !== 'paused') return;
+    if (!['playing', 'paused', 'levelup'].includes(this.state)) return;
+    this.editorLevelUpBack = this.state === 'levelup' ? UI.levelUpBack : null;
     this.state = 'editor';
+    UI.editorPage = 0;
     UI.showEditor(this);
   }
 
-  /** 레벨이 오를 때마다: 코스트 포인트 +1, 5레벨마다 슬롯 +1, 카드 선택 1회 */
+  closeEditor() {
+    if (this.state !== 'editor') return;
+    const back = this.editorLevelUpBack;
+    this.editorLevelUpBack = null;
+    if (back) {
+      this.state = 'levelup';
+      back();
+    } else this.resume();
+  }
+
+  /** 레벨이 오를 때마다: 코스트 포인트 +1, 카드 선택 1회 */
   onLevelUp(level) {
     const deck = this.player.deck;
     this.leveledUp = true;
-    if (deck.onLevelUp(level)) this.levelNotes.push(`슬롯 ${deck.slots.length}번 추가!`);
+    deck.onLevelUp();
     this.pendingLevelUps++;
   }
 
@@ -168,12 +228,14 @@ class Game {
         else if (Input.consume('KeyE') || Input.consume('Tab')) this.openEditor();
         break;
       case 'editor':
-        if (Input.consume('Escape') || Input.consume('KeyE') || Input.consume('Tab')) this.resume();
+        if (Input.consume('Escape') || Input.consume('KeyE') || Input.consume('Tab')) this.closeEditor();
+        else if (Input.consume('ArrowLeft')) UI.act('entity-page', { page: ((UI.editorPage || 0) + 6) % 7 });
+        else if (Input.consume('ArrowRight')) UI.act('entity-page', { page: ((UI.editorPage || 0) + 1) % 7 });
         break;
       case 'levelup':
+        if (Input.consume('KeyE') || Input.consume('Tab')) { this.openEditor(); break; }
         for (let i = 0; i < REWARD_CHOICES; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickLevelUp(i);
         if (Input.consume('KeyR')) UI.refreshLevelUp();
-        if (Input.consume('KeyE') || Input.consume('Tab')) UI.toggleLevelUpInventory();
         break;
       case 'gameover':
       case 'victory':
@@ -200,8 +262,8 @@ class Game {
 
     for (const a of this.allies) a.update(dt, this);
     for (const o of this.objects) if (!o.dead) {
-      if (o.directFrozen) { if ((o.life -= dt) <= 0) o.dead = true; }
-      else o.update(dt, this);
+      o.update(dt, this);
+      if (o.pulled) this.pullObject(o, dt);
     }
     this.updateZones(dt);
     this.updateStatuses(dt);
@@ -209,12 +271,15 @@ class Game {
     this.collideProjectiles();
     this.resolveProjectileEnds();
     this.updateHazards(dt);
+    this.resolveProjectileEnds();
+    this.collideStructures(dt);
     this.collidePlayer();
     if (this.state !== 'playing') return;   // 이번 프레임에 사망
 
     for (const pk of this.pickups) pk.update(dt, this);
     this.updateEffects(dt);
 
+    this.resolveEntityDeaths();
     compact(this.enemies);
     compact(this.projectiles);
     compact(this.hazards);
@@ -229,7 +294,15 @@ class Game {
     this.shakeMag = Math.max(0, this.shakeMag - dt * 30);
     if (this.banner && (this.banner.life -= dt) <= 0) this.banner = null;
 
-    if (this.time >= WIN_TIME) { this.endRun(true); return; }
+    if (this.clearT === null && this.bossSpawned && !this.enemies.some((e) => e.boss && !e.dead)) {
+      this.clearT = CLEAR_DELAY;
+      const last = this.stageStep === this.route.length - 1;
+      this.showBanner(last ? '모든 단계 돌파!' : `${this.stageStep + 1}단계 돌파!`, '#ffd166', last ? undefined : '곧 다음 단계가 시작됩니다');
+    }
+    if (this.clearT !== null && (this.clearT -= dt) <= 0) {
+      if (this.stageStep === this.route.length - 1) { this.endRun(true); return; }
+      this.enterStage(this.stageStep + 1);
+    }
     if (this.pendingLevelUps > 0) this.openLevelUp();
   }
 
@@ -238,7 +311,7 @@ class Game {
   /* ------------------------------------------------------------------ */
   spawnRing() { return Math.hypot(this.w, this.h) / 2 + 60; }
 
-  hpMul() { return 1 + (this.time / 60) * 0.2; }
+  hpMul() { return this.stage.hp + (this.stageTime() / 60) * 0.2; }
 
   spawnPoint(angle = Math.random() * TAU, extra = rand(0, 80)) {
     const r = this.spawnRing() + extra;
@@ -259,23 +332,15 @@ class Game {
     }
   }
 
-  updateStage() {
-    const idx = stageIndexAt(this.time);
-    if (idx === this.stageIdx) return;
-    this.stageIdx = idx;
-    this.stage = STAGES[idx];
-    this.bossSpawned = false;
-    this.lootAt = rand(70, 200);
-    this.stageBanner();
-    this.shake(8);
-  }
-
   updateSpawns(dt) {
-    this.updateStage();
     const st = this.stage;
-    const tRel = this.time - this.stageIdx * STAGE_LEN;
+    const tRel = this.stageTime();
     const k = clamp(tRel / STAGE_LEN, 0, 1);
-    const rate = st.rate[0] + (st.rate[1] - st.rate[0]) * k;   // 초당 스폰 수
+    // rate는 무리 수가 아니라 실제 개체 수: 무리 출현 비율을 유지하며 보정한다.
+    const pool = st.pool.filter(p => tRel >= p[2]);
+    const meanPack = pool.reduce((sum, p) => sum + p[1] * p[3], 0) / pool.reduce((sum, p) => sum + p[1], 0);
+    const pressure = this.bossSpawned ? 0.65 : 1;
+    const rate = (st.rate[0] + (st.rate[1] - st.rate[0]) * k) / meanPack * pressure;
     this.spawnAcc += rate * dt;
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
@@ -285,10 +350,10 @@ class Game {
       else this.spawnEnemy(type);
     }
 
-    if (this.time >= this.nextSwarmAt) {
+    if (tRel >= this.nextSwarmAt) {
       this.nextSwarmAt += SWARM_INTERVAL;
-      const n = 20 + Math.floor(this.time / 60) * 4;
-      for (let i = 0; i < n; i++) this.spawnEnemy(st.swarm, this.spawnPoint((i / n) * TAU, 0));
+      const n = 12 + st.tier * 8 + Math.floor(tRel / 60) * 4;
+      for (let i = 0; i < n && this.enemies.length < MAX_ENEMIES; i++) this.spawnEnemy(st.swarm, this.spawnPoint((i / n) * TAU, 0));
       this.showBanner('포위 공격!', '#f2a541');
     }
 
@@ -300,16 +365,20 @@ class Game {
       this.showBanner('달아나는 보물 상자!', '#ffd166', `${ENEMY_TYPES.chestling.escape}초 안에 잡으면 보상`);
     }
 
-    if (!this.bossSpawned && tRel >= st.bossAt) {
-      this.bossSpawned = true;
-      const b = this.spawnEnemy(st.boss);
-      this.showBanner(`⚠ ${b.def.name} 출현`, '#ff3b6b', b.traits.map((t) => TRAITS[t].name).join(' · ') || undefined);
+    for (const [index, encounter] of stageBosses(st).entries()) {
+      if (this.spawnedBosses.has(index) || tRel < encounter.at) continue;
+      const b = this.spawnEnemy(encounter.type);
+      if (!b) continue;
+      this.spawnedBosses.add(index);
+      this.bossSpawned = this.spawnedBosses.size === stageBosses(st).length;
+      this.showBanner(`⚠ ${b.def.name} 출현`, '#ff3b6b', b.def.bossHint || b.traits.map((t) => TRAITS[t].name).join(' · ') || undefined);
     }
   }
 
   /** 보물 상자가 도망쳤다 */
   lootEscaped(e) {
     e.dead = true;
+    e.slot.deathDone = true;
     this.circleFx(e.x, e.y, 40, '#ffd166', { life: 0.5, style: 'wave' });
     this.addText(e.x, e.y - 30, '도망쳤다…', '#ffd166');
   }
@@ -357,27 +426,65 @@ class Game {
   }
 
   collideProjectiles() {
-    const near = this._near;
-    for (const pr of this.projectiles) {
-      if (pr.dead) continue;
-      this.hash.query(pr.x, pr.y, pr.radius + MAX_ENEMY_RADIUS, near);
+    for (const pr of this.projectiles) this.collideShot(pr);
+  }
+
+  collideEnemyPoints(source, hit, points, consume, projectileEvent = false) {
+    for (const point of points) {
+      if (hit.repeatCd != null) point.hitTimes ??= new WeakMap();
+      const near = this.hash.query(point.x, point.y, point.radius + MAX_ENEMY_RADIUS, this._near);
       for (const e of near) {
-        if (e.dead || pr.hitSet.has(e)) continue;
-        const rr = pr.radius + e.radius;
-        if (dist2(pr.x, pr.y, e.x, e.y) > rr * rr) continue;
-        pr.hitSet.add(e);
-        this.damageEnemy(e, pr.damage, pr.vx, pr.vy, pr.knockback);
-        this.events.emit('projectileHit', { projectile: pr, enemy: e });
-        if (--pr.pierce < 0) { pr.dead = true; break; }
+        if (!entityCanHit(source, e, hit) || dist2(point.x, point.y, e.x, e.y) > (point.radius + e.radius) ** 2) continue;
+        if (hit.repeatCd != null ? (point.hitTimes.get(e) || 0) > hit.time : source.hitSet.has(e)) continue;
+        this.damageEnemy(e, hit.damage, projectileEvent ? source.vx : e.x - point.x || 1, projectileEvent ? source.vy : e.y - point.y, hit.knockback);
+        if (hit.repeatCd != null) point.hitTimes.set(e, hit.time + hit.repeatCd);
+        if (projectileEvent) this.events.emit('projectileHit', { projectile: source, enemy: e });
+        if (consume) consume(e);
+        if (source.dead) return;
       }
-      if (pr.dead || pr.blastOnEnd) continue;
-      // 내 투사체는 화약통에도 맞는다 (관통 1 소모)
-      for (const o of this.objects) {
-        if (o.kind !== 'barrel' || o.dead || o.fuse > 0 || pr.hitSet.has(o)) continue;
-        if (dist2(pr.x, pr.y, o.x, o.y) > (pr.radius + o.radius) ** 2) continue;
-        pr.hitSet.add(o);
-        this.igniteBarrel(o);
-        if (--pr.pierce < 0) { pr.dead = true; break; }
+    }
+  }
+
+  collideShot(s) {
+    if (s.dead) return;
+    const hit = entitySlot(s, 'shot').effect('entityHit');
+    if (!hit) return;
+    if (!s._hitEffect || s._hitEffect.pierce !== hit.pierce) s.pierce = hit.pierce ?? Infinity;
+    s._hitEffect = hit;
+    s.hitSet ||= new Set();
+    const radius = s.radius ?? s.r;
+    const damage = hit.damage;
+    const consume = target => { s.hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
+    this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
+    if (s.dead) return;
+    for (const o of [...this.objects, ...(this.allies || [])]) {
+      if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
+      if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
+      this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
+      consume(o);
+      if (s.dead) return;
+    }
+    const p = this.player;
+    if (entityCanHit(s, p, hit) && !s.hitSet.has(p) && dist2(s.x, s.y, p.x, p.y) < (radius + p.radius * 0.8) ** 2) {
+      p.takeDamage(damage, this); consume(p); this.burst(s.x, s.y, s.color, 5);
+    }
+  }
+
+  collideStructures(dt) {
+    for (const o of [...this.objects, ...(this.allies || [])]) {
+      if (o.dead) continue;
+      o.contactCd = Math.max(0, (o.contactCd || 0) - dt);
+      if (o.contactCd > 0) continue;
+      const near = this.hash.query(o.x, o.y, o.radius + MAX_ENEMY_RADIUS, this._near);
+      let damage = 0;
+      for (const e of near) {
+        if (e.dead || e.directFrozen || e.freezeT > 0 || e.fearT > 0 || !entitySlot(e, 'enemy').has('entityHit')) continue;
+        if (!entityCanHit(e, o, e.slot.effect('entityHit'))) continue;
+        if (dist2(o.x, o.y, e.x, e.y) < (o.radius + e.radius) ** 2) damage += Math.max(0, e.slot.effect('entityHit').damage);
+      }
+      if (damage > 0) {
+        o.contactCd = 0.5;
+        this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, 0, null, false);
       }
     }
   }
@@ -386,10 +493,11 @@ class Game {
     const p = this.player;
     const near = this.hash.query(p.x, p.y, p.radius + MAX_ENEMY_RADIUS, this._near);
     for (const e of near) {
-      if (e.dead || e.damage <= 0) continue;
+      if (e.dead || !entitySlot(e, 'enemy').has('entityHit')) continue;
+      if (!entityCanHit(e, p, e.slot.effect('entityHit'))) continue;
       const rr = p.radius + e.radius;
       if (dist2(p.x, p.y, e.x, e.y) < rr * rr) {
-        p.takeDamage(e.damage, this);
+        p.takeDamage(e.slot.effect('entityHit').damage, this);
         break;
       }
     }
@@ -403,11 +511,13 @@ class Game {
    * 대상: {kind:'self'} | {kind:'point', x, y} | {kind, [TARGET_KINDS[kind].key]: 개체} (적·설치물·아군·장판·탄환·보석)
    * 위치 효과는 at(t) 가 돌려주는 객체(x, y 를 가진 살아 있는 개체)를 받는다.
    */
-  cardEnv() {
+  cardEnv(owner = this.player) {
     const g = this, p = this.player;
     const obj = (t) => g.targetObj(t);
-    const d2 = (t) => { const o = obj(t); return dist2(o.x, o.y, p.x, p.y); };
+    const d2 = (t) => { const o = obj(t); return dist2(o.x, o.y, owner.x, owner.y); };
     return {
+      game: g, owner,
+      playerTarget: () => ({ ...g.redirectedPlayerTarget(owner), playerSelection: true }),
       at: obj,
       alive: (t) => !obj(t).dead,
       features: (t) => targetFeatures(t, obj(t)),
@@ -448,14 +558,14 @@ class Game {
       byDist: (ts) => ts.slice().sort((x, y) => d2(x) - d2(y)),
       /** 바라보는 방향(+offset) 기준 ±half 라디안 안에 있는가 */
       inCone: (t, half, offset = 0) => {
-        const o = obj(t), f = Math.atan2(p.facing.y, p.facing.x) + offset;
-        return Math.abs(angDiff(Math.atan2(o.y - p.y, o.x - p.x), f)) <= half;
+        const o = obj(t), f = (owner.facing ? Math.atan2(owner.facing.y, owner.facing.x) : owner.ang ?? (Number.isFinite(owner.vx) ? Math.atan2(owner.vy, owner.vx) : owner.flip ? Math.PI : 0)) + offset;
+        return Math.abs(angDiff(Math.atan2(o.y - owner.y, o.x - owner.x), f)) <= half;
       },
       /** e 주변 r 안의 다른 적 수 */
       /** e 가 나에게 등을 보이고 있는가 (바라보는 방향이 나와 90° 넘게 벌어짐) */
       facingAway: (e) => Math.cos(angDiff(Math.atan2(p.y - e.y, p.x - e.x), e.ang)) < 0,
       crowd: (e, r) => g.hash.query(e.x, e.y, r, []).filter((o) => o !== e && !o.dead && dist2(o.x, o.y, e.x, e.y) <= r * r).length,
-      enemyNear: (t, r) => { const o = obj(t); return g.nearestEnemies(o.x, o.y, 1, r).length > 0; },
+      enemyNear: (t, r) => { const o = obj(t); return g.nearestEnemies(o.x, o.y, Infinity, r).some(e => e !== o); },
       lifeRatio: (t) => { const o = obj(t); return o.max ? o.life / o.max : 1; },
       hpRatio: () => p.hp / p.stats.maxHp,
       recentlyHurt: () => p.hurtT > 0,
@@ -466,8 +576,13 @@ class Game {
       buff: (kind, t) => g.castBuff(kind, t),
       /** 지금 실행하는 행동의 피해 배율 (「일점 집중」·「연타」) */
       setMul: (m) => { p.cardMul = m; },
+      entityCount: () => g.objects.length + g.zones.length + g.allies.length + g.enemies.length + g.hazards.length + g.projectiles.length,
       // 대상에서 효과로 이어지는 행동들은 Game 의 같은 이름 메서드로 넘긴다
-      ...Object.fromEntries(CARD_EFFECTS.map((name) => [name, (...args) => g[name](...args)])),
+      ...Object.fromEntries(CARD_EFFECTS.map((name) => [name, (...args) => {
+        const previous = g.actionActor;
+        g.actionActor = owner;
+        try { return g[name](...args); } finally { g.actionActor = previous; }
+      }])),
     };
   }
 
@@ -478,19 +593,48 @@ class Game {
   }
 
   allTargets() {
-    const wrap = (list, kind, key) => list.filter(o => !o.dead).map(o => ({ kind, [key]: o }));
+    const wrap = (list, kind, key) => (list || []).filter(o => !o.dead).map(o => ({ kind, [key]: o }));
     return [
       { kind: 'self' }, ...wrap(this.enemies, 'enemy', 'e'),
       ...wrap(this.objects, 'object', 'o'), ...wrap(this.allies, 'ally', 'a'),
-      ...wrap(this.zones, 'zone', 'z'), ...wrap([...this.projectiles, ...this.hazards], 'shot', 's'),
-      ...this.pickups.filter(o => !o.dead).map(g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g })),
+      ...wrap(this.zones, 'zone', 'z'), ...wrap([...(this.projectiles || []), ...(this.hazards || [])], 'shot', 's'),
+      ...(this.pickups || []).filter(o => !o.dead).map(g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g })),
     ];
+  }
+
+  actionValue(id, field, owner = this.actionActor || this.player) {
+    const card = this.actionCard && cardBaseIdOfCard(this.actionCard) === id ? this.actionCard : CARDS[id];
+    const reference = card.effect?.statRatios?.[field] ?? card.statRatios?.[field];
+    return reference ? entityStats(owner)[reference.stat] * reference.ratio
+      : card.effect?.[field] ?? card.fixedValues?.[field] ?? (field === 'speed' ? card.projectileSpeed || 0 : 0);
+  }
+
+  actionDamage(id, field = 'damage') {
+    const actor = this.actionActor || this.player;
+    const multiplier = actor === this.player ? this.player.stats.might * this.player.cardMul : 1;
+    return this.actionValue(id, field, actor) * multiplier;
+  }
+
+  scaleCreatedEntity(owner, id) {
+    const actor = this.actionActor || this.player;
+    const stats = entityStats(owner);
+    for (const [field, stat] of [['summonHp', 'maxHp'], ['summonAttack', 'attackPower'], ['summonSpeed', 'moveSpeed']]) {
+      if (!CARDS[id].statRatios?.[field]) continue;
+      stats[stat] = this.actionValue(id, field, actor);
+      if (stat === 'maxHp') owner.hp = stats.maxHp;
+    }
+    return owner;
   }
 
   healTarget(o, n) {
     if (o.dead || !Number.isFinite(o.hp)) return;
     if (o === this.player) o.heal(n);
-    else this.healEnemy(o, n);
+    else if (o instanceof Enemy) this.healEnemy(o, n);
+    else {
+      const before = o.hp;
+      o.hp = Math.min(o.maxHp, o.hp + n);
+      if (o.hp > before) this.addText(o.x, o.y - o.radius, `+${Math.round(o.hp - before)}`, '#7dff9a');
+    }
   }
 
   consumeTarget(o) {
@@ -499,37 +643,71 @@ class Game {
     else o.dead = true;
   }
 
-  damageTarget(t, damage, knock = 0, elem = null) {
+  damageTarget(t, damage, knock = 0, elem = null, scaleByCard = true) {
     const o = this.targetObj(t), p = this.player;
     if (o.dead) return;
-    const amount = damage * p.cardMul;
+    if (this.actionHitTeamRule && !entityCanHit(this.actionActor || p, o, { hitTeamRule: this.actionHitTeamRule })) return;
+    const amount = damage * (scaleByCard ? p.cardMul : 1);
     if (t.kind === 'enemy') this.damageEnemy(o, amount, o.x - p.x || 1, o.y - p.y, knock, '#ffffff', elem);
     else if (t.kind === 'self') p.takeDamage(amount, this);
+    else if (Number.isFinite(o.hp) && Number.isFinite(o.maxHp)) {
+      let taken = Math.max(0, amount * markMultiplier(o));
+      if (taken > 0) taken = Math.max(1, taken - (o.cardArmor || 0));
+      const absorbed = Math.min(o.cardShield || 0, taken);
+      o.cardShield = Math.max(0, (o.cardShield || 0) - absorbed);
+      taken -= absorbed;
+      o.hp = Math.max(0, o.hp - taken);
+      if (taken > 0) this.addText(o.x, o.y - o.radius, Math.round(taken), '#ffffff');
+      if (o.hp === 0) {
+        o.dead = true; this.burst(o.x, o.y, '#c9d4ea', 10);
+      }
+    }
     else if (t.kind !== 'point') this.shatter(o);
+  }
+
+  // 제어는 지속시간을 합산하고 표식·화상은 중첩마다 수명을 유지한다.
+  addDebuff(o, key, duration, dps = 0, direct = false) {
+    const resistance = o.slot?.effect('entityResistance');
+    if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
+    if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
+    const timers = direct ? (o.directStates ||= {}) : o;
+    const timer = direct ? key : key + 'T';
+    if (key === 'mark' || key === 'burn') {
+      const stackKey = key === 'mark' ? 'markStacks' : direct ? 'directBurnStacks' : 'burnStacks';
+      if (!o[stackKey]) {
+        o[stackKey] = [];
+        const previous = key === 'mark' ? Math.max(o.markT || 0, o.directStates?.mark || 0) : timers[timer] || 0;
+        if (previous > 0) o[stackKey].push({ time: previous, dps: key === 'burn' ? (direct ? 9 : o.burnDps || 0) : 0 });
+      }
+      o[stackKey].push({ time: duration, dps });
+      timers[timer] = Math.max(timers[timer] || 0, duration);
+      if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
+      if (key === 'burn' && !direct) o.burnDps = o.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+    } else timers[timer] = Math.max(0, timers[timer] || 0) + duration;
   }
 
   directAction(id, t) {
     const o = this.targetObj(t), p = this.player;
     if (o.dead) return;
-    const hits = { bolt: 20, slash: 24, explode: 26, frost: 4, shockwave: 12, scatter: 60, lance: 16, boomerang: 16, homing: 60, laser: 16, chain: 20, snipe: 100, drain: 60, soulReap: 20 };
-    const status = { frost: ['freeze', 1], root: ['root', 1.8], fear: ['fear', 2], mark: ['mark', 6], burn: ['burn', 3] };
+    const actor = this.actionActor || p, settings = entityActionConfig(actor, id, this.actionCard);
+    if (id === 'snipe' && settings) {
+      if (settings.melee) actor.swing = 0.15;
+      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      if (actor.dead) return;
+      if (t.kind === 'enemy') this.damageEnemy(o, damage, o.x - actor.x || 1, o.y - actor.y, settings.knockback, undefined, settings.elem);
+      else this.damageTarget(t, damage, settings.knockback, settings.elem, false);
+      return;
+    }
+    const hits = { bolt: 20, slash: 24, explode: 26, frost: 4, shockwave: 12, scatter: 60, lance: 16, boomerang: 16, homing: 60, laser: 16, chain: 20, snipe: 100, drain: 60 };
+    const status = { frost: ['freeze', 0.9], root: ['root', 1.6], fear: ['fear', 1.8], mark: ['mark', 6], burn: ['burn', 3] };
     if (status[id]) {
       const [key, dur] = status[id];
-      if (key !== 'fear' || !o.boss) {
-        o.directStates ||= {};
-        o.directStates[key] = Math.max(o.directStates[key] || 0, dur * (key === 'freeze' && o.boss ? BOSS_FREEZE : 1));
-        if (key === 'mark' && (o === p || t.kind === 'enemy')) o.markT = Math.max(o.markT || 0, dur);
-      }
+      this.addDebuff(o, key, dur * p.stats.duration, key === 'burn' ? this.actionDamage('burn') : 0, true);
     }
     if (id === 'spread') {
-      for (const k of Object.keys(o.directStates || {})) o.directStates[k] *= 1.5;
-      if (o.markT > 0) o.markT *= 1.5;
-    } else if (id === 'execute') {
-      if (t.kind === 'enemy' && !o.boss && o.hp <= o.maxHp * 0.35) this.consumeTarget(o);
-      else this.damageTarget(t, 50, 60);
+      this.spread(t);
     } else if (hits[id]) {
-      if (id !== 'frost' || Number.isFinite(o.hp)) this.damageTarget(t, hits[id], id === 'shockwave' ? 520 : 80, id === 'frost' ? 'frost' : null);
-      if ((id === 'drain' || id === 'soulReap') && t.kind !== 'self') p.heal(id === 'drain' ? 6 : 1);
+      if (id !== 'frost' || Number.isFinite(o.hp)) this.damageTarget(t, this.actionValue(id, 'damage') * p.stats.might, this.actionValue(id, 'knockback'), id === 'frost' ? 'frost' : null);
     }
     const color = id === 'frost' ? '#9fd8ff' : id === 'burn' ? '#ff7b2e' : '#8be9ff';
     this.circleFx(o.x, o.y, (o.r || o.radius || 12) + 12, color, { life: 0.3, follow: o, style: 'wave' });
@@ -549,11 +727,12 @@ class Game {
     for (const key of ['radius', 'r']) scale(key, active('amplify') ? 1.4 : 1);
     // 적은 speed를, 아군·탄환·아이템은 이동 계산의 cardMove를 사용한다.
     if (o instanceof Enemy) scale('speed', active('haste') ? 1.4 : 1);
-    for (const key of ['damage', 'xp', 'value']) scale(key, key === 'damage' ? (active('rage') ? 1.5 : 1) : (active('harvest') ? 1.5 : 1));
-    o.cardMove = active('haste') ? 1.4 : 1;
+    scale('damage', active('rage') ? 1.5 : 1);
+    if (o instanceof Pickup && o.kind === 'gem') scale('value', active('rage') ? 1.5 : 1);
+    o.cardMove = !(o instanceof Enemy) && active('haste') ? 1.4 : 1;
     o.cardPower = active('rage') ? 1.5 : 1;
     o.cardRate = active('focus') ? 1 / 0.65 : 1;
-    o.cardArmor = active('armor') ? 5 : 0;
+    o.cardArmor = active('armor') ? this.actionValue('armor', 'armor', o) : 0;
   }
 
   updateTargetBuffs(dt) {
@@ -570,10 +749,30 @@ class Game {
         o.y += dy / d * 120 * Math.min(dt, states.fear);
         if (o.follow) o.follow = null;
       }
-      if (states.burn > 0) this.damageTarget(t, 10 * Math.min(dt, states.burn), 0, 'fire');
+      if (o.directBurnStacks) {
+        const damage = o.directBurnStacks.reduce((sum, s) => sum + s.dps * Math.min(dt, s.time), 0);
+        for (const stack of o.directBurnStacks) stack.time = Math.max(0, stack.time - dt);
+        o.directBurnStacks = o.directBurnStacks.filter(s => s.time > 1e-9);
+        o.directBurnPending = (o.directBurnPending || 0) + damage;
+        o.directBurnTick = (o.directBurnTick || 0) + dt;
+        if (o.directBurnPending > 0 && (o.directBurnTick >= 0.5 || !o.directBurnStacks.length)) {
+          this.damageTarget(t, o.directBurnPending, 0, 'fire', false);
+          o.directBurnPending = 0; o.directBurnTick = 0;
+        }
+      } else if (states.burn > 0) this.damageTarget(t, 9 * Math.min(dt, states.burn), 0, 'fire');
+      if (!(o instanceof Enemy) && o.burnStacks) {
+        for (const stack of o.burnStacks) stack.time = Math.max(0, stack.time - dt);
+        o.burnStacks = o.burnStacks.filter(s => s.time > 1e-9);
+        o.burnT = o.burnStacks.reduce((max, s) => Math.max(max, s.time), 0);
+        o.burnDps = o.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+      }
+      if (o.markStacks) {
+        for (const stack of o.markStacks) stack.time = Math.max(0, stack.time - dt);
+        o.markStacks = o.markStacks.filter(s => s.time > 1e-9);
+        o.markT = o.markStacks.reduce((max, s) => Math.max(max, s.time), 0);
+      }
       for (const k of Object.keys(states)) states[k] = Math.max(0, states[k] - dt);
       if (!o.cardBuffs) continue;
-      if (o.cardBuffs.regen > 0) this.healTarget(o, 2 * Math.min(dt, o.cardBuffs.regen));
       for (const k of Object.keys(o.cardBuffs)) o.cardBuffs[k] = Math.max(0, o.cardBuffs[k] - dt);
       if (!(o.cardBuffs.shield > 0)) o.cardShield = 0;
       this.syncTargetBuffs(o);
@@ -619,18 +818,13 @@ class Game {
       const rr = w + e.radius;
       if (dist2(e.x, e.y, x0 + dx * t, y0 + dy * t) <= rr * rr) this.damageEnemy(e, dmg, dx, dy, knock);
     }
-    for (const o of this.objects) {
-      if (o.kind !== 'barrel' || o.dead) continue;
-      const t = clamp(((o.x - x0) * dx + (o.y - y0) * dy) / len2, 0, 1);
-      if (dist2(o.x, o.y, x0 + dx * t, y0 + dy * t) <= (w + o.radius) ** 2) this.igniteBarrel(o);
-    }
+
   }
 
   /** 폭발 한 번 (범위 배율 적용, 연출 포함) */
-  blast(x, y, r0, dmg, color, elem) {
+  blast(x, y, r0, dmg, color, elem, scaleByPower = true, knockback = 260) {
     const p = this.player, r = r0 * p.stats.area;
-    this.hitCircle(x, y, r, dmg * p.power, 260, null, elem);
-    this.igniteBarrels(x, y, r);
+    this.hitCircle(x, y, r, dmg * (scaleByPower ? p.power : 1), knockback, null, elem);
     this.circleFx(x, y, r, color, { life: 0.35 });
     this.burst(x, y, color, 14);
     this.shake(4);
@@ -638,101 +832,115 @@ class Game {
 
   shoot(opts) {
     const p = this.player;
-    return this.spawnProjectile({ x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts });
+    return this.spawnProjectile({ source: this.actionActor || p, x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts });
   }
 
   /* ---------------- 기본 ---------------- */
   bolt(t) {
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'bolt', this.actionCard);
+    if (settings) {
+      if (settings.blockFear && hasTargetState(actor, 'fear')) return;
+      const target = this.targetObj(t), base = Math.atan2(target.y - actor.y, target.x - actor.x);
+      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      for (let i = 0; i < (settings.n ?? 1); i++) {
+        const a = base + (settings.ring ? i / settings.n * TAU : (i - ((settings.n ?? 1) - 1) / 2) * 0.2);
+        if (settings.hazard) {
+          if (this.hazards.length >= MAX_HAZARDS) break;
+          const h = { kind: settings.projectileKind, source: actor, team: entityTeam(actor), x: actor.x, y: actor.y,
+            vx: Math.cos(a) * settings.speed, vy: Math.sin(a) * settings.speed,
+            r: settings.radius, damage, life: settings.life, max: settings.life, color: actor.color, dead: false };
+          entitySlot(h, 'shot'); this.hazards.push(h);
+        } else this.shoot({ x: actor.x, y: actor.y + (settings.offsetY ?? 0), vx: Math.cos(a) * settings.speed, vy: Math.sin(a) * settings.speed,
+          radius: settings.radius, damage, knockback: settings.knockback, pierce: settings.pierce,
+          life: settings.life, shape: settings.shape, color: settings.color || '#8be9ff' });
+      }
+      return;
+    }
     const p = this.player, a = this.aimAt(t);
-    this.shoot({ vx: Math.cos(a) * 420, vy: Math.sin(a) * 420, radius: 5 * p.stats.area, damage: 20 * p.power, pierce: 1, life: 1.4, color: p.has('rage') ? '#ff8f8f' : '#8be9ff' });
+    this.shoot({ vx: Math.cos(a) * this.actionValue('bolt', 'speed'), vy: Math.sin(a) * this.actionValue('bolt', 'speed'), radius: 5 * p.stats.area, damage: this.actionDamage('bolt'), knockback: this.actionValue('bolt', 'knockback'), pierce: 1, life: 1.4, color: p.has('rage') ? '#ff8f8f' : '#8be9ff' });
   }
 
   slash(o) {
     const p = this.player, r = 70 * p.stats.area;
-    this.hitCircle(o.x, o.y, r, 24 * p.power, 80);
-    this.igniteBarrels(o.x, o.y, r);
+    this.hitCircle(o.x, o.y, r, this.actionDamage('slash'), this.actionValue('slash', 'knockback'));
     this.addFx({ kind: 'slash', x: o.x, y: o.y, r, ang: rand(-0.6, 0.6), life: 0.2 });
   }
 
-  explode(o) { this.blast(o.x, o.y, 100, 26, '#ff8a3d'); }
+  explode(o) {
+    this.blast(o.x, o.y, 100, this.actionDamage('explode'), '#ff8a3d', null, false, this.actionValue('explode', 'knockback'));
+  }
 
   frost(o, t) {
-    const p = this.player, r = 70 * p.stats.area, dur = 1 * p.stats.duration;
+    const p = this.player, r = 70 * p.stats.area, dur = 0.9 * p.stats.duration;
     this.carryStatus(t, { freezeT: dur });
-    if (t?.kind === 'shot') o.freezeT = Math.max(o.freezeT || 0, dur);   // 탄은 그 자리에 멈춘다
-    const hot = [];   // 불타는 적 (화상 · 화염 속성)
-    this.hitCircle(o.x, o.y, r, 4 * p.power, 0, (e) => {
-      e.freezeT = Math.max(e.freezeT, e.boss ? dur * BOSS_FREEZE : dur);
-      if (e.burnT > 0 || e.traits.includes('fire')) hot.push(e);
-    }, 'frost');
+    if (t?.kind === 'shot') this.addDebuff(o, 'freeze', dur);   // 탄은 그 자리에 멈춘다
+    this.hitCircle(o.x, o.y, r, this.actionDamage('frost'), 0, (e) => { this.addDebuff(e, 'freeze', dur); }, 'frost');
     this.circleFx(o.x, o.y, r, '#9fd8ff', { life: 0.4, fill: 0.4 });
     this.burst(o.x, o.y, '#cfeeff', 8);
-    // 원소 반응 · 증기 폭발: 얼음이 불에 닿으면 터지며 불을 끈다
-    for (const e of hot.slice(0, 6)) this.steamBurst(e);
-  }
-
-  steamBurst(e) {
-    const p = this.player, r = 55 * p.stats.area;
-    e.burnT = 0; e.burnDps = 0;
-    this.hitCircle(e.x, e.y, r, 14 * p.power, 240);
-    this.circleFx(e.x, e.y, r, '#e8ecf5', { life: 0.45, style: 'wave', spark: '#ffffff' });
-    this.burst(e.x, e.y - e.radius, '#dfe6f2', 6);
-    this.addText(e.x, e.y - e.radius - 16, '증기 폭발', '#e8ecf5');
-  }
-
-  /** 원소 반응 · 인화: (x, y) 반경 r 에 닿는 독 장판이 불꽃 폭발로 바뀐다. 겹친 장판으로 번진다. */
-  ignitePoison(x, y, r) {
-    const p = this.player;
-    for (const z of this.zones) {
-      if (z.dead || z.kind !== 'poison' || dist2(z.x, z.y, x, y) > (z.r + r) ** 2) continue;
-      z.dead = true;
-      const R = z.r * 1.25;
-      this.hitCircle(z.x, z.y, R, 36 * p.power, 220, (e) => {
-        if (e.affinityOf('fire') > 0) { e.burnT = Math.max(e.burnT, 3 * p.stats.duration); e.burnDps = Math.max(e.burnDps, 8 * p.power); }
-      });
-      this.circleFx(z.x, z.y, R, '#ff7b2e', { life: 0.45, spark: '#b6ff8c' });
-      this.burst(z.x, z.y, '#ffb347', 14);
-      this.addText(z.x, z.y - 20, '인화!', '#ffb347');
-      this.shake(5);
-      this.igniteBarrels(z.x, z.y, R);
-      this.ignitePoison(z.x, z.y, R * 0.5);
-    }
   }
 
   shockwave(o) {
     const p = this.player, r = 110 * p.stats.area;
-    this.hitCircle(o.x, o.y, r, 12 * p.power, 520);
+    this.hitCircle(o.x, o.y, r, this.actionDamage('shockwave'), this.actionValue('shockwave', 'knockback'));
     this.circleFx(o.x, o.y, r, '#e8ecf5', { life: 0.3, style: 'wave' });
   }
 
   poison(o, t) { this.addZone('poison', o, t); }
-  vortex(o, t) { this.addZone('vortex', o, t); }
+  vortex(o, t, dt) {
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'vortex', this.actionCard);
+    if (!settings?.continuous || dt == null) return this.addZone('vortex', o, t);
+    const speed = entityStats(actor).knockback * settings.speedRatio;
+    if (settings.attached) {
+      const target = o === actor ? actor.directTarget && this.targetObj(actor.directTarget) : o;
+      if (!target || target.dead) { actor.dead = true; return; }
+      const p = this.player;
+      if (target === p) return;
+      const dx = p.x - target.x || 1, dy = p.y - target.y, d = Math.hypot(dx, dy);
+      const step = Math.min(Math.max(0, d - 20), speed * dt);
+      target.x += dx / d * step; target.y += dy / d * step;
+      if (target.follow) target.follow = null;
+      return;
+    }
+    const radius = entityStats(actor).range;
+    const near = this.hash.query(o.x, o.y, radius, this._near);
+    for (const e of near) {
+      if (e.dead || e === actor.follow || e.rootT > 0 || e.freezeT > 0) continue;
+      const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy);
+      if (d > radius || d < 10) continue;
+      const step = Math.min(d - 10, speed * dt * e.knockResist);
+      e.x += dx / d * step; e.y += dy / d * step;
+    }
+  }
 
   summonAlly(kind, o) {
-    const live = this.allies.filter((a) => !a.dead);
-    if (live.length >= MAX_ALLIES) live[0].dead = true;
     const a = new Ally(kind, o.x + rand(-12, 12), o.y + rand(-12, 12));
+    if (kind !== 'clone') this.scaleCreatedEntity(a, kind === 'archer' ? 'archer' : 'summon');
     this.allies.push(a);
     this.circleFx(a.x, a.y, 30, '#c9d4ea', { life: 0.35, style: 'wave' });
     this.burst(a.x, a.y, '#c9d4ea', 10);
     return a;
   }
 
-  summonKnight(o) { this.summonAlly('knight', o); }
+  summonKnight(o, mode) {
+    const settings = entityActionConfig(this.actionActor, 'summon', this.actionCard);
+    if (mode === 'reward' && settings?.reward) return this.summonEntityReward(o, settings.reward);
+    if (entityActionConfig(this.actionActor, 'summon', this.actionCard)) return this.configuredSummon(o, entityActionConfig(this.actionActor, 'summon', this.actionCard));
+    this.summonAlly('knight', o);
+  }
 
   castBuff(kind, t = { kind: 'self' }) {
     const p = this.player;
     const o = this.targetObj(t);
     if (o.dead) return;
     if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
-    else if (kind === 'heal') this.healTarget(o, 15);
+    else if (kind === 'heal') this.healTarget(o, this.actionValue('heal', 'heal', o));
     else if (kind === 'prolong') {
       const key = Number.isFinite(o.life) ? 'life' : 'escT';
       o[key] *= 1.5;
     } else {
       o.cardBuffs ||= {};
       o.cardBuffs[kind] = Math.max(o.cardBuffs[kind] || 0, (BUFFS[kind]?.dur ?? 6) * p.stats.duration);
-      if (kind === 'shield') o.cardShield = Math.max(o.cardShield || 0, 25);
+      if (kind === 'shield') o.cardShield = Math.max(o.cardShield || 0, this.actionValue('shield', 'shield', o));
       this.syncTargetBuffs(o);
     }
     const b = BUFFS[kind];
@@ -742,36 +950,65 @@ class Game {
     else if (kind === 'shield') this.addText(o.x, o.y - 44, '보호막', color);
   }
 
-  /** 치유의 빛: 반경 안의 모두(나 포함)를 치유한다. */
-  mend(o) {
-    this.healTarget(o, 20);
-    this.circleFx(o.x, o.y, (o.radius || 12) + 12, '#7dff9a', { life: 0.4, fill: 0.45, spark: '#eaffef' });
-  }
 
   /* ---------------- 1차: 능력치 → 행동 ---------------- */
   scatter(t) {
     const p = this.player, a0 = this.aimAt(t);
     for (let i = 0; i < 5; i++) {
       const a = a0 + (i - 2) * 0.17;
-      this.shoot({ vx: Math.cos(a) * 400, vy: Math.sin(a) * 400, radius: 4 * p.stats.area, damage: 12 * p.power, life: 0.9, color: '#8be9ff' });
+      this.shoot({ vx: Math.cos(a) * this.actionValue('scatter', 'speed'), vy: Math.sin(a) * this.actionValue('scatter', 'speed'), radius: 4 * p.stats.area, damage: this.actionDamage('scatter'), knockback: this.actionValue('scatter', 'knockback'), life: 0.9, color: '#8be9ff' });
     }
   }
 
   lance(t) {
     const p = this.player, a = this.aimAt(t);
-    this.shoot({ vx: Math.cos(a) * 900, vy: Math.sin(a) * 900, radius: 6 * p.stats.area, damage: 16 * p.power, life: 0.8, pierce: 999, color: '#d6f7ff', shape: 'lance', knockback: 60 });
+    this.shoot({ vx: Math.cos(a) * this.actionValue('lance', 'speed'), vy: Math.sin(a) * this.actionValue('lance', 'speed'), radius: 6 * p.stats.area, damage: this.actionDamage('lance'), life: 0.8, pierce: 999, color: '#d6f7ff', shape: 'lance', knockback: this.actionValue('lance', 'knockback') });
+  }
+
+  pull(o, t, dt) {
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'pull', this.actionCard);
+    if (settings?.continuous && settings.mode === 'approach' && dt != null) {
+      if (o.dead) return;
+      const target = this.chaseTarget(o), d2 = dist2(o.x, o.y, target.x, target.y);
+      const moveSpeed = entityStats(actor).moveSpeed;
+      if (!o.pulled && d2 < settings.range ** 2) { o.pulled = true; o.speed = moveSpeed * settings.initialSpeedRatio; }
+      if (!o.pulled) return;
+      o.speed = Math.min(o.speed + moveSpeed * settings.accelerationRatio * dt, moveSpeed * settings.maxSpeedRatio);
+      const d = Math.sqrt(d2) || 1;
+      const step = Math.min(d, o.speed * dt * (o.cardMove || 1) * (o.directMove ?? 1));
+      o.x += (target.x - o.x) / d * step; o.y += (target.y - o.y) / d * step;
+      return;
+    }
+    if (o.dead || o === this.player) return;
+    const p = this.player, dx = p.x - o.x, dy = p.y - o.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance === 0) return;
+    const step = Math.min(this.actionValue('pull', 'pullDistance'), distance);
+    this.circleFx(o.x, o.y, (o.radius || o.r || 5) + 12, '#8be9ff', { life: 0.3, style: 'pulse' });
+    o.x += dx / distance * step;
+    o.y += dy / distance * step;
   }
 
   magnet(o) {
     o.pulled = true; o.speed = 0;
+    if (o instanceof Placed) o.speed = entityStats(this.player).moveSpeed;
     this.circleFx(o.x, o.y, (o.radius || 5) + 12, '#ffd166', { life: 0.4, style: 'pulse' });
+  }
+
+  // 자력에 끌린 설치물은 플레이어 곁까지 다가간 뒤 멈춘다.
+  pullObject(o, dt) {
+    const p = this.player, dx = p.x - o.x, dy = p.y - o.y, d = Math.hypot(dx, dy), move = entityStats(p).moveSpeed;
+    const stop = (p.r || 12) + (o.radius || 0) + 8;
+    if (d <= stop) { o.pulled = false; o.speed = 0; return; }
+    o.speed = Math.min(o.speed + move * 6 * dt, move * 4);
+    const step = Math.min(d - stop, o.speed * dt);
+    o.x += dx / d * step; o.y += dy / d * step;
   }
 
   /* ---------------- 2차: 설치물 ---------------- */
   place(kind, o) {
-    const live = this.objects.filter((x) => !x.dead && !x.neutral);
-    if (live.length >= MAX_OBJECTS) live[0].dead = true;
     const obj = new Placed(kind, o.x, o.y, this.player.stats.duration);
+    this.scaleCreatedEntity(obj, kind);
     this.objects.push(obj);
     this.circleFx(obj.x, obj.y, 22, '#d9a8ff', { life: 0.25, style: 'wave', sparks: 6 });
     return obj;
@@ -781,31 +1018,6 @@ class Game {
   placeMine(o) { this.place('mine', o); }
   placeTurret(o) { this.place('turret', o); }
   placeDecoy(o) { this.place('decoy', o); }
-
-  /** 기폭: 설치물·탄환은 폭발, 장판은 바로 끝내며 마무리 효과 */
-  detonate(obj, t) {
-    if (obj.dead) return;
-    if (t?.kind === 'zone') { this.endZone(obj, true); return; }
-    if (obj.kind === 'barrel') { this.explodeBarrel(obj); return; }
-    this.consumeTarget(obj);
-    this.blast(obj.x, obj.y, 100, 45, '#ffb347');
-  }
-
-  launch(obj) {
-    if (obj.dead) return;
-    this.consumeTarget(obj);
-    const p = this.player;
-    const e = this.nearestEnemies(obj.x, obj.y, 1, 600)[0];
-    const a = e ? Math.atan2(e.y - obj.y, e.x - obj.x) : Math.random() * TAU;
-    // 화약통을 사출하면 굴러가다 처음 맞힌 곳에서 터진다
-    // 탄환(내 탄·적 탄)은 제 색 그대로 내 탄이 되어 날아간다
-    const keg = obj.kind === 'barrel', ally = obj instanceof Ally, shot = obj.vx !== undefined;
-    this.spawnProjectile({
-      x: obj.x, y: obj.y, vx: Math.cos(a) * 560, vy: Math.sin(a) * 560,
-      radius: keg ? 12 : 8, damage: 30 * p.power, life: 1.2, pierce: keg ? 0 : 6, knockback: 200,
-      color: keg ? '#c98b3a' : ally ? '#c9d4ea' : shot ? obj.color : '#d9a8ff', shape: keg ? 'barrel' : 'dot', blastOnEnd: keg,
-    });
-  }
 
   /* ---------------- 화약통 ---------------- */
   /** 주변에 화약통이 모자라면 화면 바로 바깥에 하나 굴려 둔다. 너무 멀어진 것은 치운다. */
@@ -817,7 +1029,7 @@ class Game {
     for (const o of this.objects) {
       if (o.kind !== 'barrel' || o.dead) continue;
       const d = dist2(o.x, o.y, p.x, p.y);
-      if (d > (ring * 1.8) ** 2) o.dead = true;
+      if (d > (ring * 1.8) ** 2) { o.dead = true; if (o.slot) o.slot.deathDone = true; }
       else if (d < (ring * 1.2) ** 2) near++;
     }
     if (near >= this.stage.barrels) return;
@@ -825,69 +1037,77 @@ class Game {
     this.objects.push(new Placed('barrel', p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 1));
   }
 
-  /** 불을 붙인다. 바로 터지지 않고 짧은 도화선 뒤에 터져서 연쇄가 눈에 보인다. */
-  igniteBarrel(o) {
-    if (o.dead || o.fuse > 0) return;
-    o.fuse = 0.18;
-  }
-
-  igniteBarrels(x, y, r) {
-    for (const o of this.objects) {
-      if (o.kind === 'barrel' && !o.dead && dist2(o.x, o.y, x, y) <= (r + o.radius) ** 2) this.igniteBarrel(o);
-    }
-  }
-
-  /** 화약통 폭발: 적을 크게 날리지만 가까이 있으면 나도 다친다 */
-  explodeBarrel(o) {
-    if (o.dead) return;
-    o.dead = true;
-    this.barrelBlast(o.x, o.y);
-  }
-
-  barrelBlast(x, y) {
-    const p = this.player, r = BARREL_BLAST.r * p.stats.area;
-    this.blast(x, y, BARREL_BLAST.r, BARREL_BLAST.dmg, '#ff8a3d');
-    this.ignitePoison(x, y, r);
-    this.burst(x, y, '#ffe08a', 10);
-    this.shake(7);
-    if (dist2(x, y, p.x, p.y) <= (r * 0.8 + p.radius) ** 2) p.takeDamage(BARREL_BLAST.self, this);
-  }
 
   /** 끝날 때 터지는 투사체(사출한 화약통) */
   resolveProjectileEnds() {
-    for (const pr of this.projectiles) {
-      if (pr.dead && pr.blastOnEnd) { pr.blastOnEnd = false; this.barrelBlast(pr.x, pr.y); }
+    for (const pr of [...this.projectiles, ...this.hazards]) if (pr.dead) entitySlot(pr, 'shot').onDeath(this);
+  }
+
+  resolveEntityDeaths() {
+    // Death actions can destroy entities in a collection already visited.
+    // Drain those events before compacting any collection.
+    let pending;
+    do {
+      pending = [];
+      for (const [kind, list] of [['enemy', this.enemies], ['ally', this.allies], ['object', this.objects], ['zone', this.zones], ['shot', this.projectiles], ['shot', this.hazards], ['pickup', this.pickups]]) {
+        for (const owner of list) if (owner.dead) {
+          const slot = entitySlot(owner, kind);
+          if (!slot.deathDone) pending.push(slot);
+        }
+      }
+      for (const slot of pending) slot.onDeath(this);
+    } while (pending.length);
+  }
+
+  summonEntityReward(owner, effect) {
+    if (effect.kind === 'chest') {
+      this.pickups.push(new Pickup('chest', owner.x, owner.y)); this.shake(owner.boss ? 12 : 4);
+    } else {
+      if (effect.value > 0) this.dropGem(owner.x, owner.y, effect.value);
+      if (Math.random() < effect.magnetChance) this.pickups.push(new Pickup('magnet', owner.x, owner.y));
     }
   }
 
   /** 미끼가 있으면 적이 대신 쫓는다. */
-  chaseTarget(e) {
-    let best = this.player, bd = 350 * 350;
-    for (const o of this.objects) {
-      if (o.dead || o.kind !== 'decoy') continue;
-      const d = dist2(o.x, o.y, e.x, e.y);
-      if (d < bd) { bd = d; best = o; }
+  redirectedPlayerTarget(unit) {
+    let best = { kind: 'self' }, distance = Infinity;
+    if (unit === this.player) return best;
+    for (const source of this.allTargets()) {
+      const owner = this.targetObj(source);
+      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) continue;
+      const effect = owner.slot.effect('entityDecoy');
+      if (!effect) continue;
+      for (const target of effect.targets || [source]) {
+        const center = this.targetObj(target);
+        if (center.dead || center === unit) continue;
+        const d = dist2(center.x, center.y, unit.x, unit.y);
+        if (d < effect.range ** 2 && d < distance) { best = target; distance = d; }
+      }
     }
     return best;
+  }
+
+  chaseTarget(unit) {
+    return this.targetObj(this.redirectedPlayerTarget(unit));
   }
 
   /* ---------------- 3차: 투사체 변주 ---------------- */
   boomerang(t) {
     const p = this.player, a = this.aimAt(t);
-    this.shoot({ vx: Math.cos(a) * 520, vy: Math.sin(a) * 520, radius: 8 * p.stats.area, damage: 16 * p.power, life: 3, pierce: 999, color: '#ffe08a', shape: 'boomerang', boomerang: true, outT: 0.5, knockback: 80 });
+    this.shoot({ vx: Math.cos(a) * this.actionValue('boomerang', 'speed'), vy: Math.sin(a) * this.actionValue('boomerang', 'speed'), radius: 8 * p.stats.area, damage: this.actionDamage('boomerang'), life: 3, pierce: 999, color: '#ffe08a', shape: 'boomerang', boomerang: true, outT: 0.5, knockback: this.actionValue('boomerang', 'knockback') });
   }
 
   homing(t) {
     const p = this.player;
     const target = t.kind === 'enemy' ? t.e : this.nearestEnemies(this.targetObj(t).x, this.targetObj(t).y, 1, 500)[0];
     const a = this.aimAt(t) + rand(-0.8, 0.8);
-    this.shoot({ vx: Math.cos(a) * 340, vy: Math.sin(a) * 340, radius: 5, damage: 60 * p.power, life: 3, homing: target || null, color: '#ff9d5c' });
+    this.shoot({ vx: Math.cos(a) * this.actionValue('homing', 'speed'), vy: Math.sin(a) * this.actionValue('homing', 'speed'), radius: 5, damage: this.actionDamage('homing'), knockback: this.actionValue('homing', 'knockback'), life: 3, homing: target || null, color: '#ff9d5c' });
   }
 
   laser(t) {
     const p = this.player, a = this.aimAt(t), len = 450 * p.stats.area;
     const x1 = p.x + Math.cos(a) * len, y1 = p.y + Math.sin(a) * len;
-    this.hitLine(p.x, p.y, x1, y1, 20, 16 * p.power, 60);
+    this.hitLine(p.x, p.y, x1, y1, 20, this.actionDamage('laser'), this.actionValue('laser', 'knockback'));
     this.addFx({ kind: 'beam', x: p.x, y: p.y, x1, y1, color: '#ff5c8a', w: 8, life: 0.25 });
   }
 
@@ -900,9 +1120,9 @@ class Game {
     for (let i = 0; i < 8 && cur; i++) {
       hit.add(cur);
       this.addFx({ kind: 'zap', x: fromX, y: fromY, x1: cur.x, y1: cur.y, life: 0.25 });
-      this.damageEnemy(cur, 20 * p.power, cur.x - fromX, cur.y - fromY, 40);
+      this.damageEnemy(cur, this.actionDamage('chain'), cur.x - fromX, cur.y - fromY, this.actionValue('chain', 'knockback'));
       fromX = cur.x; fromY = cur.y;
-      cur = this.nearestEnemies(fromX, fromY, 6, 160 * p.stats.area).find((e) => !hit.has(e));
+      cur = this.nearestEnemies(fromX, fromY, 8, 160 * p.stats.area).find((e) => !hit.has(e));
     }
   }
 
@@ -912,9 +1132,9 @@ class Game {
 
   /* ---------------- 4차: 제어·약화 ---------------- */
   root(o, t) {
-    const p = this.player, r = 60 * p.stats.area, dur = 1.8 * p.stats.duration;
+    const p = this.player, r = 60 * p.stats.area, dur = 1.6 * p.stats.duration;
     this.carryStatus(t, { rootT: dur });
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { e.rootT = Math.max(e.rootT, dur); });
+    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { this.addDebuff(e, 'root', dur); });
     this.circleFx(o.x, o.y, r, '#b5e48c', { life: 0.35, fill: 0.4 });
   }
 
@@ -935,10 +1155,9 @@ class Game {
     if (e) onEnemy(e);
   }
 
-  /** 아군·설치물·장판·탄환·보석이 부서진다 (화약통은 불이 붙는다, 장판은 마무리 효과 없이 사라진다) */
+  /** 선택한 개체를 파괴한다. 사망 효과는 해당 개체의 카드 슬롯에서 실행한다. */
   shatter(o) {
     if (o.dead) return;
-    if (o.neutral) { this.igniteBarrel(o); return; }
     o.dead = true;
     this.burst(o.x, o.y, '#c9d4ea', 10);
   }
@@ -947,63 +1166,50 @@ class Game {
     const dur = 6 * this.player.stats.duration;
     if (t.kind === 'self') {
       const p = this.player;
-      p.markT = Math.max(p.markT, dur);
+      this.addDebuff(p, 'mark', dur);
       this.circleFx(p.x, p.y, p.radius + 10, '#ff5c5c', { life: 0.3, follow: p, style: 'wave', sparks: 6 });
       return;
     }
     if (t.kind === 'ally') { this.carryStatus(t, { markT: dur }); return; }
     this.hostile(t, (e) => {
-      e.markT = dur;
+      this.addDebuff(e, 'mark', dur);
       this.circleFx(e.x, e.y, e.radius + 10, '#ff5c5c', { life: 0.3, follow: e, style: 'wave', sparks: 6 });
     }, { destroy: false });
   }
 
   burn(o, t) {
     const p = this.player, r = 55 * p.stats.area, dur = 3 * p.stats.duration;
-    this.carryStatus(t, { burnT: dur, burnDps: 10 * p.power });
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { e.burnT = Math.max(e.burnT, dur); e.burnDps = Math.max(e.burnDps, 10 * p.power); });
+    this.carryStatus(t, { burnT: dur, burnDps: this.actionDamage('burn') });
+    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { this.addDebuff(e, 'burn', dur, this.actionDamage('burn')); });
     this.circleFx(o.x, o.y, r, '#ff7b2e', { life: 0.35, spark: '#ffe08a' });
     this.burst(o.x, o.y, '#ffb347', 8);
-    this.ignitePoison(o.x, o.y, r);
-    this.igniteBarrels(o.x, o.y, r);
   }
 
   fear(o, t) {
-    const p = this.player, r = 120 * p.stats.area, dur = 2 * p.stats.duration;
+    const p = this.player, r = 120 * p.stats.area, dur = 1.8 * p.stats.duration;
     this.carryStatus(t, { fearT: dur });
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { if (!e.boss) e.fearT = Math.max(e.fearT, dur); });
+    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { this.addDebuff(e, 'fear', dur); });
     this.circleFx(o.x, o.y, r, '#ffd166', { life: 0.35, style: 'pulse' });
   }
 
-  execute(t) { this.hostile(t, (e) => this.executeEnemy(e), { selfDmg: 15 }); }
-
-  executeEnemy(e) {
-    const p = this.player;
-    this.addFx({ kind: 'slash', x: e.x, y: e.y, r: e.radius + 16, ang: 0.8, life: 0.25 });
-    if (!e.boss && e.hp <= e.maxHp * 0.35) {
-      this.addText(e.x, e.y - e.radius - 14, '처형!', '#ff5c5c');
-      this.damageEnemy(e, e.hp + 1, 0, -1, 0);
-    } else {
-      this.damageEnemy(e, 50 * p.power, e.x - p.x, e.y - p.y, 60);
-    }
-  }
-
   drain(t) {
-    const p = this.player;
+    const p = this.actionActor || this.player;
     this.hostile(t, (e) => {
-      this.damageEnemy(e, 60 * p.power, e.x - p.x, e.y - p.y, 40);
-      p.heal(6);
+      const before = e.hp;
+      this.damageEnemy(e, this.actionDamage('drain'), e.x - p.x, e.y - p.y, this.actionValue('drain', 'knockback'));
+      if (e.hp < before) this.healTarget(p, this.actionValue('drain', 'heal', p));
       this.addFx({ kind: 'beam', x: e.x, y: e.y, x1: p.x, y1: p.y, color: '#5be37a', w: 3, life: 0.25 });
     }, { selfDmg: 18 });
   }
 
   /* ---------------- 5차: 이동·아군·메타 ---------------- */
   blink(o, t) {
-    this.moveTarget(o, 160, '#c49bff');
+    this.moveTarget(o, this.actionValue('blink', 'distance', o), '#c49bff');
   }
 
   dash(t) {
-    this.moveTarget(this.targetObj(t), 170, '#5be37a');
+    const o = this.targetObj(t);
+    this.moveTarget(o, this.actionValue('dash', 'distance', o), '#5be37a');
   }
 
   moveTarget(o, distance, color) {
@@ -1017,18 +1223,11 @@ class Game {
 
   summonArcher(o) { this.summonAlly('archer', o); }
 
-  sacrifice(a) {
-    if (a.dead) return;
-    this.consumeTarget(a);
-    this.blast(a.x, a.y, 90, 40, '#ff5c5c');
-  }
-
-  /** 격려: 아군·설치물(화약통 제외)·장판의 공격·작동 속도 2배, 수명 +3초. 탄환은 1.5배 빨라진다. */
+  /** 격려: 수명 +3초. */
   rally(a) {
     if (a.dead) return;
     const t = this.allTargets().find(t => this.targetObj(t) === a);
     if (!t) return;
-    for (const kind of ['haste', 'focus']) if (actionApplies(CARDS[kind], t, this.cardEnv())) this.castBuff(kind, t);
     if (Number.isFinite(a.life)) a.life += 3;
     else if (a.def?.escape) a.escT += 3;
     if (a.max !== undefined) a.max = Math.max(a.max, a.life);
@@ -1036,7 +1235,32 @@ class Game {
   }
 
   /** 결계: 대상 자리에 적을 밀어내는 장판 (지점이 아니면 따라다닌다) */
-  ward(o, t) {
+  ward(o, t, dt) {
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'ward', this.actionCard);
+    if (settings?.continuous && dt != null) {
+      const speed = entityStats(actor).knockback * settings.speedRatio;
+      if (settings.attached) {
+        const target = o === actor ? actor.directTarget && this.targetObj(actor.directTarget) : o;
+        if (!target || target.dead) { actor.dead = true; return; }
+        const p = this.player;
+        if (target === p) return;
+        const dx = p.x - target.x || 1, dy = p.y - target.y, d = Math.hypot(dx, dy);
+        const step = -Math.min(Math.max(0, d - 20), speed * dt);
+        target.x += dx / d * step; target.y += dy / d * step;
+        if (target.follow) target.follow = null;
+        return;
+      }
+      const radius = entityStats(actor).range;
+      const near = this.hash.query(o.x, o.y, radius + MAX_ENEMY_RADIUS, this._near);
+      for (const e of near) {
+        if (e.dead || e === actor.follow) continue;
+        const edge = radius + e.radius, dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy) || 1;
+        if (d >= edge) continue;
+        const step = Math.min(edge - d, speed * dt * Math.max(0.25, e.knockResist));
+        e.x += dx / d * step; e.y += dy / d * step;
+      }
+      return;
+    }
     this.addZone('ward', o, t);
     this.circleFx(o.x, o.y, 120 * this.player.stats.area, '#ffe08a', { life: 0.4, style: 'wave' });
   }
@@ -1044,14 +1268,15 @@ class Game {
   /** 아군을 대상으로 건 상태 이상은 아군이 머금는다 (아군 자신에겐 영향 없음). 「전염」으로 적에게 옮긴다. */
   carryStatus(t, st) {
     if (t?.kind !== 'ally') return;
-    for (const k in st) t.a[k] = Math.max(t.a[k], st[k]);
+    for (const k of ['freezeT', 'rootT', 'fearT', 'markT', 'burnT']) {
+      if (st[k] > 0) this.addDebuff(t.a, k.slice(0, -1), st[k], st.burnDps || 0);
+    }
   }
 
   /* ---------------- 6차: 대상 조건 연계 ---------------- */
-  /** 전염: 적·아군이 가진 상태 이상을 옮긴다. 지점은 그 자리의 적, 자신·설치물은 옮길 것이 없다. */
+  /** 전염: 대상이 가진 상태 이상을 주변 적에게 옮긴다. */
   spread(t) {
-    if (t.kind === 'ally') this.spreadFrom(t.a);
-    else this.hostile(t, (e) => this.spreadFrom(e), { destroy: false });
+    if (t.kind !== 'point') this.spreadFrom(this.targetObj(t));
   }
 
   /** 적의 상태 이상을 주변 적에게 옮긴다. 아군이 머금은 상태 이상은 옮기고 나면 비워진다. */
@@ -1059,35 +1284,58 @@ class Game {
     if (src.dead) return;
     const r = 90 * this.player.stats.area;
     const keys = ['freezeT', 'rootT', 'fearT', 'markT', 'burnT'];
+    const states = ['freeze', 'root', 'fear', 'mark', 'burn'];
     const carrier = src instanceof Ally;
     this.hitCircle(src.x, src.y, r, 0, 0, (e) => {
       if (e === src) return;
-      for (const k of keys) if (src[k] > 0) e[k] = Math.max(e[k], src[k]);
-      if (src.burnT > 0) e.burnDps = Math.max(e.burnDps, src.burnDps);
-      if (e.boss) { e.fearT = 0; e.freezeT *= BOSS_FREEZE; }
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i], state = states[i];
+        const legacy = src[k] || 0, direct = src.directStates?.[state] || 0;
+        if (state === 'fear' && e.boss) continue;
+        if (state === 'mark' && src.markStacks) {
+          for (const stack of src.markStacks) this.addDebuff(e, state, stack.time);
+        } else if (state === 'mark') {
+          this.addDebuff(e, state, Math.max(legacy, direct));
+        } else if (state === 'burn') {
+          if (src.burnStacks) {
+            for (const stack of src.burnStacks) this.addDebuff(e, state, stack.time, stack.dps);
+          } else if (legacy > 0) this.addDebuff(e, state, legacy, src.burnDps || 0);
+          if (src.directBurnStacks) {
+            for (const stack of src.directBurnStacks) this.addDebuff(e, state, stack.time, stack.dps, true);
+          } else if (direct > 0) this.addDebuff(e, state, direct, 9, true);
+        } else {
+          if (legacy > 0) this.addDebuff(e, state, legacy);
+          if (direct > 0) this.addDebuff(e, state, direct, 0, true);
+        }
+      }
       this.addFx({ kind: 'beam', x: src.x, y: src.y, x1: e.x, y1: e.y, color: '#b5e48c', w: 2, life: 0.25 });
     });
-    if (carrier) { for (const k of keys) src[k] = 0; src.burnDps = 0; }
+    if (carrier) {
+      for (const k of keys) src[k] = 0;
+      for (const state of states) if (src.directStates) src.directStates[state] = 0;
+      src.burnDps = 0;
+      src.markStacks = []; src.burnStacks = []; src.directBurnStacks = [];
+    }
   }
 
   snipe(t) {
     const p = this.player;
     this.hostile(t, (e) => {
       this.addFx({ kind: 'beam', x: p.x, y: p.y, x1: e.x, y1: e.y, color: '#ff5c8a', w: 3, life: 0.2 });
-      this.damageEnemy(e, 100 * p.power, e.x - p.x, e.y - p.y, 200, '#ffd166');
+      this.damageEnemy(e, this.actionDamage('snipe'), e.x - p.x, e.y - p.y, 200, '#ffd166');
     }, { selfDmg: 30 });
   }
 
   refresh(o) {
     if (o.dead) return;
     if (Number.isFinite(o.life)) o.life = Math.max(o.life, o.max ?? o.life);
-    else if (o.def?.escape) o.escT = Math.max(o.escT, o.def.escape);
+    else if (o.def?.escape) o.escT = Math.max(o.escT, entityStats(o).lifetime);
     this.circleFx(o.x, o.y, 24, '#b8f0ff', { life: 0.3, follow: o, style: 'wave' });
   }
 
   /**
    * 분열: 대상을 하나 더 만든다.
-   *  자신 → 분신 (아군 판정, 공격·스킬 없음) · 아군·설치물·장판 → 남은 수명까지 같은 복제
+   *  자신 → 분신 (입력 이동과 스킬 계승) · 아군·설치물·장판 → 남은 수명과 슬롯을 계승한 복제
    *  탄환 → 진행 방향 양옆으로 갈라진다 (적 탄은 적 탄으로)
    *  적 → 체력을 반씩 나눈 복제 (복제는 경험치 없음, 보스·보물 상자는 나뉘지 않음)
    */
@@ -1110,7 +1358,7 @@ class Game {
         break;
       case 'shot': c = this.splitShot(o); if (!c) return; break;
       case 'enemy':
-        if (o.boss || o.def.loot || this.enemies.length >= MAX_ENEMIES) return;
+        if (o.boss || o.def.loot) return;
         o.hp /= 2;
         c = this.spawnEnemy(o.type, at);
         c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
@@ -1118,11 +1366,36 @@ class Game {
         break;
       case 'gem':
       case 'pickup':
-        if (o.kind === 'gem') o.value /= 2;
+        if (o.kind === 'gem') { o.value /= 2; }
         c = new Pickup(o.kind, at.x, at.y, o.value);
         this.pickups.push(c);
         break;
       default: return;
+    }
+    if (c && t.kind !== 'shot') {
+      const kind = { self: 'ally', ally: 'ally', object: 'object', zone: 'zone', enemy: 'enemy', gem: 'pickup', pickup: 'pickup' }[t.kind];
+      inheritEntitySlots(o, c, kind);
+      const originalStats = entityStats(o), copiedStats = entityStats(c);
+      for (const stat of ['attackPower', 'moveSpeed', 'knockback', 'knockbackResistance', 'range', 'maxHp', 'lifetime']) {
+        if (t.kind === 'self' && stat === 'lifetime') continue;
+        copiedStats[stat] = originalStats[stat];
+      }
+      c.team = o.team;
+      for (const field of ['follow', 'directTarget']) if (o[field] !== undefined) c[field] = o[field];
+      if (Number.isFinite(o.life)) c.life = o.life;
+      if (Number.isFinite(o.escT)) c.escT = o.escT;
+      if (Number.isFinite(o.hp)) c.hp = o.hp;
+      if (t.kind === 'enemy') {
+        for (const slot of c.slots) {
+          slot.cards = slot.cards.map(id => {
+            const card = CARDS[id];
+            if (!card.effect?.reward) return id;
+            return entityConfiguredCard(id, { reward: { ...card.effect.reward, value: 0, magnetChance: 0 } });
+          });
+          slot.defaults = slot.cards.slice();
+        }
+        c.slot.syncSlots();
+      }
     }
     this.addFx({ kind: 'beam', x: o.x, y: o.y, x1: c.x, y1: c.y, color: '#d9a8ff', w: 2, life: 0.25 });
     this.circleFx(c.x, c.y, 20, '#d9a8ff', { life: 0.3, style: 'wave', sparks: 4 });
@@ -1131,13 +1404,14 @@ class Game {
   /** 탄을 진행 방향 ±0.3 라디안으로 갈라 하나 더 만든다. 적 탄은 적 탄으로 남는다. */
   splitShot(o) {
     const mine = o instanceof Projectile;
-    if (!mine && this.hazards.length >= MAX_HAZARDS) return null;
     const rot = (vx, vy, a) => [vx * Math.cos(a) - vy * Math.sin(a), vx * Math.sin(a) + vy * Math.cos(a)];
     [o.vx, o.vy] = rot(o.vx, o.vy, -0.3);
     const [vx, vy] = rot(o.vx, o.vy, 0.6);
     const opts = { ...o, vx, vy, cardBuffs: o.cardBuffs && { ...o.cardBuffs }, cardScales: o.cardScales && { ...o.cardScales }, targetFeatures: o.targetFeatures && { ...o.targetFeatures } };
     if (!mine) {
       const c = opts;
+      c.hitSet = new Set(o.hitSet || []);
+      entitySlot(c, 'shot');
       this.hazards.push(c);
       return c;
     }
@@ -1146,19 +1420,13 @@ class Game {
     return c;
   }
 
-  /**
-   * 흡수: 설치물·아군은 체력 6, 장판은 남은 수명 비율만큼 (최소 1), 탄환은 2.
-   * 보석은 회복 대신 그 자리에서 줍는다.
-   */
+  /** Consume the selected target or collect its item. */
   absorb(obj, t) {
     if (obj.dead) return;
     const p = this.player;
     this.consumeTarget(obj);
     this.addFx({ kind: 'beam', x: obj.x, y: obj.y, x1: p.x, y1: p.y, color: '#5be37a', w: 3, life: 0.25 });
     if (t?.kind === 'gem' || t?.kind === 'pickup') { obj.collect(this); return; }
-    const n = t?.kind === 'zone' ? Math.max(1, Math.round(6 * obj.life / obj.max)) : t?.kind === 'shot' ? 2 : 6;
-    p.heal(n);
-    this.addText(p.x, p.y - 30, `+${n}`, '#5be37a');
   }
 
   swap(o) {
@@ -1173,171 +1441,95 @@ class Game {
   }
 
   /* ---------------- 보스 전리품 ---------------- */
-  kingSlime(o, t) { this.addZone('slime', o, t); }
-
-  soulReap(o) {
-    const p = this.player, r = 130 * p.stats.area;
-    const hit = [];
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => hit.push(e));
-    for (const e of hit) this.damageEnemy(e, 20 * p.power, e.x - o.x, e.y - o.y, 90, '#b39dff');
-    const n = Math.min(8, hit.length);
-    if (n) { p.heal(n); this.addText(p.x, p.y - 30, `+${n}`, '#5be37a'); }
-    // 쓰러진 적마다 영혼이 빠져나와 가까운 다른 적을 쫓는다
-    for (const e of hit) {
-      if (!e.dead) continue;
-      const prey = this.nearestEnemies(e.x, e.y, 1, 400)[0];
-      const a = Math.random() * TAU;
-      this.spawnProjectile({
-        x: e.x, y: e.y, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220,
-        radius: 6, damage: 18 * p.power, life: 2.5, pierce: 0, knockback: 60, homing: prey || null, color: '#b39dff',
-      });
-    }
-    this.circleFx(o.x, o.y, r, '#b39dff', { life: 0.45, fill: 0.4, spark: '#d9ccff' });
-    this.burst(o.x, o.y, '#d9ccff', 12);
-  }
-
-  abyssGate(o, t) {
-    this.addZone('abyss', o, t);
-    this.shake(3);
-  }
 
   /* ---------------- 장판 (독·소용돌이·회전 칼날·점액·결계·유성·심연) ---------------- */
-  /** 지점이 아닌 대상이면 그 대상을 따라다닌다 (t 가 null 이면 제자리). 넘치면 오래된 장판부터 사라진다. */
+  /** 지점이 아닌 대상이면 그 대상을 따라다닌다 (t 가 null 이면 제자리). 개수 제한 없이 생성한다. */
   addZone(kind, o, t) {
-    const s = this.player.stats;
-    const def = {
-      poison: { r: 60 * s.area, life: 4 * s.duration, tick: 0 },
-      vortex: { r: 160 * s.area, life: 1.5 * s.duration },
-      blades: { r: 55 * s.area, life: 5 * s.duration, tick: 0, spin: Math.random() * TAU },
-      slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0 },
-      ward: { r: 120 * s.area, life: 3 * s.duration },
-      meteor: { r: 100 * s.area, life: 0.8 },
-      abyss: { r: 150 * s.area, life: 2 * s.duration, tick: 0 },
-    }[kind];
-    const live = this.zones.filter((z) => !z.dead);
-    if (live.length >= MAX_ZONES) live[0].dead = true;
-    const follow = t && t.kind !== 'point' ? o : null;
-    const z = { kind, x: o.x, y: o.y, follow, directTarget: follow ? t : null, max: def.life, rallyT: 0, dead: false, ...def };
+    const source = this.actionActor || this.player;
+    kind = entityActionConfig(source, kind, this.actionCard)?.zoneKind ?? kind;
+    const z = createZone(kind, source, o, t, this.player.stats);
     this.zones.push(z);
     return z;
   }
 
-  /** 장판이 끝난다. 유성은 떨어지고 점액·심연은 터진다. 기폭(forced)이면 독은 인화, 나머지는 폭발 45. */
+  /** 장판이 끝난다. 유성은 떨어지고 점액·심연은 터진다. 기폭(forced)이면 독을 뺀 나머지는 폭발 45. */
   endZone(z, forced = false) {
-    const p = this.player;
+    if (z.dead) return;
     z.dead = true;
-    if (z.directTarget) {
-      const damage = { meteor: 48, slime: 30, abyss: 70 }[z.kind] || (forced ? 45 : 0);
-      if (damage) this.damageTarget(z.directTarget, damage * (z.cardPower || 1));
-      this.circleFx(z.x, z.y, z.r, '#ffb347', { life: 0.35 });
-      return;
-    }
-    if (z.kind === 'meteor') { this.blast(z.x, z.y, z.r / p.stats.area, 48, '#ff6a3d', 'fire'); this.ignitePoison(z.x, z.y, z.r); }
-    else if (z.kind === 'slime') this.blast(z.x, z.y, z.r / p.stats.area, 30, '#6fd08c');
-    else if (z.kind === 'abyss') { this.blast(z.x, z.y, z.r / p.stats.area, 70, '#ff3b6b'); this.shake(8); }
-    else if (!forced) return;
-    else if (z.kind === 'poison') { z.dead = false; this.ignitePoison(z.x, z.y, 0); }
-    else this.blast(z.x, z.y, 100, 45, '#ffb347');
+    const slot = entitySlot(z, 'zone');
+    slot.onDeath(this);
+    if (!forced || slot.cards.some(id => cardBaseId(id) === 'explode')) return;
+    if (z.kind === 'poison') return;
+    this.zoneDeathBlast(z, { damage: 45, radius: 100, elem: null, color: '#ffb347', attached: !!z.directTarget });
+  }
+
+  zoneDeathBlast(z, blast) {
+    if (blast.attached && z.directTarget) {
+      this.damageTarget(z.directTarget, blast.damage, 0, blast.elem);
+      this.circleFx(z.x, z.y, blast.radius, blast.color, { life: 0.35 });
+    } else {
+      this.blast(z.x, z.y, blast.radius, blast.damage * this.player.stats.might * this.player.cardMul, blast.color, blast.elem, false, blast.knockback);    }
   }
 
   updateZones(dt0) {
+    for (const z of this.zones) entitySlot(z, 'zone').update(dt0, this);
+  }
+
+  cardZoneTick(z, dt0) {
     const p = this.player;
-    for (const z of this.zones) {
-      if (z.dead) continue;   // 이번 프레임에 인화 등으로 사라짐
-      if (z.follow) {
+      if (z.dead) return;   // 이번 프레임에 사라짐
+      if (z.slot.has('entityFollow') && z.follow) {
         z.x = z.follow.x; z.y = z.follow.y;
         if (z.follow.dead) z.follow = null;
       }
-      if ((z.life -= dt0) <= 0) { this.endZone(z); continue; }
       // 격려받은 장판은 작동(틱·회전·끌어당김) 속도 2배
       if (z.rallyT > 0) z.rallyT -= dt0;
       const dt = (z.rallyT > 0 ? dt0 * 2 : dt0) * (z.cardRate || 1);
-      const power = p.power * (z.cardPower || 1);
-      if (z.directTarget) {
-        const o = this.targetObj(z.directTarget);
-        if (o.dead) { z.dead = true; continue; }
-        if (z.directFrozen) continue;
-        const tick = { poison: [0.5, 6], blades: [0.2, 8], slime: [0.5, 5], abyss: [0.4, 8] }[z.kind];
-        if (tick && (z.tick -= dt) <= 0) {
-          z.tick += tick[0];
-          this.damageTarget(z.directTarget, tick[1] * (z.cardPower || 1), 0, z.kind === 'poison' ? 'poison' : null);
+      const power = p.stats.might * p.cardMul;
+      if (z.slot.has('orbit') && entityActionConfig(z, 'orbit') && !z.directFrozen) {
+        const orbit = entityActionConfig(z, 'orbit');
+        z.spin = (z.spin || 0) + dt * orbit.speed;
+        z.bladeTime = (z.bladeTime || 0) + dt;
+        z.collisionPoints ??= [];
+        z.collisionPoints.length = orbit.count;
+        for (let k = 0; k < orbit.count; k++) {
+          const a = z.spin + k * TAU / orbit.count;
+          const point = z.collisionPoints[k] ??= {};
+          point.x = z.x + Math.cos(a) * z.r; point.y = z.y + Math.sin(a) * z.r;
+          point.radius = orbit.hitRadius;
         }
-        if (['vortex', 'abyss', 'ward'].includes(z.kind) && o !== p) {
-          const dx = p.x - o.x || 1, dy = p.y - o.y, d = Math.hypot(dx, dy);
-          const amount = Math.min(Math.max(0, d - 20), 260 * dt) * (z.kind === 'ward' ? -1 : 1);
-          o.x += dx / d * amount; o.y += dy / d * amount;
-          if (o.follow) o.follow = null;
-        }
-        continue;
+        const hit = z.slot.effect('entityHit'), settings = entityActionConfig(z, 'entityHit');
+        if (hit) this.collideEnemyPoints(z, { ...hit,
+          damage: hit.damage * settings.damageRatio * (settings.playerPower ? power : 1),
+          knockback: hit.knockback * settings.knockbackRatio, repeatCd: settings.repeatCd, time: z.bladeTime,
+        }, z.collisionPoints);
       }
-      switch (z.kind) {
-        case 'poison':
-          if ((z.tick -= dt) <= 0) {
-            z.tick += 0.5;
-            let lit = false;   // 불타는 적(화상 · 화염 속성)이 들어오면 인화
-            this.hitCircle(z.x, z.y, z.r, 6 * power, 0, (e) => { if (e.burnT > 0 || e.traits.includes('fire')) lit = true; }, 'poison');
-            if (lit) this.ignitePoison(z.x, z.y, 0);
-          }
-          break;
-        case 'blades':
-          z.spin += dt * 4;
-          if ((z.tick -= dt) <= 0) {
-            z.tick += 0.2;
-            for (let k = 0; k < 3; k++) {
-              const a = z.spin + k * (TAU / 3);
-              this.hitCircle(z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, 14, 8 * power, 90);
-            }
-          }
-          break;
-        case 'slime':
-          if ((z.tick -= dt) <= 0) {
-            z.tick += 0.5;
-            this.hitCircle(z.x, z.y, z.r, 5 * power, 0);
-          }
-          break;
-        case 'abyss':
-          if ((z.tick -= dt) <= 0) { z.tick += 0.4; this.hitCircle(z.x, z.y, z.r, 8 * power, 0); }
-          // falls through — 소용돌이처럼 끌어당긴다
-        case 'vortex': {
-          // 중심으로 끌어당긴다 (보스는 거의 버팀)
-          const near = this.hash.query(z.x, z.y, z.r, this._near);
-          for (const e of near) {
-            if (e.dead || e === z.follow || e.rootT > 0 || e.freezeT > 0) continue;
-            const dx = z.x - e.x, dy = z.y - e.y, d = Math.hypot(dx, dy);
-            if (d > z.r || d < 10) continue;
-            const step = Math.min(d - 10, 260 * dt * e.knockResist);
-            e.x += (dx / d) * step; e.y += (dy / d) * step;
-          }
-          break;
-        }
-        case 'ward': {
-          // 결계: 안에 들어온 적을 가장자리 밖으로 밀어낸다 (보스는 느리게 밀린다)
-          const near = this.hash.query(z.x, z.y, z.r + MAX_ENEMY_RADIUS, this._near);
-          for (const e of near) {
-            if (e.dead || e === z.follow) continue;
-            const edge = z.r + e.radius;
-            const dx = e.x - z.x, dy = e.y - z.y, d = Math.hypot(dx, dy) || 1;
-            if (d >= edge) continue;
-            const step = Math.min(edge - d, 600 * dt * Math.max(0.25, e.knockResist));
-            e.x += (dx / d) * step; e.y += (dy / d) * step;
-          }
-          break;
-        }
-      }
-    }
+      if (z.directTarget && z.kind === 'poison' && this.targetObj(z.directTarget).dead) z.dead = true;
+
   }
 
   /** 화상 도트 피해 */
   updateStatuses(dt) {
     for (const e of this.enemies) {
       if (e.dead || e.burnT <= 0) continue;
-      e.burnT -= dt;
-      if ((e.burnTick -= dt) <= 0) {
-        e.burnTick += 0.5;
-        this.damageEnemy(e, e.burnDps * 0.5, 0, 0, 0, '#ffb347', 'fire');
-        if (Math.random() < 0.5) this.burst(e.x, e.y - e.radius * 0.5, '#ff7b2e', 1);
+      if (e.burnStacks) {
+        const damage = e.burnStacks.reduce((sum, s) => sum + s.dps * Math.min(dt, s.time), 0);
+        for (const stack of e.burnStacks) stack.time = Math.max(0, stack.time - dt);
+        e.burnStacks = e.burnStacks.filter(s => s.time > 1e-9);
+        e.burnT = e.burnStacks.reduce((max, s) => Math.max(max, s.time), 0);
+        e.burnDps = e.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+        e.burnPending = (e.burnPending || 0) + damage;
+        e.burnTick = (e.burnTick || 0) + dt;
+        if (e.burnPending > 0 && (e.burnTick >= 0.5 || !e.burnStacks.length)) {
+          this.damageEnemy(e, e.burnPending, 0, 0, 0, '#ffb347', 'fire');
+          e.burnPending = 0; e.burnTick = 0;
+        }
+      } else {
+        const damage = e.burnDps * Math.min(dt, e.burnT);
+        e.burnT = Math.max(0, e.burnT - dt);
+        if (damage > 0) this.damageEnemy(e, damage, 0, 0, 0, '#ffb347', 'fire');
+        if (e.burnT <= 0) e.burnDps = 0;
       }
-      if (e.burnT <= 0) e.burnDps = 0;
     }
   }
 
@@ -1369,6 +1561,18 @@ class Game {
       const fade = Math.min(1, z.life / 0.4, (z.max - z.life) / 0.15 + 0.2);
       ctx.globalAlpha = fade;
       switch (z.kind) {
+        case 'healingField':
+        case 'shieldField':
+        case 'burningField': {
+          const color = z.kind === 'healingField' ? '#5be37a' : z.kind === 'shieldField' ? '#7fb2ff' : '#ff7b2e';
+          ctx.fillStyle = color;
+          ctx.globalAlpha = fade * 0.18;
+          Px.disc(ctx, z.x, z.y, z.r);
+          ctx.globalAlpha = fade * 0.8;
+          Px.arc(ctx, z.x, z.y, z.r, 0, TAU);
+          Sprites.icon(ctx, z.kind === 'healingField' ? 'heal' : z.kind === 'shieldField' ? 'shield' : 'burn', z.x, z.y, 2);
+          break;
+        }
         case 'poison':
           ctx.fillStyle = Px.dither(ctx, 'rgba(88,200,90,0.45)');
           Px.disc(ctx, z.x, z.y, z.r);
@@ -1394,8 +1598,8 @@ class Game {
           break;
         case 'blades':
           ctx.globalAlpha = 1;
-          for (let k = 0; k < 3; k++) {
-            const a = z.spin + k * (TAU / 3);
+          for (let k = 0; k < (entityActionConfig(z, 'orbit')?.count ?? 3); k++) {
+            const a = z.spin + k * (TAU / (entityActionConfig(z, 'orbit')?.count ?? 3));
             Sprites.icon(ctx, 'blades', z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, 2);
           }
           break;
@@ -1501,7 +1705,12 @@ class Game {
   }
 
   spawnProjectile(opts) {
-    const pr = new Projectile(opts);
+    const source = opts.source ?? this.player;
+    const pr = new Projectile({ source, ...opts, team: opts.team ?? entityTeam(source), pierce: Infinity });
+    if (this.actionHitTeamRule) {
+      pr.slot.cards = pr.slot.cards.map(id => CARDS[id].hitTeamRule ? `entityHitTeam_${this.actionHitTeamRule}` : id);
+      pr.slot.defaults = pr.slot.cards.slice(); pr.slot.changed();
+    }
     this.projectiles.push(pr);
     return pr;
   }
@@ -1509,9 +1718,10 @@ class Game {
   /** 적에게 피해. elem은 피해 원소이며 모든 공격은 피해를 입힌다. */
   damageEnemy(e, dmg, dirX, dirY, knockback, color = '#ffffff', elem = null) {
     if (e.dead) return;
+    if (this.actionHitTeamRule && !entityCanHit(this.actionActor || this.player, e, { hitTeamRule: this.actionHitTeamRule })) return;
     // 방패: 정면에서 온 피해를 막는다 (독 장판은 발밑에서 오므로 못 막는다)
     if (elem !== 'poison' && e.blocks(dirX, dirY)) {
-      dmg *= 1 - e.guard; knockback *= 0.3; color = '#8a93a8';
+      dmg *= 1 - e.slot.effect('entityGuard').reduction; knockback *= 0.3; color = '#8a93a8';
       const c = Math.cos(e.ang), s = Math.sin(e.ang);
       if (Math.random() < 0.5) this.burst(e.x + c * e.radius, e.y + s * e.radius * 0.5, '#fff3c4', 2);
     }
@@ -1531,11 +1741,12 @@ class Game {
     this.restoreEnemy(e, n);
   }
 
-  /** 실제 피해 적용. 순서: 표식 ×2 → 갑주 고정 감소 */
+  /** 실제 피해 적용. 순서: 표식 중첩 배율 → 갑주 고정 감소 */
   hurtEnemy(e, dmg, dirX, dirY, knockback, color) {
-    if (e.markT > 0) { dmg *= 2; color = '#ff8f8f'; }
-    if (e.armor > 0) {
-      const cut = Math.max(1, dmg - e.armor);
+    if (e.markT > 0 || e.directStates?.mark > 0) { dmg *= markMultiplier(e); color = '#ff8f8f'; }
+    const armor = entitySlot(e, 'enemy').effect('armor');
+    if (armor) {
+      const cut = Math.max(1, dmg - armor.reduction);
       if (cut < dmg * 0.75) color = '#8a93a8';   // 갑주에 크게 막혔다
       dmg = cut;
     }
@@ -1555,50 +1766,47 @@ class Game {
   }
 
   /** 사령술사류: 주변에 부하를 불러낸다 */
-  summonMinions(e, s) {
-    if (this.enemies.length >= MAX_ENEMIES * 0.75) return;   // 필드가 붐비면 쉰다
-    for (let i = 0; i < s.n; i++) {
-      const a = (i / s.n) * TAU + rand(-0.3, 0.3), d = e.radius + 30;
-      const m = this.spawnEnemy(s.type, { x: e.x + Math.cos(a) * d, y: e.y + Math.sin(a) * d });
-      m.xp = 0;   // 소환된 부하는 경험치를 주지 않는다
-      m.flash = 0.2;
+  configuredSummon(at, settings) {
+    const owner = this.actionActor || this.player;
+    if (owner.dead && settings.death) settings = settings.death;
+    if (settings.blockFear && hasTargetState(owner, 'fear')) return;
+    if (settings.minions && this.enemies.length >= MAX_ENEMIES * 0.75) return;
+    for (let i = 0; i < settings.n; i++) {
+      const a = i / settings.n * TAU + (settings.deathSplit ? 0 : rand(-0.3, 0.3));
+      const d = settings.deathSplit ? owner.radius * 0.8 : owner.radius + 30;
+      const child = this.spawnEnemy(settings.type, { x: at.x + Math.cos(a) * d, y: at.y + Math.sin(a) * d });
+      child.team = entityTeam(owner);
+      if (settings.deathSplit) { child.kx = Math.cos(a) * 320; child.ky = Math.sin(a) * 320; }
+      else { setEntityActionConfig(child, 'summon', { reward: { ...entityActionConfig(child, 'summon').reward, value: 0 } }); child.xp = 0; child.flash = 0.2; }
     }
-    this.circleFx(e.x, e.y, e.radius + 40, e.color, { life: 0.45, fill: 0.35 });
+    if (!settings.deathSplit) this.circleFx(at.x, at.y, owner.radius + 40, owner.color, { life: 0.45, fill: 0.35 });
   }
 
-  /** 적 탄 발사. ring 이면 사방으로, 아니면 대상을 향해 */
+  // Compatibility entry point; all firing uses the shared bolt implementation.
   enemyShoot(e, s, target) {
-    const base = Math.atan2(target.y - e.y, target.x - e.x);
-    for (let i = 0; i < s.n && this.hazards.length < MAX_HAZARDS; i++) {
-      const a = s.ring ? base + (i / s.n) * TAU : base + (i - (s.n - 1) / 2) * 0.2;
-      this.hazards.push({
-        x: e.x, y: e.y, vx: Math.cos(a) * s.speed, vy: Math.sin(a) * s.speed,
-        r: 7, damage: s.damage * this.stage.dmgMul, life: 3.5, max: 3.5, color: e.color, dead: false,
-      });
-    }
+    const previousActor = this.actionActor, previousCard = this.actionCard;
+    this.actionCard = { actionId: 'bolt', effect: { n: s.n, ring: !!s.ring, speed: s.speed,
+      damageRatio: s.damage * (s.scaledDamage ? 1 : this.stage.dmgMul) / (entityStats(e).attackPower || 1),
+      radius: 7, life: 3.5, hazard: true } };
+    this.actionActor = e;
+    try { this.bolt({ kind: 'point', x: target.x, y: target.y }); }
+    finally { this.actionActor = previousActor; this.actionCard = previousCard; }
   }
 
   updateHazards(dt) {
-    const p = this.player;
-    for (const h of this.hazards) {
-      if (h.dead) continue;
-      if (h.freezeT > 0 || h.directFrozen) h.freezeT = Math.max(0, (h.freezeT || 0) - dt);
-      else { h.x += h.vx * dt * (h.cardMove || 1) * (h.directMove ?? 1); h.y += h.vy * dt * (h.cardMove || 1) * (h.directMove ?? 1); }
-      if ((h.life -= dt) <= 0) { h.dead = true; continue; }
-      // 적의 불탄도 화약통에 불을 붙인다 — 적 무리 사이에서 터지게 유도할 수 있다
-      for (const o of this.objects) {
-        if (o.kind === 'barrel' && !o.dead && dist2(h.x, h.y, o.x, o.y) <= (h.r + o.radius) ** 2) { this.igniteBarrel(o); h.dead = true; break; }
-      }
-      if (h.dead) continue;
-      const rr = h.r + p.radius * 0.8;
-      if (dist2(h.x, h.y, p.x, p.y) < rr * rr) {
-        h.dead = true;
+    for (const h of this.hazards) entitySlot(h, 'shot').update(dt, this);
+  }
 
-        p.takeDamage(h.damage, this);
-        this.burst(h.x, h.y, h.color, 5);
-        if (this.state !== 'playing') return;
+  cardHazardTick(h, dt) {
+    const p = this.player;
+      if (h.dead) return;
+      if (h.freezeT > 0 || h.directFrozen) h.freezeT = Math.max(0, (h.freezeT || 0) - dt);
+      else if (h.slot.has('entityMove')) {
+        const move = h.slot.effect('entityMove'), direction = entityMovementDirection(h, move, this);
+        h.x += direction.x * move.speed * dt * (h.cardMove || 1) * (h.directMove ?? 1);
+        h.y += direction.y * move.speed * dt * (h.cardMove || 1) * (h.directMove ?? 1);
       }
-    }
+      this.collideShot(h);
   }
 
   drawHazards(ctx) {
@@ -1616,33 +1824,13 @@ class Game {
   }
 
   killEnemy(e) {
+    if (e.dead) return;
     e.dead = true;
     this.kills++;
     this.fallen.push({ x: e.x, y: e.y, t: this.time });
     if (this.fallen.length > 60) this.fallen.splice(0, this.fallen.length - 60);
     this.burst(e.x, e.y, e.color, e.boss ? 40 : 6);
-    const sp = e.def.split;
-    if (sp) {
-      for (let i = 0; i < sp.n; i++) {
-        const a = (i / sp.n) * TAU, d = e.radius * 0.8;
-        const c = this.spawnEnemy(sp.type, { x: e.x + Math.cos(a) * d, y: e.y + Math.sin(a) * d });
-        c.kx = Math.cos(a) * 320; c.ky = Math.sin(a) * 320;
-      }
-    }
-    if (e.boss) {
-      this.pickups.push(new Pickup('chest', e.x, e.y));
-      this.shake(12);
-    } else if (e.def.loot) {
-      this.pickups.push(new Pickup('chest', e.x, e.y));
-      this.burst(e.x, e.y, '#ffd166', 20);
-      this.showBanner('보물 상자를 붙잡았다!', '#ffd166');
-    } else {
-      this.dropGem(e.x, e.y, e.xp);
-      if (e.hunted) this.dropGem(e.x + 10, e.y, e.xp * 2);   // 「사냥감」 보너스
-      const r = Math.random();
-      if (r < 0.012) this.pickups.push(new Pickup('heart', e.x, e.y));
-      else if (r < 0.016) this.pickups.push(new Pickup('magnet', e.x, e.y));
-    }
+    entitySlot(e, 'enemy').onDeath(this);
     this.events.emit('enemyKilled', { enemy: e });
   }
 
@@ -1663,8 +1851,8 @@ class Game {
   /** 단계 시작 배너: 한 줄 힌트 + 보스 시각. 적 특성·기믹의 자세한 설명은 일시정지 화면에 */
   stageBanner() {
     const st = this.stage;
-    this.showBanner(`${this.stageIdx + 1}단계 · ${st.name}`, st.color,
-      `${st.hint} · ${Math.round(st.bossAt / 60)}분에 ${ENEMY_TYPES[st.boss].name}`);
+    this.showBanner(`${this.stageStep + 1}단계 · ${st.name}`, st.color,
+      `${st.hint} · ${stageBossSummary(st)}`);
   }
 
   showBanner(text, color, sub) { this.banner = { text, color, sub, life: sub ? 4 : 2.5, max: sub ? 4 : 2.5 }; }

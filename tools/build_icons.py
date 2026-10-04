@@ -76,7 +76,6 @@ ICONS = [
     ('mark',      'ob', 679,  '#ff5c5c'),
     ('burn',      'ob', 567,  '#ff7b2e'),
     ('fear',      'ob', 1069, None),
-    ('execute',   'td', 118,  None),
     ('drain',     'td', 115,  None),
     # 5차: 이동·아군·메타
     ('blink',     'ob', 576,  '#c49bff'),
@@ -123,6 +122,7 @@ ICONS = [
     ('refresh',     'ob', 719,  '#b8f0ff'),
     ('split',       'ob', 574,  '#d9a8ff'),
     ('snipe',       'ob', 758,  '#ff5c8a'),
+    ('directHit',   'ob', 564,  '#ff8a3d'),
     ('swap',        'ob', 1049, '#c49bff'),
     ('absorb',      'ob', 720,  None),
     # 추가 대상 (지점·전체) — 적 대상은 위의 nearest/random/strongest/pack/around 를 쓴다
@@ -142,7 +142,7 @@ ICONS = [
     ('fExposed',    'ob', 1055, '#6ee7c8'),
     ('fallen',      'td', 64,   '#ffd166'),
     ('fHurt',       'ob', 1067, '#6ee7c8'),
-    # 반복 카드 (파랑) · 반복 연계 대상·조건
+    # 기존 아틀라스 인덱스 유지용 아이콘 (카드 목록에는 노출하지 않음)
     ('pursue',      'ob', 1057, '#8fb8ff'),
     ('sequence',    'ob', 828,  '#8fb8ff'),
     ('flurry',      'ob', 564,  '#8fb8ff'),
@@ -158,6 +158,18 @@ ICONS = [
     ('zones',       'ob', 830,  '#ffd166'),
     ('shots',       'ob', 1061, '#ffd166'),
     ('gems',        'ob', 237,  '#ffd166'),
+    # UI 전용 (HUD·스탯 라벨)
+    ('uiHp',        'ob', 529,  None),
+    ('uiSpeed',     'ob', 88,   '#5be37a'),
+    ('uiAtk',       'ob', 375,  '#ff9d5c'),
+    ('uiKnock',     'ob', 1058, '#c0c8d8'),
+    ('uiRange',     'ob', 710,  '#b8f0ff'),
+    ('uiCost',      'ob', 523,  '#8be9ff'),
+    ('uiKill',      'ob', 577,  '#c0c8d8'),
+    ('uiTime',      'ob', 627,  '#c0c8d8'),
+    ('uiCodex',     'ob', 290,  None),
+    ('uiReroll',    'ob', 780,  '#e8ecf5'),
+    ('uiPlay',      'ob', 1058, '#5be37a'),
 ]
 
 
@@ -195,7 +207,7 @@ def main():
         "'use strict';\n\n"
         "// tools/build_icons.py 가 생성 — assets/sprites/icons.png 의 순서\n"
         f"const ICONS = [{names}];\n"
-        "const iconIndex = (name) => ICONS.indexOf(name);\n",
+        "const iconIndex = (name) => ICONS.indexOf(CARDS[name]?.icon || (name === 'pull' ? 'vortex' : name));\n",
         encoding='utf-8')
     print(js)
 

@@ -1,0 +1,32 @@
+[
+  {
+    "seed": 1,
+    "route": [
+      "graveyard"
+    ],
+    "state": "gameover",
+    "seconds": 41,
+    "kills": 51,
+    "peak": 110,
+    "stages": [
+      {
+        "stage": "graveyard",
+        "seconds": 41,
+        "hp": 0,
+        "level": 4
+      }
+    ],
+    "deck": [
+      [
+        "nearestEnemy",
+        "bolt",
+        "frost",
+        "frost"
+      ],
+      [
+        "ahead",
+        "orb"
+      ]
+    ]
+  }
+]

@@ -1,0 +1,70 @@
+[
+  {
+    "seed": 1,
+    "route": [
+      "slimeNest",
+      "graveyard",
+      "cinderCaldera"
+    ],
+    "state": "gameover",
+    "seconds": 232,
+    "kills": 586,
+    "peak": 144,
+    "stages": [
+      {
+        "stage": "slimeNest",
+        "seconds": 232,
+        "hp": 0,
+        "level": 11
+      }
+    ],
+    "deck": [
+      [
+        "nearestEnemy",
+        "frost",
+        "poison",
+        "burn"
+      ],
+      [
+        "ahead",
+        "orb"
+      ]
+    ],
+    "checkpoint": {
+      "level": 11,
+      "xp": 73,
+      "xpNext": 96,
+      "slots": [
+        {
+          "limit": 8,
+          "cards": [
+            "nearestEnemy",
+            "frost",
+            "poison",
+            "burn"
+          ]
+        },
+        {
+          "limit": 4,
+          "cards": [
+            "ahead",
+            "orb"
+          ]
+        }
+      ],
+      "inventory": [
+        "objects",
+        "self",
+        "ahead",
+        "bolt",
+        "mark",
+        "ifMany",
+        "ifElite",
+        "mark",
+        "fallen",
+        "explode"
+      ],
+      "costPoints": 11
+    }
+  }
+]

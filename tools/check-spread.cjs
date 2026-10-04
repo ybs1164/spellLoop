@@ -1,0 +1,51 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const context = vm.createContext({ console, TD: new Proxy({}, { get: () => 0 }) });
+for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js', 'js/game.js']) {
+  vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
+}
+vm.runInContext(`
+  const game = Object.create(Game.prototype);
+  game.player = new Player(0, 0);
+  game.addFx = game.circleFx = () => {};
+  const source = new Enemy('grunt', 0, 0, 1);
+  const near = new Enemy('grunt', 60, 0, 1);
+  const far = new Enemy('grunt', 300, 0, 1);
+  const boss = new Enemy('grunt', 70, 0, 1);
+  boss.boss = true;
+  boss.slot.cards.push('entityResistance');
+  boss.directStates = { freeze: 4 };
+  boss.freezeT = 4;
+  source.directStates = { freeze: 1, root: 1.8, fear: 2, mark: 6, burn: 3 };
+  source.markT = 6;
+  source.freezeT = 1;
+  near.directStates = { root: 5 };
+  game.hash = { query: () => [source, near, far, boss] };
+  CARDS.spread.run([{ kind: 'enemy', e: source }], game.cardEnv());
+  globalThis.result = { source, near, far, boss };
+`, context);
+const { source, near, far, boss } = context.result;
+assert.equal(source.directStates.burn, 3, 'source duration is preserved');
+assert.equal(near.directStates.burn, 3);
+assert.equal(near.directStates.root, 6.8, 'existing control durations stack');
+assert.equal(near.markT, 6);
+assert.equal(far.directStates, undefined, 'enemies outside the radius are unaffected');
+assert.equal(boss.directStates.fear, undefined, 'bosses remain immune to fear');
+assert.equal(boss.directStates.freeze, 4.4, 'boss freeze stacks with resistance');
+assert.equal(boss.freezeT, 4.4);
+vm.runInContext(`
+  boss.directStates.freeze = 0; boss.freezeT = 0;
+  game.spread({ kind: 'enemy', e: source });
+  const ally = new Ally('knight', 0, 0);
+  ally.directStates = { burn: 2 };
+  ally.rootT = 7;
+  game.spread({ kind: 'ally', a: ally });
+  globalThis.allyResult = ally;
+`, context);
+assert.equal(boss.directStates.freeze, 0.4);
+assert.equal(boss.freezeT, 0.4);
+assert.equal(near.rootT, 7, 'legacy carried states also spread');
+assert.equal(context.allyResult.directStates.burn, 0, 'ally carried states are consumed');
+assert.equal(context.allyResult.rootT, 0);
+console.log('Spread checks passed.');

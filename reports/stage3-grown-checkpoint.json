@@ -1,0 +1,69 @@
+[
+  {
+    "seed": 1,
+    "route": [
+      "cinderCaldera"
+    ],
+    "state": "gameover",
+    "seconds": 22,
+    "kills": 99,
+    "peak": 69,
+    "stages": [
+      {
+        "stage": "cinderCaldera",
+        "seconds": 22,
+        "hp": 0,
+        "level": 12
+      }
+    ],
+    "deck": [
+      [
+        "nearestEnemy",
+        "frost",
+        "poison",
+        "burn"
+      ],
+      [
+        "ahead",
+        "orb"
+      ]
+    ],
+    "checkpoint": {
+      "level": 12,
+      "xp": 92,
+      "xpNext": 107,
+      "slots": [
+        {
+          "limit": 8,
+          "cards": [
+            "nearestEnemy",
+            "frost",
+            "poison",
+            "burn"
+          ]
+        },
+        {
+          "limit": 4,
+          "cards": [
+            "ahead",
+            "orb"
+          ]
+        }
+      ],
+      "inventory": [
+        "objects",
+        "self",
+        "ahead",
+        "bolt",
+        "mark",
+        "ifMany",
+        "ifElite",
+        "mark",
+        "fallen",
+        "explode",
+        "ifStopped"
+      ],
+      "costPoints": 12
+    }
+  }
+]

@@ -1,0 +1,70 @@
+[
+  {
+    "seed": 1,
+    "route": [
+      "graveyard"
+    ],
+    "state": "gameover",
+    "seconds": 60,
+    "kills": 130,
+    "peak": 138,
+    "stages": [
+      {
+        "stage": "graveyard",
+        "seconds": 60,
+        "hp": 0,
+        "level": 13
+      }
+    ],
+    "deck": [
+      [
+        "nearestEnemy",
+        "frost",
+        "poison",
+        "snipe"
+      ],
+      [
+        "ahead",
+        "orb"
+      ]
+    ],
+    "checkpoint": {
+      "level": 13,
+      "xp": 5,
+      "xpNext": 118,
+      "slots": [
+        {
+          "limit": 9,
+          "cards": [
+            "nearestEnemy",
+            "frost",
+            "poison",
+            "snipe"
+          ]
+        },
+        {
+          "limit": 4,
+          "cards": [
+            "ahead",
+            "orb"
+          ]
+        }
+      ],
+      "inventory": [
+        "objects",
+        "self",
+        "ahead",
+        "bolt",
+        "mark",
+        "ifMany",
+        "ifElite",
+        "mark",
+        "fallen",
+        "explode",
+        "ifFar",
+        "burn"
+      ],
+      "costPoints": 12
+    }
+  }
+]

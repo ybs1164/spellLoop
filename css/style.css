@@ -18,8 +18,7 @@
   --gold: #ffd166;
   --target: #ffd166;
   --action: #ff7a8a;
-  --filter: #6ee7c8;
-  --flow: #8fb8ff;
+  --filter: #8fb8ff;
   --icons: 22;
   --drop: 4px 4px 0 rgba(0, 0, 0, .55);
   --tshadow: 2px 2px 0 #000;
@@ -60,10 +59,12 @@ canvas { display: block; image-rendering: pixelated; }
   text-shadow: var(--tshadow);
 }
 #topinfo {
-  display: flex; justify-content: center; align-items: baseline; gap: 22px;
+  display: flex; justify-content: center; align-items: center; gap: 22px;
   margin-top: 8px; font-weight: 700; font-size: 22px;
   text-shadow: 3px 3px 0 #000; font-variant-numeric: tabular-nums;
 }
+.hud-stat { display: inline-flex; align-items: center; gap: 6px; }
+.hud-stat .ico { filter: drop-shadow(2px 2px 0 #000); }
 #kills { font-size: 15px; color: var(--muted); text-shadow: var(--tshadow); }
 #stage { font-size: 15px; text-shadow: var(--tshadow); }
 .enemy-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; text-align: left; }
@@ -145,7 +146,7 @@ kbd {
   gap: 6px 18px; margin: 18px 0; text-align: left; font-size: 14px;
 }
 .stats div {
-  display: flex; justify-content: space-between; padding: 3px 0 5px;
+  display: flex; justify-content: space-between; align-items: center; padding: 3px 0 5px;
   /* 도트 점선 (둥근 dotted 대신 네모 조각) */
   background: linear-gradient(90deg, var(--line) 50%, transparent 0) left bottom / 6px 2px repeat-x;
 }
@@ -166,6 +167,7 @@ kbd {
 
 /* ---------- 레벨업: 카드 5장 + 인벤토리 보기 ---------- */
 .panel.levelup { max-width: min(1080px, 100%); }
-.panel.levelup .cards { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
-.lv-inv { margin-top: 10px; text-align: left; }
-.lv-inv .pcard { cursor: default; }
+.panel.levelup .cards { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px; margin-top: 24px; padding: 0 4px; }
+.panel.reward-inventory { max-width: min(960px, 100%); text-align: left; }
+.panel.reward-inventory h2 { text-align: center; }
+.reward-inventory .pcard { cursor: default; }

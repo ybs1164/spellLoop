@@ -6,7 +6,7 @@ for (const path of ['js/util.js', 'js/entities.js', 'js/cards.js', 'js/game.js',
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 const get = expression => vm.runInContext(expression, context);
-assert.equal(get("Object.values(CARDS).some(c => c.type === 'filter' || c.curse)"), false);
+assert.equal(get("Object.values(CARDS).some(c => c.type === 'flow' || c.curse)"), false);
 assert.equal(get('new SkillDeck().slots.every(s => s.cards.every(id => CARDS[id]) && SkillDeck.runnable(s))'), true);
 assert.equal(get('new SkillDeck().inventory.every(id => CARDS[id])'), true);
 assert.equal(get("cardsCost(['nearestEnemy', 'bolt'])"), 2);
@@ -21,11 +21,12 @@ assert.match(get('UI.costHtml(CARDS.nearestEnemy)'), />1<\/span>$/);
 assert.equal(get('Object.keys(CARDS).every(id => iconIndex(id) >= 0)'), true);
 assert.equal(get('Object.values(ENEMY_TYPES).some(e => e.curse)'), false);
 assert.equal(get('STAGES.every(s => s.pool.every(([kind]) => ENEMY_TYPES[kind]))'), true);
+assert.equal(get("Object.values(CARDS).filter(c => c.type === 'action').every(c => CARD_GROUPS.some(g => g.id === c.group) && c.requires.length > 0)"), true);
+assert.equal(get("CARDS.rage.group === 'attack' && CARDS.focus.group === 'ranged'"), true);
 let codex;
 context.capture = html => { codex = html; };
 get('UI.open = capture; UI.showCodex()');
-assert.match(codex, /ON/);
-assert.match(codex, /OFF/);
+assert.doesNotMatch(codex, /\b(?:ON|OFF)\b/);
 get('UI.showHud = () => {}; UI.showTitle()');
 assert.match(codex, /SPELL/);
 console.log('Card cost, codex, icons, and curse removal checks passed.');
