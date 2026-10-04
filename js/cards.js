@@ -236,6 +236,7 @@ const CARDS = {
   vortex: {
     type: 'action', group: 0, name: '소용돌이', cost: 2, delay: 0.3, weight: 1, accepts: ALL_KINDS,
     desc: '1.5초간 반경 160 적을 끌어당김.', run: (ts, env) => ts.forEach(t => env.vortex(env.at(t), t, env.frameDt)),
+    zoneKinds: ['vortex', 'abyss'],   // 이 장판 자신의 슬롯에서는 매 프레임 작동한다
   },
   shockwave: {
     type: 'action', group: 0, name: '충격파', cost: 1, delay: 0.25, weight: 2, accepts: ALL_KINDS,
@@ -402,6 +403,7 @@ const CARDS = {
   ward: {
     type: 'action', group: 5, name: '결계', cost: 4, delay: 0.4, weight: 1, accepts: ALL_KINDS,
     desc: '3초간 반경 120의 결계를 만들어 적의 접근을 막는다.', run: (ts, env) => ts.forEach(t => env.ward(env.at(t), t, env.frameDt)),
+    zoneKinds: ['ward'],
   },
 
   /* ================= 6차: 대상 조작 ================= */
@@ -1654,12 +1656,11 @@ function entitySlot(owner, kind) {
 
   }
   if (kind === 'enemy') {
-    settings.entityHit ??= { contact: true };
     settings.spawnOrb ??= { reward: owner.boss || owner.def.loot
       ? { kind: 'chest', value: 0, magnetChance: 0 }
       : { kind: 'gem', magnetChance: 0.004 } };
     if (owner.armor) {
-      settings.armor ??= { passive: true, statRatios: { reduction: { stat: 'maxHp', ratio: 4 / entityStats(owner).maxHp } } };
+      settings.armor ??= { passive: true, reduction: 4 };
       chain.push('entitySelf', 'armor', 'entitySelf');
     }
   }
@@ -1676,7 +1677,6 @@ function entitySlot(owner, kind) {
     chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'blades') {
-    settings.orbit ??= { count: 3, speed: 4, hitRadius: 14 };
     chain.push('entitySelf', 'orbit', 'entitySelf');
     settings.entityHit ??= { repeatCd: 0.2, playerPower: true };
   }
@@ -1686,14 +1686,8 @@ function entitySlot(owner, kind) {
       afterMovement: true, scaleRate: false };
     chain.push('entitySelf', 'pull', 'entitySelf');
   }
-  if (kind === 'zone' && owner.kind === 'ward') {
-    settings.ward ??= { continuous: true, speedRatio: ACTION_STAT_RATIOS.ward.forceSpeed, attached: !!owner.directTarget, afterMovement: true };
-    chain.push('entitySelf', 'ward', 'entitySelf');
-  }
-  if (kind === 'zone' && ['vortex', 'abyss'].includes(owner.kind)) {
-    settings.vortex ??= { continuous: true, speedRatio: ACTION_STAT_RATIOS.vortex.forceSpeed, attached: !!owner.directTarget, afterMovement: true };
-    chain.push('entitySelf', 'vortex', 'entitySelf');
-  }
+  if (kind === 'zone' && CARDS.ward.zoneKinds.includes(owner.kind)) chain.push('entitySelf', 'ward', 'entitySelf');
+  if (kind === 'zone' && CARDS.vortex.zoneKinds.includes(owner.kind)) chain.push('entitySelf', 'vortex', 'entitySelf');
   if (kind === 'enemy') {
     for (const [definition, action] of [[owner.def.shoot, 'bolt'], [owner.def.summon, 'summon']]) {
       if (!definition) continue;
@@ -1997,10 +1991,11 @@ class EntitySlot {
         else {
           const selected = targets.slice(), deferredFilters = movementFilters.slice();
           const selectedCard = targetCard, filters = targetFilters.slice(), period = interval, teamRule = hitTeamRule, selectedSummonMode = summonMode;
-          const deferred = selectedCard?.afterMovement || deferredFilters.length || card.effect?.afterMovement;
+          const zoneMode = this.kind === 'zone' && !!card.zoneKinds?.includes(owner.kind);
+          const deferred = selectedCard?.afterMovement || deferredFilters.length || card.effect?.afterMovement || zoneMode;
           const execute = () => {
             const rate = (owner.cardRate || 1) * (owner.rallyT > 0 ? 2 : 1);
-            const continuous = card.effect?.continuous;
+            const continuous = card.effect?.continuous || zoneMode;
             const remaining = continuous ? 0 : Math.max(0, (this.cooldowns.get(index) || 0) - dt * rate);
             this.cooldowns.set(index, remaining);
             let current = selected;

@@ -90,9 +90,9 @@ vm.runInContext(`
   poison.combatStats.attackPower = 30;
   close(entityStats(poison).attackPower * entityActionConfig(poison, 'snipe').damageRatio, 18);
   const vortex = game.addZone('vortex', { x: 100, y: 0 });
-  close(entityStats(vortex).knockback * entityActionConfig(vortex, 'vortex').speedRatio, 260);
+  close(entityStats(vortex).knockback * game.zoneModeSettings(vortex, 'vortex', 0.1).speedRatio, 260);
   vortex.combatStats.knockback = 200;
-  close(entityStats(vortex).knockback * entityActionConfig(vortex, 'vortex').speedRatio, 520);
+  close(entityStats(vortex).knockback * game.zoneModeSettings(vortex, 'vortex', 0.1).speedRatio, 520);
 
   const barrel = new Placed('barrel', 500, 0, 1);
   barrel.combatStats.attackPower = 20;

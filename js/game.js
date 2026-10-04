@@ -886,8 +886,14 @@ class Game {
   }
 
   poison(o, t) { this.addZone('poison', o, t); }
+  /** 장판 자신의 슬롯에서 소용돌이·결계 기본 카드가 매 프레임 작동할 때의 설정 */
+  zoneModeSettings(actor, id, dt) {
+    if (dt == null || !CARDS[id].zoneKinds.includes(actor.kind) || actor.slot?.kind !== 'zone') return undefined;
+    return { continuous: true, speedRatio: ACTION_STAT_RATIOS[id].forceSpeed, attached: !!actor.directTarget };
+  }
+
   vortex(o, t, dt) {
-    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'vortex', this.actionCard);
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'vortex', this.actionCard) ?? this.zoneModeSettings(actor, 'vortex', dt);
     if (!settings?.continuous || dt == null) return this.addZone('vortex', o, t);
     const speed = entityStats(actor).knockback * settings.speedRatio;
     if (settings.attached) {
@@ -1237,7 +1243,7 @@ class Game {
 
   /** 결계: 대상 자리에 적을 밀어내는 장판 (지점이 아니면 따라다닌다) */
   ward(o, t, dt) {
-    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'ward', this.actionCard);
+    const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'ward', this.actionCard) ?? this.zoneModeSettings(actor, 'ward', dt);
     if (settings?.continuous && dt != null) {
       const speed = entityStats(actor).knockback * settings.speedRatio;
       if (settings.attached) {
@@ -1487,8 +1493,8 @@ class Game {
       if (z.rallyT > 0) z.rallyT -= dt0;
       const dt = (z.rallyT > 0 ? dt0 * 2 : dt0) * (z.cardRate || 1);
       const power = p.stats.might * p.cardMul;
-      if (z.slot.has('orbit') && entityActionConfig(z, 'orbit') && !z.directFrozen) {
-        const orbit = entityActionConfig(z, 'orbit');
+      if (z.slot.has('orbit') && z.slot.effect('orbit') && !z.directFrozen) {
+        const orbit = z.slot.effect('orbit');
         z.spin = (z.spin || 0) + dt * orbit.speed;
         z.bladeTime = (z.bladeTime || 0) + dt;
         z.collisionPoints ??= [];
@@ -1599,8 +1605,8 @@ class Game {
           break;
         case 'blades':
           ctx.globalAlpha = 1;
-          for (let k = 0; k < (entityActionConfig(z, 'orbit')?.count ?? 3); k++) {
-            const a = z.spin + k * (TAU / (entityActionConfig(z, 'orbit')?.count ?? 3));
+          for (let k = 0, count = z.slot.effect('orbit')?.count ?? 3; k < count; k++) {
+            const a = z.spin + k * (TAU / count);
             Sprites.icon(ctx, 'blades', z.x + Math.cos(a) * z.r, z.y + Math.sin(a) * z.r, 2);
           }
           break;
