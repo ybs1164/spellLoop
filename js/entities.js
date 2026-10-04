@@ -507,7 +507,7 @@ class Ally {
     this.hp = this.maxHp;
     this.life = this.def.life ?? ALLY_LIFE;
     this.max = this.life;
-    this.rallyT = 0;          // 격려: 공격력·공격 속도 2배
+    this.rallyT = 0;          // 격려: 공격 속도 2배
     // 머금은 상태 이상 (아군 자신에겐 영향 없음, 「전염」으로 적에게 옮긴다)
     this.freezeT = 0; this.rootT = 0; this.fearT = 0; this.markT = 0; this.burnT = 0; this.burnDps = 0;
     this.cd = 0.2;

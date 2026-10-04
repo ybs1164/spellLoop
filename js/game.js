@@ -692,7 +692,7 @@ class Game {
     const actor = this.actionActor || p, settings = entityActionConfig(actor, id, this.actionCard);
     if (id === 'snipe' && settings) {
       if (settings.melee) actor.swing = 0.15;
-      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1);
       if (actor.dead) return;
       if (t.kind === 'enemy') this.damageEnemy(o, damage, o.x - actor.x || 1, o.y - actor.y, settings.knockback, undefined, settings.elem);
       else this.damageTarget(t, damage, settings.knockback, settings.elem, false);
@@ -841,7 +841,7 @@ class Game {
     if (settings) {
       if (settings.blockFear && hasTargetState(actor, 'fear')) return;
       const target = this.targetObj(t), base = Math.atan2(target.y - actor.y, target.x - actor.x);
-      const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1);
       const n = settings.n ?? 1, ring = settings.ring === 'auto' ? n > 1 : settings.ring;
       for (let i = 0; i < n; i++) {
         const a = base + (ring ? i / n * TAU : (i - (n - 1) / 2) * 0.2);

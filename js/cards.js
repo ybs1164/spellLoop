@@ -1558,9 +1558,9 @@ const ENTITY_CARD_LOOKS = {
   innateArmor: ['상시 철갑', 'armor', '받는 피해를 항상 4 줄인다.'],
   enemyShot: ['적탄 발사', 'shots', '탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다.'],
   curseShot: ['속박탄 발사', 'root', '주변 적에게 표식·속박을 거는 속박탄을 쏜다.'],
-  arrowShot: ['화살 사격', 'lance', '대상에게 화살을 쏜다. 격려를 받으면 피해 2배.'],
+  arrowShot: ['화살 사격', 'lance', '대상에게 화살을 쏜다.'],
   turretShot: ['포탑 사격', 'turret', '대상에게 포탄을 쏜다.'],
-  meleeStrike: ['근접 베기', 'slash', '대상을 근접 공격한다. 격려를 받으면 피해 2배.'],
+  meleeStrike: ['근접 베기', 'slash', '대상을 근접 공격한다.'],
   orbTick: ['구체 타격', 'orb', '범위 안의 적을 공격력만큼 타격한다.'],
   zoneTick: ['장판 피해', 'zones', '범위 안의 적에게 장판 공격력만큼 피해를 준다.'],
   poisonTick: ['독 피해', 'poison', '범위 안의 적에게 공격력 60%의 독 피해를 준다.'],
@@ -1807,11 +1807,11 @@ function entitySlot(owner, kind) {
   if (kind === 'ally' && owner.def.damage) {
     const ranged = owner.kind === 'archer', action = ranged ? 'bolt' : 'snipe';
     settings[action] ??= ranged ? {
-      damageRatio: 1, playerPower: true, rallyPower: true, afterMovement: true, look: 'arrowShot',
+      damageRatio: 1, playerPower: true, afterMovement: true, look: 'arrowShot',
       radius: 4, life: 0.8, pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
       statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
     } : {
-      damageRatio: 1, playerPower: true, rallyPower: true, afterMovement: true, melee: true, look: 'meleeStrike',
+      damageRatio: 1, playerPower: true, afterMovement: true, melee: true, look: 'meleeStrike',
       statRatios: { knockback: { stat: 'knockback', ratio: 1 } },
     };
     chain.push(...entityReachCards(owner, owner.def.reach), 'nearestEnemy', ...entityPeriodCards(owner, action, owner.def.attackCd), action, 'entitySelf');

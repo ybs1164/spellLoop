@@ -44,12 +44,12 @@ vm.runInContext(`
   const knight = new Ally('knight', 0, 0); knight.rallyT = 5;
   knight.slot.cards = knight.slot.cards.filter(id => CARDS[id].mechanic !== 'entityMove'); knight.slot.changed();
   knight.update(0.01, game);
-  assert.equal(victim.hp, victim.maxHp - 24); assert.ok(knight.swing > 0);
+  assert.equal(victim.hp, victim.maxHp - 12, 'rally no longer doubles ally damage'); assert.ok(knight.swing > 0);
   const bow = new Ally('archer', 0, 0); bow.rallyT = 5; bow.slot.cooldowns.clear();
   game.projectiles = []; bow.update(0.01, game);
   const arrow = game.projectiles[0];
   assert.equal(arrow.shape, 'arrow'); assert.equal(arrow.life, 0.8);
-  assert.equal(arrow.damage, 20); assert.equal(arrow.knockback, 80);
+  assert.equal(arrow.damage, 10, 'rally no longer doubles arrow damage'); assert.equal(arrow.knockback, 80);
 
   const abyss = game.addZone('abyss', { x: 0, y: 0 });
   const before = victim.hp, oldX = victim.x;
