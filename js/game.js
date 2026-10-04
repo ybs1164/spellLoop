@@ -26,7 +26,7 @@ function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
     burningField: { r: 95 * s.area, life: 6, name: '화상 장판' },
     poison: { r: 60 * s.area, life: 4 * s.duration, tick: 0 },
     vortex: { r: 160 * s.area, life: 1.5 * s.duration },
-    blades: { r: 55 * s.area, life: 5 * s.duration, spin: Math.random() * TAU, bladeTime: 0 },
+    blades: { r: 55 * s.area, life: 5 * s.duration, spin: Math.random() * TAU, bladeTime: 0, damageMul: 0.8, knockbackMul: 0.9 },
     slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0 },
     ward: { r: 120 * s.area, life: 3 * s.duration },
     meteor: { r: 100 * s.area, life: 0.8 },
@@ -38,7 +38,7 @@ function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
 function createZone(kind, source, o, t, s) {
   const def = zoneDefinition(kind, s);
   const follow = t && t.kind !== 'point' ? o : null;
-  const z = { kind, source, team: entityTeam(source), x: o.x, y: o.y, follow, directTarget: follow && !['meteor', 'blades'].includes(kind) ? t : null, max: def.life, rallyT: 0, dead: false, damage: entityStats(source).attackPower, baseSpeed: entityStats(source).moveSpeed, knockback: entityStats(source).knockback, ...def };
+  const z = { kind, source, team: entityTeam(source), x: o.x, y: o.y, follow, directTarget: follow && !['meteor', 'blades'].includes(kind) ? t : null, max: def.life, rallyT: 0, dead: false, damage: entityStats(source).attackPower * (def.damageMul ?? 1), baseSpeed: entityStats(source).moveSpeed, knockback: entityStats(source).knockback * (def.knockbackMul ?? 1), ...def };
   entitySlot(z, 'zone');
   return z;
 }
@@ -1063,7 +1063,8 @@ class Game {
     if (effect.kind === 'chest') {
       this.pickups.push(new Pickup('chest', owner.x, owner.y)); this.shake(owner.boss ? 12 : 4);
     } else {
-      if (effect.value > 0) this.dropGem(owner.x, owner.y, effect.value);
+      const value = effect.value ?? entityStats(owner).xpReward;
+      if (value > 0) this.dropGem(owner.x, owner.y, value);
       if (Math.random() < effect.magnetChance) this.pickups.push(new Pickup('magnet', owner.x, owner.y));
     }
   }
@@ -1500,8 +1501,8 @@ class Game {
         }
         const hit = z.slot.effect('entityHit'), settings = entityActionConfig(z, 'entityHit');
         if (hit) this.collideEnemyPoints(z, { ...hit,
-          damage: hit.damage * settings.damageRatio * (settings.playerPower ? power : 1),
-          knockback: hit.knockback * settings.knockbackRatio, repeatCd: settings.repeatCd, time: z.bladeTime,
+          damage: hit.damage * (settings.damageRatio ?? 1) * (settings.playerPower ? power : 1),
+          knockback: hit.knockback * (settings.knockbackRatio ?? 1), repeatCd: settings.repeatCd, time: z.bladeTime,
         }, z.collisionPoints);
       }
       if (z.directTarget && z.kind === 'poison' && this.targetObj(z.directTarget).dead) z.dead = true;
@@ -1777,7 +1778,7 @@ class Game {
       const child = this.spawnEnemy(settings.type, { x: at.x + Math.cos(a) * d, y: at.y + Math.sin(a) * d });
       child.team = entityTeam(owner);
       if (settings.deathSplit) { child.kx = Math.cos(a) * 320; child.ky = Math.sin(a) * 320; }
-      else { setEntityActionConfig(child, 'summon', { reward: { ...entityActionConfig(child, 'summon').reward, value: 0 } }); child.xp = 0; child.flash = 0.2; }
+      else { child.xp = 0; child.flash = 0.2; }
     }
     if (!settings.deathSplit) this.circleFx(at.x, at.y, owner.radius + 40, owner.color, { life: 0.45, fill: 0.35 });
   }

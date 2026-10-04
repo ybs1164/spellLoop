@@ -514,6 +514,12 @@ const UI = {
     add('넉백 저항', `${Math.round(st.knockbackResistance * 100)}%`, 'uiKnock');
     add('기본 수명', Number.isFinite(st.lifetime) ? sec(st.lifetime) : '무제한', 'uiTime');
     add('범위', st.range, 'uiRange');
+    if (st.sight > 0) add('시야', st.sight);
+    if (st.keepDistance > 0) add('유지 거리', +st.keepDistance.toFixed(2));
+    if (st.shotSpeed > 0) { add('탄속', st.shotSpeed); if (o.def?.shoot) add('발사 수', st.shotCount); }
+    if (e.cat === 'shot') add('관통', Number.isFinite(st.pierce) ? st.pierce : '무제한');
+    if (o.def?.summon) add('소환 수', st.summonCount);
+    if (o instanceof Enemy && !o.boss && !o.def.loot) add('경험치', st.xpReward);
     switch (e.cat) {
       case 'player':
         add('자석 범위', o.stats.magnet);
