@@ -1554,7 +1554,7 @@ function freezeEntityValues(value) {
 // 개체 전용 행동 카드의 이름·아이콘·설명. 기믹이 드러나도록 행동 종류 대신 쓰임새로 부른다.
 const ENTITY_CARD_LOOKS = {
   chestDrop: ['보물 상자 드롭', 'chest', '쓰러진 자리에 보물 상자 1개를 떨어뜨린다.'],
-  xpDrop: ['경험치 드롭', 'gems', '쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다. 0.4% 확률로 자석도 떨어뜨린다.'],
+  xpDrop: ['경험치 드롭', 'gems', '쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다.'],
   innateArmor: ['상시 철갑', 'armor', '받는 피해를 항상 4 줄인다.'],
   enemyShot: ['적탄 발사', 'shots', '탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다.'],
   curseShot: ['속박탄 발사', 'root', '주변 적에게 표식·속박을 거는 속박탄을 쏜다.'],
@@ -1568,7 +1568,7 @@ const ENTITY_CARD_LOOKS = {
   burningTrail: ['화상 장판 남기기', 'burn', '그 자리에 화상 장판을 남긴다.'],
   boomerangReturn: ['부메랑 귀환', 'boomerang', '날아가던 탄이 잠시 뒤 감속하며 플레이어에게 돌아온다.'],
   homingTurn: ['적 추적', 'homing', '탄이 가까운 적 쪽으로 방향을 튼다.'],
-  pickupAttract: ['플레이어에게 끌림', 'magnet', '플레이어가 가까이 오면 살짝 튕긴 뒤 빨라지며 플레이어에게 날아간다.'],
+  pickupAttract: ['플레이어에게 끌림', 'magnet', '플레이어가 사거리 안에 들어오면 살짝 튕긴 뒤 빨라지며 플레이어에게 날아간다.'],
 };
 function entityConfiguredCard(cardId, values, native = false) {
   const base = CARDS[cardId], actionId = cardBaseId(cardId);
@@ -1750,7 +1750,7 @@ function entitySlot(owner, kind) {
   if (kind === 'enemy') {
     settings.spawnOrb ??= { reward: owner.boss || owner.def.loot
       ? { kind: 'chest', value: 0, magnetChance: 0 }
-      : { kind: 'gem', magnetChance: 0.004 }, look: owner.boss || owner.def.loot ? 'chestDrop' : 'xpDrop' };
+      : { kind: 'gem', magnetChance: 0 }, look: owner.boss || owner.def.loot ? 'chestDrop' : 'xpDrop' };
     if (owner.armor) {
       settings.armor ??= { passive: true, reduction: 4, look: 'innateArmor' };
       chain.push('entitySelf', 'armor', 'entitySelf');
@@ -1773,7 +1773,9 @@ function entitySlot(owner, kind) {
     settings.entityHit ??= { repeatCd: 0.2, playerPower: true, look: 'bladeCut' };
   }
   if (kind === 'pickup') {
-    settings.pull ??= { continuous: true, mode: 'approach', range: 90,
+    // 플레이어에게 끌려가기 시작하는 거리는 사거리 상태다. 경험치 보석은 일반 아이템의 20배.
+    owner.reach ??= owner.kind === 'gem' ? 90 * 20 : 90;
+    settings.pull ??= { continuous: true, mode: 'approach', statRatios: { range: { stat: 'reach', ratio: 1 } },
       initialSpeedRatio: -200 / 170, accelerationRatio: 1500 / 170, maxSpeedRatio: 1100 / 170,
       afterMovement: true, scaleRate: false, look: 'pickupAttract' };
     chain.push('entitySelf', 'pull', 'entitySelf');
@@ -1898,7 +1900,7 @@ const ENTITY_GIMMICKS = {
   command: { name: '격려 오라', kinds: ['ally', 'enemy', 'object'], cards: ['all', 'rage', 'focus'], team: 'same', period: 5, desc: '주변 160 안 같은 팀에 분노와 집중을 부여합니다.' },
   curse: { name: '약화 탄환', kinds: ['shot'], cards: ['all', 'mark', 'root'], team: 'opposing', period: 2, desc: '탄환 주변 40 안 다른 팀에 표식과 속박을 부여합니다.' },
   burning: { name: '화상 지대', kinds: ['zone'], cards: ['all', 'burn'], team: 'opposing', period: 2, desc: '장판 범위 안 다른 팀에 2초마다 화상을 부여합니다.' },
-  blessing: { name: '회복 아이템', kinds: ['pickup', 'gem'], cards: ['ifHurt', 'self', 'heal'], team: 'same', period: 3, desc: '습득 전 주변 80 안 플레이어를 3초마다 치유합니다.' },
+  blessing: { name: '회복 아이템', kinds: ['pickup', 'gem'], cards: ['ifHurt', 'self', 'heal'], team: 'same', period: 3, desc: '습득 전 주변 90 안 플레이어를 3초마다 치유합니다.' },
 };
 
 // Recipes compile to ordinary cards; no slot has privileged execution metadata.
@@ -1917,7 +1919,7 @@ function installEntityRecipe(owner, kind, recipe) {
 
 function installEntityGimmick(owner, kind, id) {
   const recipe = ENTITY_GIMMICKS[id];
-  const range = kind === 'zone' ? 'area' : kind === 'shot' ? 40 : kind === 'pickup' || kind === 'gem' ? 80 : 160;
+  const range = kind === 'zone' ? 'area' : kind === 'shot' ? 40 : kind === 'pickup' || kind === 'gem' ? owner.reach ?? 90 : 160;
   installEntityRecipe(owner, kind, { ...recipe, range });
   owner.gimmick = id;
 }

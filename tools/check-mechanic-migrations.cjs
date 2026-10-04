@@ -103,11 +103,13 @@ vm.runInContext(`
   const attachedBarrier = game.addZone('ward', repelVictim, { kind: 'enemy', e: repelVictim });
   attachedBarrier.slot.update(0.01, game); assert.equal(repelVictim.x, 56);
   repelVictim.dead = true; attachedBarrier.slot.update(0.01, game); assert.ok(attachedBarrier.dead);
-  const gem = new Pickup('gem', 100, 0);
-  gem.update(0.01, game); assert.equal(gem.pulled, false); assert.equal(gem.x, 100);
-  gem.x = 80; gem.update(0.01, game);
-  assert.equal(gem.pulled, true); assert.equal(gem.speed, -185); assert.equal(gem.x, 81.85);
-  gem.update(0.2, game); assert.equal(gem.speed, 115); assert.ok(gem.x < 81.85);
+  const gem = new Pickup('gem', 1850, 0);
+  assert.equal(entityStats(gem).reach, 1800, 'experience gems are attracted from 20x the item distance');
+  gem.update(0.01, game); assert.equal(gem.pulled, false); assert.equal(gem.x, 1850);
+  gem.x = 1790; gem.update(0.01, game);
+  assert.equal(gem.pulled, true); assert.equal(gem.speed, -185); assert.ok(Math.abs(gem.x - 1791.85) < 1e-9);
+  gem.update(0.2, game); assert.equal(gem.speed, 115); assert.ok(gem.x < 1791.85);
+  const heart = new Pickup('magnet', 100, 0); heart.update(0.01, game); assert.equal(heart.pulled, false, 'other pickups keep the 90 reach');
   gem.x = 1000; gem.update(1, game); assert.equal(gem.speed, 1100);
   gem.slot.cards = ['entitySelf']; gem.slot.changed(); const stoppedX = gem.x;
   gem.update(0.1, game); assert.equal(gem.x, stoppedX);
