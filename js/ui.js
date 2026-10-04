@@ -515,10 +515,15 @@ const UI = {
     add('기본 수명', Number.isFinite(st.lifetime) ? sec(st.lifetime) : '무제한', 'uiTime');
     add('범위', st.range, 'uiRange');
     if (st.sight > 0) add('시야', st.sight, 'fFar');
+    if (st.reach > 0) add('사거리', st.reach, 'fNear');
     if (st.keepDistance > 0) add('유지 거리', +st.keepDistance.toFixed(2), 'fAway');
+    if (st.shotPower > 0) add('탄 공격력', st.shotPower, 'uiAtk');
     if (st.shotSpeed > 0) { add('탄속', st.shotSpeed, 'bolt'); if (o.def?.shoot) add('발사 수', st.shotCount, 'scatter'); }
     if (e.cat === 'shot') add('관통', Number.isFinite(st.pierce) ? st.pierce : '무제한', 'lance');
     if (o.def?.summon) add('소환 수', st.summonCount, 'summon');
+    if (st.attackPeriod > 0) add('공격 주기', sec(st.attackPeriod), 'haste');
+    if (st.summonPeriod > 0) add('소환 주기', sec(st.summonPeriod), 'haste');
+    if (st.supportPeriod > 0) add('보조 주기', sec(st.supportPeriod), 'haste');
     if (o instanceof Enemy && !o.boss && !o.def.loot) add('경험치', st.xpReward, 'gems');
     switch (e.cat) {
       case 'player':

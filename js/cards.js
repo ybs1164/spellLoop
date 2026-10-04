@@ -606,7 +606,7 @@ for (const [id, speed] of Object.entries({ bolt: 420, scatter: 400, lance: 900, 
   delete ACTION_STAT_RATIOS[id].speed;
 }
 const STAT_RATIO_LABELS = { attackPower: '공격력', moveSpeed: '이동 속도', maxHp: '최대 체력', knockback: '넉백',
-  sight: '시야', keepDistance: '유지 거리', xpReward: '경험치', shotSpeed: '탄속', shotCount: '발사 수', pierce: '관통', summonCount: '소환 수' };
+  sight: '시야', reach: '사거리', shotPower: '탄 공격력', keepDistance: '유지 거리', xpReward: '경험치', shotSpeed: '탄속', shotCount: '발사 수', pierce: '관통', summonCount: '소환 수' };
 function statRatioText(stat, ratio) {
   return `${STAT_RATIO_LABELS[stat]} ${Number((ratio * 100).toFixed(3))}%`;
 }
@@ -1310,6 +1310,7 @@ function entityStats(owner) {
   owner.shotCount ??= owner.def?.shoot?.n ?? 1;
   owner.summonCount ??= owner.def?.summon?.n ?? 1;
   owner.pierceLimit ??= Infinity;
+  owner.shotPower ??= owner.def?.shoot?.damage ?? 0;
   owner.combatStats = {
     get knockbackResistance() { return owner.knockbackResistance; },
     set knockbackResistance(value) { owner.knockbackResistance = clamp(value, 0, 1); },
@@ -1340,6 +1341,16 @@ function entityStats(owner) {
     set shotCount(value) { owner.shotCount = Math.max(1, Math.round(value)); },
     get summonCount() { return owner.summonCount; },
     set summonCount(value) { owner.summonCount = Math.max(1, Math.round(value)); },
+    get shotPower() { return owner.shotPower; },
+    set shotPower(value) { owner.shotPower = Math.max(0, Math.round(value)); },
+    get reach() { return owner.reach ?? 0; },
+    set reach(value) { owner.reach = Math.max(0, value); },
+    get attackPeriod() { return owner.attackPeriod ?? 0; },
+    set attackPeriod(value) { owner.attackPeriod = Math.max(0, value); },
+    get summonPeriod() { return owner.summonPeriod ?? 0; },
+    set summonPeriod(value) { owner.summonPeriod = Math.max(0, value); },
+    get supportPeriod() { return owner.supportPeriod ?? 0; },
+    set supportPeriod(value) { owner.supportPeriod = Math.max(0, value); },
     get pierce() { return owner.pierceLimit; },
     set pierce(value) { owner.pierceLimit = Math.max(0, value); },
     get maxHp() { return Math.round(owner.stats?.maxHp ?? owner.maxHp ?? 0); },
@@ -1447,6 +1458,59 @@ CARDS.entityInSight = {
     return dist2(env.owner.x, env.owner.y, o.x, o.y) <= sight ** 2;
   },
 };
+// 사거리·팀·주기는 숫자를 가진 카드 대신 개체 상태를 읽는 공용 카드로 둔다.
+CARDS.entityInReach = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNear',
+  name: '사거리 이내', desc: '슬롯 주인과 거리가 사거리 상태 + 대상 반경 이내인 대상만 고른다.',
+  test: (t, env) => {
+    const o = env.at(t), reach = entityStats(env.owner).reach + (o.radius || o.r || 0);
+    return dist2(env.owner.x, env.owner.y, o.x, o.y) <= reach ** 2;
+  },
+};
+CARDS.entityInArea = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNear',
+  name: '범위 이내', desc: '슬롯 주인과 거리가 범위 상태 이내인 대상만 고른다.',
+  test: (t, env) => {
+    const o = env.at(t), owner = env.owner, radius = owner.r ?? owner.radius ?? entityStats(owner).range;
+    return dist2(owner.x, owner.y, o.x, o.y) <= radius ** 2;
+  },
+};
+CARDS.entityEnemyInReach = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNearEnemy',
+  name: '사거리 안 적 존재', desc: '슬롯 주인의 사거리 상태 안에 살아 있는 적이 있을 때만 실행한다.',
+  test: (t, env) => env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).reach).length > 0,
+};
+CARDS.entitySameTeam = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'allies',
+  name: '같은 팀', desc: '슬롯 주인과 같은 팀인 대상만 고른다.',
+  test: (t, env) => entityTeam(env.owner) === entityTeam(env.at(t)),
+};
+CARDS.entityOtherTeam = {
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'enemies',
+  name: '다른 팀', desc: '슬롯 주인과 다른 팀인 대상만 고른다.',
+  test: (t, env) => entityTeam(env.owner) !== entityTeam(env.at(t)),
+};
+// 행동 갈래별 반복 주기 상태. 슬롯에 주기 카드가 없으면 행동 카드가 자기 갈래의 주기를 읽는다.
+const ENTITY_PERIOD_STATS = {
+  bolt: 'attackPeriod', snipe: 'attackPeriod', summon: 'summonPeriod',
+  heal: 'supportPeriod', shield: 'supportPeriod', rage: 'supportPeriod', focus: 'supportPeriod',
+  mark: 'supportPeriod', root: 'supportPeriod', burn: 'supportPeriod',
+};
+function entityActionPeriod(owner, action) {
+  const stat = ENTITY_PERIOD_STATS[action];
+  return stat && owner[stat] > 0 ? owner[stat] : undefined;
+}
+// 상태에 담을 수 있으면 상태로 두고, 같은 갈래·사거리에 다른 값이 겹칠 때만 숫자 카드를 남긴다.
+function entityPeriodCards(owner, action, seconds) {
+  const stat = ENTITY_PERIOD_STATS[action];
+  if (stat && (owner[stat] == null || owner[stat] === seconds)) { owner[stat] = seconds; return []; }
+  return [entityChainCard('interval', seconds)];
+}
+function entityReachCards(owner, reach) {
+  if (reach === 'area') return ['entityInArea'];
+  if (owner.reach == null || owner.reach === reach) { owner.reach = reach; return ['entityInReach']; }
+  return [entityChainCard('range', reach, true)];
+}
 function entityInitialCard(id, owner, kind) {
   const behavior = (action, values) => entityBehaviorCard(action, values, owner);
   switch (id) {
@@ -1510,12 +1574,13 @@ function entityConfiguredCard(cardId, values) {
   if (actionId === 'summon') {
     const summon = effect.type ? effect : effect.death;
     const name = ENEMY_TYPES[summon?.type]?.name || '기사';
-    card.name = `${name} 소환`;
+    const split = !effect.type && effect.death;
+    card.name = split ? `${name} 분열` : `${name} 소환`;
     card.icon = { grunt: 'summonSlime', runner: 'summonBat', lavaSpider: 'summonSpider', ghost: 'summonGhost' }[summon?.type] || 'summon';
     card.group = 'entity';
     card.entityOnly = true;
     card.weight = 0;
-    card.desc = summon?.n != null ? `${name} ${summon.n}체를 소환한다.` : `${name} 소환 수만큼 소환한다.`;
+    card.desc = summon?.n != null ? `${name} ${summon.n}체를 소환한다.` : `${name}${koreanObjectParticle(name)} 소환한다.`;
     if (effect.type && effect.death) {
       const deathName = ENEMY_TYPES[effect.death.type]?.name || effect.death.type;
       card.desc += ` 사망 시 ${deathName} ${effect.death.n}체 소환.`;
@@ -1550,6 +1615,10 @@ function entityConfiguredCard(cardId, values) {
   CARDS[id] = card;
   CONFIGURED_ACTION_CARDS.set(key, id);
   return id;
+}
+function koreanObjectParticle(word) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code < 11172 && code % 28 ? '을' : '를';
 }
 function entityCardParametersText(effect) {
   const labels = { damageRatio: '피해/공격력', playerDamageRatio: '플레이어 피해/공격력', knockbackRatio: '타격 넉백/넉백', speedRatio: '작동 속도/넉백', radiusRatio: '폭발 반경/범위',
@@ -1675,7 +1744,7 @@ function entitySlot(owner, kind) {
   }
   if (kind === 'zone' && owner.kind === 'poison') {
     settings.snipe ??= { damageRatio: 0.6, knockback: 0, elem: 'poison', playerPower: !owner.directTarget, afterMovement: true };
-    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', 0.5), 'snipe', 'entitySelf');
+    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'blades') {
     chain.push('entitySelf', 'orbit', 'entitySelf');
@@ -1693,7 +1762,7 @@ function entitySlot(owner, kind) {
     for (const [definition, action] of [[owner.def.shoot, 'bolt'], [owner.def.summon, 'summon']]) {
       if (!definition) continue;
       if (action === 'bolt') settings.bolt ??= {
-        damageRatio: definition.damage / owner.def.damage, ring: !!definition.ring, hazard: true, radius: 7, life: 3.5,
+        damageRatio: 1, damageStat: 'shotPower', ring: 'auto', hazard: true, radius: 7, life: 3.5,
         knockback: 0, pierce: 0, blockFear: true, afterMovement: true, projectileKind: definition.projectileKind,
         statRatios: { speed: { stat: 'shotSpeed', ratio: 1 }, n: { stat: 'shotCount', ratio: 1 } },
       };
@@ -1701,7 +1770,7 @@ function entitySlot(owner, kind) {
         type: definition.type, minions: true, blockFear: true, afterMovement: true, ...settings.summon,
         statRatios: { n: { stat: 'summonCount', ratio: 1 } },
       };
-      chain.push('entityInSight', 'self', entityChainCard('interval', definition.cd), action, 'entitySelf');
+      chain.push('entityInSight', 'self', ...entityPeriodCards(owner, action, definition.cd), action, 'entitySelf');
     }
     if (owner.def.split) {
       settings.summon ??= {};
@@ -1718,26 +1787,27 @@ function entitySlot(owner, kind) {
       pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
       statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
     };
-    chain.push(entityChainCard('range', owner.def.reach, true), 'nearestEnemy', entityChainCard('interval', owner.def.attackCd), action, 'entitySelf');
+    chain.push(...entityReachCards(owner, owner.def.reach), 'nearestEnemy', ...entityPeriodCards(owner, action, owner.def.attackCd), action, 'entitySelf');
   }
   if (kind === 'zone' && owner.kind === 'abyss') {
-    settings.snipe ??= { damageRatio: 0.8, playerPower: !owner.directTarget, afterMovement: true, statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
-    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', 0.4), 'snipe', 'entitySelf');
+    settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, afterMovement: true, statRatios: { knockback: { stat: 'knockback', ratio: 0 } } };
+    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', 0.4), 'snipe', 'entitySelf');
   }
   if (owner.kind === 'turret' && kind === 'object') {
       settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true,
         statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } } };
-    chain.push(entityChainCard('range', 420), 'nearestEnemy', entityChainCard('interval', 0.7), 'bolt', 'entitySelf');
+    chain.push(...entityReachCards(owner, 420), 'nearestEnemy', ...entityPeriodCards(owner, 'bolt', 0.7), 'bolt', 'entitySelf');
   }
   if (owner.kind === 'orb' && kind === 'object' || owner.kind === 'slime' && kind === 'zone') {
     const orb = owner.kind === 'orb';
-      settings.snipe ??= { damageRatio: orb ? 1 : 0.5, playerPower: !owner.directTarget, statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
-    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', entityChainCard('interval', orb ? 0.4 : 0.5), 'snipe', 'entitySelf');
+      settings.snipe ??= { damageRatio: 1, playerPower: !owner.directTarget, ...(orb ? {} : { afterMovement: true }), statRatios: { knockback: { stat: 'knockback', ratio: orb ? 1 : 0 } } };
+    chain.push(owner.directTarget ? 'entityAttached' : 'entityArea', ...entityPeriodCards(owner, 'snipe', orb ? 0.4 : 0.5), 'snipe', 'entitySelf');
   }
   if (kind === 'pickup') chain.push('ifPlayerContact', 'entitySelf', 'absorb');
   if (owner.kind === 'mine' && kind === 'object') {
-    chain.push(entityChainCard('elapsed', 0.5), entityChainCard('enemyNear', 58), 'entitySelf', 'explode', 'entitySelf');
-    chain.push(entityChainCard('elapsed', 0.5), entityChainCard('enemyNear', 58), 'entitySelf', 'disappear', 'entitySelf');
+    owner.reach ??= 58;
+    chain.push(entityChainCard('elapsed', 0.5), 'entityEnemyInReach', 'entitySelf', 'explode', 'entitySelf');
+    chain.push(entityChainCard('elapsed', 0.5), 'entityEnemyInReach', 'entitySelf', 'disappear', 'entitySelf');
   }
   if (kind === 'zone' && ['meteor', 'slime', 'abyss'].includes(owner.kind) || kind === 'shot' && owner.blastOnEnd || kind === 'object' && owner.kind === 'barrel') {
     chain.push('ifExpiring', 'entitySelf', 'explode', 'entitySelf');
@@ -1807,26 +1877,13 @@ const ENTITY_GIMMICKS = {
 };
 
 // Recipes compile to ordinary cards; no slot has privileged execution metadata.
-function entityScopeCard(team, range) {
-  const id = `entityScope_${team}_${range}`;
-  CARDS[id] ??= {
-    type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNearEnemy',
-    name: `${team === 'same' ? '같은 팀' : '다른 팀'} · ${range === 'area' ? '개체 범위' : `거리 ${range}`}`,
-    desc: '슬롯 주인을 기준으로 팀과 거리가 맞는 대상만 선택한다.',
-    test: (t, env) => {
-      const target = env.at(t), owner = env.owner;
-      const radius = range === 'area' ? owner.r ?? owner.radius ?? entityStats(owner).range : range;
-      return (team === 'same' ? entityTeam(owner) === entityTeam(target) : entityTeam(owner) !== entityTeam(target))
-        && dist2(owner.x, owner.y, target.x, target.y) <= radius ** 2;
-    },
-  };
-  return id;
-}
 function installEntityRecipe(owner, kind, recipe) {
   const slots = entityActionSlots(owner, kind, recipe.cards);
   for (const slot of slots) {
     const action = slot.cards.findIndex(id => CARDS[id].type === 'action');
-    slot.cards = [entityScopeCard(recipe.team || 'same', recipe.range ?? 160), ...slot.cards.slice(0, action), entityChainCard('interval', recipe.period), ...slot.cards.slice(action)];
+    const team = recipe.team === 'opposing' ? 'entityOtherTeam' : 'entitySameTeam';
+    const period = entityPeriodCards(owner, cardBaseId(slot.cards[action]), recipe.period);
+    slot.cards = [team, ...entityReachCards(owner, recipe.range ?? 160), ...slot.cards.slice(0, action), ...period, ...slot.cards.slice(action)];
     slot.defaults = slot.cards.slice();
   }
   owner.slots.push(...slots);
@@ -1991,7 +2048,7 @@ class EntitySlot {
         }
         else {
           const selected = targets.slice(), deferredFilters = movementFilters.slice();
-          const selectedCard = targetCard, filters = targetFilters.slice(), period = interval, teamRule = hitTeamRule, selectedSummonMode = summonMode;
+          const selectedCard = targetCard, filters = targetFilters.slice(), period = interval ?? entityActionPeriod(owner, id), teamRule = hitTeamRule, selectedSummonMode = summonMode;
           const zoneMode = this.kind === 'zone' && !!card.zoneKinds?.includes(owner.kind);
           const deferred = selectedCard?.afterMovement || deferredFilters.length || card.effect?.afterMovement || zoneMode;
           const execute = () => {

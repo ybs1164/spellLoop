@@ -288,6 +288,7 @@ class Enemy {
     this.hp = this.maxHp;
     this.speed = Math.round(def.speed * rand(0.9, 1.1));
     this.damage = Math.max(0, Math.round(def.damage * dmgMul));
+    if (def.shoot) this.shotPower = Math.max(0, Math.round(def.shoot.damage * dmgMul));
     this.xp = def.xp;
     this.color = def.color;
     this.boss = !!def.boss;

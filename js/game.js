@@ -27,10 +27,10 @@ function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
     poison: { r: 60 * s.area, life: 4 * s.duration, tick: 0 },
     vortex: { r: 160 * s.area, life: 1.5 * s.duration },
     blades: { r: 55 * s.area, life: 5 * s.duration, spin: Math.random() * TAU, bladeTime: 0, damageMul: 0.8, knockbackMul: 0.9 },
-    slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0 },
+    slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0, damageMul: 0.5 },
     ward: { r: 120 * s.area, life: 3 * s.duration },
     meteor: { r: 100 * s.area, life: 0.8 },
-    abyss: { r: 150 * s.area, life: 2 * s.duration, tick: 0 },
+    abyss: { r: 150 * s.area, life: 2 * s.duration, tick: 0, damageMul: 0.8 },
   }[kind];
 }
 
@@ -841,9 +841,10 @@ class Game {
     if (settings) {
       if (settings.blockFear && hasTargetState(actor, 'fear')) return;
       const target = this.targetObj(t), base = Math.atan2(target.y - actor.y, target.x - actor.x);
-      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
-      for (let i = 0; i < (settings.n ?? 1); i++) {
-        const a = base + (settings.ring ? i / settings.n * TAU : (i - ((settings.n ?? 1) - 1) / 2) * 0.2);
+      const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1) * (settings.rallyPower && actor.rallyT > 0 ? 2 : 1);
+      const n = settings.n ?? 1, ring = settings.ring === 'auto' ? n > 1 : settings.ring;
+      for (let i = 0; i < n; i++) {
+        const a = base + (ring ? i / n * TAU : (i - (n - 1) / 2) * 0.2);
         if (settings.hazard) {
           if (this.hazards.length >= MAX_HAZARDS) break;
           const h = { kind: settings.projectileKind, source: actor, team: entityTeam(actor), x: actor.x, y: actor.y,
@@ -867,7 +868,10 @@ class Game {
   }
 
   explode(o) {
-    this.blast(o.x, o.y, 100, this.actionDamage('explode'), '#ff8a3d', null, false, this.actionValue('explode', 'knockback'));
+    // 장판이 사라지며 터지는 폭발은 장판 자신이 아니라 장판을 만든 개체의 공격력을 따른다.
+    const actor = this.actionActor || this.player, zone = actor.slot?.kind === 'zone' && actor.source;
+    const damage = zone ? this.actionValue('explode', 'damage', zone) : this.actionDamage('explode');
+    this.blast(o.x, o.y, 100, damage, '#ff8a3d', null, false, this.actionValue('explode', 'knockback'));
   }
 
   frost(o, t) {

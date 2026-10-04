@@ -41,7 +41,7 @@ vm.runInContext(`
   for (const owner of owners) for (const slot of owner.slots) assert.ok(sorted(slot.cards), owner.kind + ' ' + slot.cards.join(','));
   const necro = owners[0], summon = necro.slots.find(s => s.cards.some(id => cardBaseId(id) === 'summon'));
   assert.equal(CARDS[summon.cards[0]].type, 'filter');
-  assert.equal(necro.slot.effect('summon')?.cd ?? summon.cards.map(id => CARDS[id].interval).find(v => v != null), 6);
+  assert.equal(entityStats(necro).summonPeriod, 6);
 
   // 플레이어가 아닌 개체의 카드 슬롯은 닫힌 채로 그리고, 펼친 상태는 유지한다.
   game.enemies = [necro];
