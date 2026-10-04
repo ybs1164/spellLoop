@@ -5,8 +5,29 @@
 const CARD_TYPES = {
   target: { label: '대상', color: '#ffd166' },
   action: { label: '행동', color: '#ff7a8a' },
-  filter: { label: '제어', color: '#8fb8ff' },
+  filter: { label: '조건', color: '#8fb8ff' },
 };
+
+// 모든 슬롯은 조건 카드 슬롯 → 대상 카드 슬롯 → 행동 카드 슬롯으로 나뉘고 이 순서로 실행된다.
+const SLOT_SECTIONS = [
+  { id: 'condition', type: 'filter', label: '조건' },
+  { id: 'target', type: 'target', label: '대상' },
+  { id: 'action', type: 'action', label: '행동' },
+];
+const SLOT_SECTION_ORDER = { filter: 0, target: 1, action: 2 };
+function slotSectionOf(id) { return SLOT_SECTION_ORDER[CARDS[id]?.type] ?? 2; }
+/** 카드 스택을 조건 → 대상 → 행동 순서로 정렬한다. 같은 칸 안의 순서는 유지한다. */
+function sortSlotCards(cards) { return cards.slice().sort((a, b) => slotSectionOf(a) - slotSectionOf(b)); }
+/** 정렬된 카드 스택을 세 칸으로 나눈다. start 는 슬롯 전체 기준 첫 카드 위치다. */
+function slotSections(cards) {
+  let start = 0;
+  return SLOT_SECTIONS.map((section, i) => {
+    const ids = cards.filter(id => slotSectionOf(id) === i);
+    const result = { ...section, start, ids };
+    start += ids.length;
+    return result;
+  });
+}
 
 /**
  * 대상 종류 레지스트리. 새 대상 종류는 여기에 한 줄 넣고 Game.cardEnv 에 목록 함수를 더한다.
@@ -693,14 +714,19 @@ class SkillDeck {
     env.alive = t => !env.at(t).dead || env.at(t) === player;
     for (const slot of this.slots) {
       if (!SkillDeck.runnable(slot)) continue;
-      let pending = [], targets = [], deathChain = false;
+      let pending = [], filters = [], targets = [], deathChain = false, prevType = null;
       for (const id of slot.cards.slice()) {
         const card = CARDS[id];
+        const prev = prevType;
+        prevType = card.type;
         if (card.type === 'filter') pending.push(card);
         else if (card.type === 'target') {
-          deathChain = pending.some(filter => filter.deathEvent);
-          targets = card.resolve(env, { deck: this }).filter(t => env.alive(t));
-          for (const filter of pending) targets = filter.gate ? (filter.gate(targets, env) ? targets : []) : targets.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+          // 대상 칸의 카드들은 같은 조건으로 고른 대상을 합친다.
+          if (prev !== 'target') { filters = pending; targets = []; }
+          deathChain = filters.some(filter => filter.deathEvent);
+          let picked = card.resolve(env, { deck: this }).filter(t => env.alive(t));
+          for (const filter of filters) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+          targets = targets.concat(picked);
           pending = [];
         } else if (deathChain) {
           const valid = targets.filter(t => env.alive(t) && actionApplies(card, t, env));
@@ -743,7 +769,7 @@ class SkillDeck {
     let executable = false;
     for (let at = 0; at < slot.cards.length; at++) {
       const id = slot.cards[at], card = CARDS[id];
-      if (card.type === 'filter') { probe.pendingFilters.push(id); continue; }
+      if (card.type === 'filter') { probe.pendingFilters.push(id); probe.prevType = 'filter'; continue; }
       if (card.type === 'target') {
         const targets = card.resolve(env, probe);
         resolved.set(at, targets);
@@ -751,7 +777,7 @@ class SkillDeck {
       } else if ((probe.targets || []).some(t => env.alive(t) && actionApplies(card, t, env))) {
         executable = true;
         break;
-      }
+      } else probe.prevType = card.type;
     }
     if (!executable) return false;
     slot.cast = {
@@ -864,12 +890,13 @@ class SkillDeck {
   /** 제어 조건은 바로 뒤 대상 카드에 적용한다. */
   runFilter(id, at, c) {
     (c.ctx.pendingFilters ||= []).push(id);
+    c.ctx.prevType = 'filter';
   }
 
-  applyFilter(id, ctx, env) {
+  applyFilter(id, targets, env) {
     const card = CARDS[id];
-    const live = (ctx.targets || []).filter(t => env.alive(t));
-    ctx.targets = card.gate ? (card.gate(live, env) ? live : [])
+    const live = (targets || []).filter(t => env.alive(t));
+    return card.gate ? (card.gate(live, env) ? live : [])
       : live.filter(t => (!card.requires || card.requires.every(f => env.features(t)[f])) && card.test(t, env));
   }
 
@@ -890,13 +917,25 @@ class SkillDeck {
   runCard(id, ctx, env, at, queue) {
     const card = CARDS[id];
     if (card.type === 'target') {
-      ctx.targets = env.resolved?.has(at) ? env.resolved.get(at) : card.resolve(env, ctx);
+      // 연속한 대상 카드(대상 칸)는 같은 조건을 적용한 뒤 대상을 합친다.
+      const joined = ctx.prevType === 'target' && ctx.chain;
+      ctx.prevType = 'target';
+      let picked = env.resolved?.has(at) ? env.resolved.get(at) : card.resolve(env, ctx);
       env.resolved?.delete(at);
+      if (!joined) { ctx.targetFilters = ctx.pendingFilters || []; ctx.pendingFilters = []; }
+      const selected = picked.filter(t => env.alive(t)).map(t => env.at(t));
+      for (const filter of ctx.targetFilters || []) picked = this.applyFilter(filter, picked, env);
+      if (joined) {
+        const seen = new Set(ctx.targets.map(t => env.at(t)));
+        ctx.targets = ctx.targets.concat(picked.filter(t => !seen.has(env.at(t))));
+        ctx.chain.cost += card.cost;
+        for (const o of selected) ctx.chain.selected.add(o);
+      } else {
+        ctx.targets = picked;
+        ctx.chain = { cost: card.cost, selected: new Set(selected), executed: new Set() };
+        (ctx.chains ||= []).push(ctx.chain);
+      }
       ctx.base = ctx.targets;
-      ctx.chain = { cost: card.cost, selected: new Set(ctx.targets.filter(t => env.alive(t)).map(t => env.at(t))), executed: new Set() };
-      (ctx.chains ||= []).push(ctx.chain);
-      for (const filter of ctx.pendingFilters || []) this.applyFilter(filter, ctx, env);
-      ctx.pendingFilters = [];
       ctx.kind = card.kind;
       ctx.flag = id;
       ctx.mul = 1;
@@ -906,6 +945,7 @@ class SkillDeck {
       return false;
     }
     const act = id;
+    ctx.prevType = card.type;
     ctx.last = id;
     // 대상마다 종류를 확인한다 (「전체」면 이 행동을 쓸 수 있는 대상에게만 실행)
     const live = ctx.targets?.filter((t) => env.alive(t) && actionApplies(CARDS[act], t, env)) || [];
@@ -926,31 +966,37 @@ class SkillDeck {
   preview(slotIdx, stats) {
     const slot = this.slots[slotIdx], cards = slot.cards;
     const steps = [], warns = [];
-    let chain = null, kind = null, used = true, time = 0, pending = [];
+    let chain = null, kinds = null, used = true, time = 0, pending = [], filters = [], prevType = null;
+    const kindsOf = (kind) => kind === 'all' ? ALL_TARGET_KINDS : [kind];
     for (const id of cards) {
-      const c = CARDS[id];
+      const c = CARDS[id], prev = prevType;
+      prevType = c.type;
       time += cardDelay(id);
       if (c.type === 'filter') { pending.push(id); continue; }
       if (c.type === 'target') {
-        if (chain && !used) warns.push('대상 카드 뒤에 행동 카드가 없어 무시됩니다');
-        chain = [...pending, id]; kind = c.kind; used = false;
-        for (const filter of pending) {
+        // 대상 칸의 연속한 대상 카드는 하나의 대상 묶음으로 합친다.
+        if (prev === 'target' && chain) { chain.push(id); kinds = [...new Set([...kinds, ...kindsOf(c.kind)])]; }
+        else {
+          if (chain && !used) warns.push('대상 카드 뒤에 행동 카드가 없어 무시됩니다');
+          chain = [...pending, id]; kinds = kindsOf(c.kind); used = false; filters = pending;
+        }
+        for (const filter of filters) {
           const f = CARDS[filter];
-          const ok = !f.requires || (kind === 'all' ? ALL_TARGET_KINDS : [kind]).some(k => f.requires.every(feature => KIND_FEATURES[k][feature] || k === 'enemy' && feature === 'lifetime'));
-          if (!ok) warns.push(`「${f.name}」 조건은 ${KIND_LABEL[kind]} 대상에 적용되지 않습니다`);
+          const ok = !f.requires || kindsOf(c.kind).some(k => f.requires.every(feature => KIND_FEATURES[k][feature] || k === 'enemy' && feature === 'lifetime'));
+          if (!ok) warns.push(`「${f.name}」 조건은 ${KIND_LABEL[c.kind]} 대상에 적용되지 않습니다`);
         }
         pending = [];
         continue;
       }
-      if (pending.length) warns.push('제어 카드 바로 뒤에 대상 카드를 배치하세요');
+      if (pending.length) warns.push('조건 카드 뒤에 대상 카드를 배치하세요');
       used = true;
       if (!chain) { steps.push({ chain: null, action: id, ok: false }); warns.push(`「${c.name}」 앞에 대상 카드가 없습니다`); continue; }
-      const ok = (kind === 'all' ? ALL_TARGET_KINDS : [kind]).some(k => c.accepts.includes(k));
+      const ok = kinds.some(k => c.accepts.includes(k));
       steps.push({ chain: [...chain], action: id, ok });
-      if (!ok) warns.push(`「${c.name}」은(는) ${KIND_LABEL[kind]} 대상에 쓸 수 없습니다`);
+      if (!ok) warns.push(`「${c.name}」은(는) ${kinds.map(k => KIND_LABEL[k]).join('·')} 대상에 쓸 수 없습니다`);
     }
     if (chain && !used) warns.push('마지막 대상 카드 뒤에 행동 카드가 없습니다');
-    if (pending.length) warns.push('제어 카드 뒤에 대상 카드가 없습니다');
+    if (pending.length) warns.push('조건 카드 뒤에 대상 카드가 없습니다');
     return { steps, warns, time: time * stats.cooldown, cooldown: SkillDeck.cooldownOf(slot) * stats.cooldown, baseCooldown: SkillDeck.cooldownOf(slot, 0, cardsCost(cards.filter(id => CARDS[id].type !== 'filter'))) * stats.cooldown };
   }
 
@@ -1048,7 +1094,7 @@ class SkillDeck {
     for (const [ref, cards] of next) {
       const list = listOf(ref);
       list.length = 0;
-      list.push(...cards);
+      list.push(...(ref === 'inv' ? cards : sortSlotCards(cards)));
     }
     this.changed();
     return null;
@@ -1706,7 +1752,7 @@ function entitySlot(owner, kind) {
     if (recipe) installEntityGimmick(owner, kind, recipe);
     if (kind === 'object' && PLACED_TYPES[owner.kind]?.zoneKind) {
       for (const slot of owner.slots) if (slot.cards.some(id => cardBaseId(id) === 'ward')) {
-        slot.cards.splice(slot.cards.findIndex(id => cardBaseId(id) === 'ward'), 0, entityChainCard('interval', 30));
+        slot.cards = [entityChainCard('interval', 30), ...slot.cards];
         slot.defaults = slot.cards.slice();
       }
       owner.slot.syncSlots();
@@ -1753,8 +1799,7 @@ function installEntityRecipe(owner, kind, recipe) {
   const slots = entityActionSlots(owner, kind, recipe.cards);
   for (const slot of slots) {
     const action = slot.cards.findIndex(id => CARDS[id].type === 'action');
-    slot.cards.splice(action, 0, entityChainCard('interval', recipe.period));
-    slot.cards.unshift(entityScopeCard(recipe.team || 'same', recipe.range ?? 160));
+    slot.cards = [entityScopeCard(recipe.team || 'same', recipe.range ?? 160), ...slot.cards.slice(0, action), entityChainCard('interval', recipe.period), ...slot.cards.slice(action)];
     slot.defaults = slot.cards.slice();
   }
   owner.slots.push(...slots);
@@ -1805,6 +1850,11 @@ class EntitySlot {
     this.effects = null;
     this.effectCache = new Map();
   }
+  // 개체 슬롯도 조건 → 대상 → 행동 칸 순서로 카드 스택을 유지한다.
+  get cards() { return this._cards; }
+  set cards(cards) { this._cards = sortSlotCards(cards); }
+  get defaults() { return this._defaults; }
+  set defaults(cards) { this._defaults = sortSlotCards(cards); }
   configuredEffect(effect, interval, hitTeamRule, card) {
     const cacheKey = effect;
     effect = entityResolvedEffect(this.owner, card.mechanic, effect);
@@ -1836,12 +1886,15 @@ class EntitySlot {
   }
   effect(id) {
     if (this.effects) return this.effects.get(id);
-    let own = false, player = false, result, interval, hitTeamRule;
+    let own = false, player = false, result, interval, hitTeamRule, prevType;
     for (const cardId of this.cards) {
       const card = CARDS[cardId];
       const passive = card.effect?.passive ? card.effect : null;
       const effect = passive || card.effect;
-      if (card.type === 'target') { own = cardId === 'entitySelf' || card.entityOnly; player = cardId === 'self'; interval = undefined; hitTeamRule = undefined; }
+      // 조건 칸의 주기·충돌 설정은 다음 슬롯(행동 뒤 새 조건·대상)이 시작될 때 초기화된다.
+      if (prevType === 'action' && card.type !== 'action') { interval = undefined; hitTeamRule = undefined; }
+      prevType = card.type;
+      if (card.type === 'target') { own = cardId === 'entitySelf' || card.entityOnly; player = cardId === 'self'; }
       else if (card.interval != null) interval = card.interval;
       else if (card.hitTeamRule) hitTeamRule = card.hitTeamRule;
       else if ((effect?.redirectTargets ? true : effect?.playerTargeted ? player : own) && (card.mechanic || (passive && cardBaseId(cardId))) === id) result = this.configuredEffect(effect, interval, hitTeamRule, card);
@@ -1868,7 +1921,7 @@ class EntitySlot {
     const effects = context.sharedEffects || new Map();
     const baseEnv = game.cardEnv(owner);
     const canAct = context.deathEvent || ownerCanAct(owner);
-    let interval, hitTeamRule, summonMode, deathChain = false;
+    let interval, hitTeamRule, summonMode, deathChain = false, prevType;
     const env = { ...baseEnv, game, owner, deathEvent: !!context.deathEvent, ownerTarget: this.target(), enableMechanic: (id, effect, selected) => {
       if (context.deathEvent) return;
       enabled.add(id);
@@ -1878,22 +1931,27 @@ class EntitySlot {
     let targets = [], pendingFilters = [], movementFilters = [], targetCard, targetFilters = [];
     const afterMovement = context.sharedAfterMovement || [];
     this.cards.forEach((cardId, index) => {
-      const card = CARDS[cardId], id = cardBaseId(cardId);
+      const card = CARDS[cardId], id = cardBaseId(cardId), prev = prevType;
+      prevType = card.type;
+      if (prev === 'action' && card.type !== 'action') { interval = undefined; hitTeamRule = undefined; summonMode = undefined; }
       if (card.type === 'filter') {
         if (card.summonMode) summonMode = card.summonMode;
         else if (card.interval != null) interval = card.interval;
         else if (card.hitTeamRule) hitTeamRule = card.hitTeamRule;
         else pendingFilters.push(card);
       } else if (card.type === 'target') {
-        interval = undefined;
-        hitTeamRule = undefined;
-        summonMode = undefined;
-        deathChain = pendingFilters.some(filter => filter.deathEvent);
-        targetCard = card;
-        targetFilters = pendingFilters.slice();
-        targets = card.resolve(env, { deck: game.player.deck }).filter(t => env.alive(t) || (deathChain && env.at(t) === owner));
-        movementFilters = pendingFilters.filter(filter => filter.afterMovement);
-        for (const filter of pendingFilters.filter(filter => !filter.afterMovement)) targets = filter.gate ? (filter.gate(targets, env) ? targets : []) : targets.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+        // 대상 칸의 연속한 대상 카드는 같은 조건을 적용해 대상을 합친다.
+        const joined = prev === 'target';
+        if (!joined) {
+          deathChain = pendingFilters.some(filter => filter.deathEvent);
+          targetFilters = pendingFilters.slice();
+          movementFilters = pendingFilters.filter(filter => filter.afterMovement);
+          targets = [];
+        }
+        targetCard = joined ? null : card;
+        let picked = card.resolve(env, { deck: game.player.deck }).filter(t => env.alive(t) || (deathChain && env.at(t) === owner));
+        for (const filter of targetFilters.filter(filter => !filter.afterMovement)) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+        targets = targets.concat(picked);
         pendingFilters = [];
       }
       else if (card.type === 'action') {
@@ -1964,6 +2022,11 @@ class EntitySlot {
 
 // Compatibility facade for code that queries an entity's combined mechanics.
 class EntitySlots extends EntitySlot {
+  // 여러 슬롯을 이어 붙인 목록이므로 칸 정렬을 하지 않는다.
+  get cards() { return this._cards; }
+  set cards(cards) { this._cards = cards; }
+  get defaults() { return this._defaults; }
+  set defaults(cards) { this._defaults = cards; }
   constructor(owner, kind, slots) {
     super(owner, kind, slots.flatMap(slot => slot.cards));
     this.slots = slots;

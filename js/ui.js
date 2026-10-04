@@ -22,6 +22,7 @@ const UI = {
     this.levelUpBack = null;   // 편집기를 닫으면 복원할 보상 화면
     this.editMsg = '';
     this.codexBack = null;     // 도감을 닫으면 돌아갈 화면
+    this.openEntitySlots = new WeakSet(); // 편집기에서 카드 슬롯을 펼친 개체
     document.documentElement.style.setProperty('--icons', ICONS.length);
     // HUD 시간·처치 수 앞에 아이콘을 붙인다
     [[this.timer, 'uiTime', 20], [this.kills, 'uiKill', 16]].forEach(([el, icon, size]) => {
@@ -253,7 +254,9 @@ const UI = {
         const over = SkillDeck.overCost(s);
         const cls = SkillDeck.runnable(s) ? '' : ' empty';
         const eff = this.slotCosts(s.cards);
-        return `<div class="dslot${cls}" data-i="${i}"><span class="no">${i + 1}</span>${s.cards.map((id, ci) => this.miniHtml(id, eff[ci])).join('')}
+        const minis = slotSections(s.cards).filter(sec => sec.ids.length)
+          .map(sec => sec.ids.map((id, k) => this.miniHtml(id, eff[sec.start + k])).join('')).join('<i class="dsep"></i>');
+        return `<div class="dslot${cls}" data-i="${i}"><span class="no">${i + 1}</span>${minis}
           <span class="dcost${over ? ' over' : ''}">${cardsCost(s.cards)}/${s.limit}</span><i class="cdbar"></i></div>`;
       }).join('');
       const inv = deck.inventory.length ? this.statHtml('chest', '보관함', deck.inventory.length) : '';
@@ -389,7 +392,7 @@ const UI = {
       const list = ofType(ids, 'action').filter((id) => CARDS[id].group === g.id);
       return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
     }).join('');
-    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['filter', '대상 필터 카드']].map(([type, label]) => {
+    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['filter', '조건 카드']].map(([type, label]) => {
       const list = ofType(variants, type);
       return list.length ? `<div class="section-title">${label} <span class="muted">· ${list.length}장</span></div>${grid(list)}` : '';
     }).join('');
@@ -398,7 +401,7 @@ const UI = {
       ${grid(ofType(ids, 'target'))}
       <h3 class="codex-h">행동 카드 <span class="muted">· ${ofType(ids, 'action').length}장</span></h3>
       ${actions}
-      <h3 class="codex-h">대상 필터 카드 <span class="muted">· ${ofType(ids, 'filter').length}장</span></h3>
+      <h3 class="codex-h">조건 카드 <span class="muted">· ${ofType(ids, 'filter').length}장</span></h3>
       ${grid(ofType(ids, 'filter'))}
       <h3 class="codex-h">개체 변형 카드 <span class="muted">· ${variants.length}장</span></h3>
       <p class="sub">개체 도감의 슬롯에만 있는, 개체별 수치가 적용된 카드입니다.</p>
@@ -544,15 +547,18 @@ const UI = {
       const tip = `[${CARD_TYPES[c.type].label}] ${c.name} — ${c.desc}`.replace(/"/g, '&quot;').replace(/</g, '&lt;');
       return `<span class="cx-card t-${c.type}" tabindex="0" title="${tip}">${this.iconHtml(id, 16)}${this.cardName(c)}</span>`;
     };
-    const chain = (cards) => cards.length ? cards.map(chip).join('<i class="cx-arrow">›</i>') : '<span class="muted">비어 있음</span>';
+    // 조건 → 대상 → 행동 칸을 순서대로 보여 준다.
+    const chain = (cards) => slotSections(cards).map(sec => `<span class="cx-sec cx-sec-${sec.id}"><i class="cx-sec-label">${sec.label}</i>${
+      sec.ids.length ? sec.ids.map(chip).join('') : '<span class="muted">—</span>'}</span>`).join('<i class="cx-arrow">›</i>');
     const row = (i, meta, cards) => `<div class="cx-slot"><span class="cx-slot-no">${i + 1}</span>
       <div>${meta.length ? `<div class="cx-slot-meta">${meta.join(' · ')}</div>` : ''}<div class="cx-chain">${chain(cards)}</div></div></div>`;
     if (e.cat === 'player') {
       const rows = o.deck.fixedSlots.map((s, i) => row(i, ['고정 · 매 프레임'], s.cards)).join('') + o.deck.slots.map((s, i) => row(i + o.deck.fixedSlots.length, [`코스트 ${cardsCost(s.cards)} / ${s.limit}`], s.cards)).join('');
       return `<div class="cx-slots"><div class="cx-slots-h">시작 슬롯 ${o.deck.slots.length}개 + 고정 슬롯 ${o.deck.fixedSlots.length}개</div>${rows}</div>`;
     }
+    // 플레이어가 아닌 개체의 카드 슬롯은 닫힌 상태로 시작한다.
     const rows = (o.slots || []).map((slot, i) => row(i, [], slot.cards)).join('');
-    return `<div class="cx-slots"><div class="cx-slots-h">슬롯 ${(o.slots || []).length}개</div>${rows}</div>`;
+    return `<details class="cx-slots slot-toggle"><summary class="cx-slots-h">카드 슬롯 ${(o.slots || []).length}개</summary>${rows}</details>`;
   },
 
   gimmicksHtml(list) {
@@ -602,6 +608,16 @@ const UI = {
   /* ------------------------------------------------------------------ */
   /* 카드 편집기                                                          */
   /* ------------------------------------------------------------------ */
+  /** 슬롯 하나를 조건 · 대상 · 행동 카드 슬롯으로 나눠 그린다. zone 이 있으면 각 칸이 드롭 영역이 된다. */
+  slotSectionsHtml(cards, card, zone) {
+    return `<div class="slot-sections">${slotSections(cards).map(sec => {
+      const body = sec.ids.map((id, k) => card(id, sec.start + k)).join('');
+      const attrs = zone ? ` class="slot-cards dropzone" data-zone="slot" data-slot="${zone.slot}" data-section="${sec.type}" data-end="${sec.start + sec.ids.length}"` : ' class="slot-cards"';
+      return `<div class="slot-section sec-${sec.id}"><div class="slot-section-h" style="color:${CARD_TYPES[sec.type].color}">${sec.label} 카드 슬롯</div>
+        <div${attrs}>${body}${zone ? '<div class="cell">+</div>' : body ? '' : '<span class="muted">비어 있음</span>'}</div></div>`;
+    }).join('')}</div>`;
+  },
+
   costMeterHtml(deck, si) {
     const { limit } = deck.slots[si], used = cardsCost(deck.slots[si].cards);
     const canRaise = deck.costPoints > 0 && limit < MAX_SLOT_LIMIT;
@@ -642,14 +658,16 @@ const UI = {
 
   showEntityEditor(g) {
     const entries = this.editorEntities(g);
+    this._entityEntries = entries;
     const rows = entries.map(({ owner, kind }, oi) => {
       entitySlot(owner, kind);
       const name = this.entityName(owner, kind);
-      const slots = owner.slots.map((slot, si) => {
-      const cards = slot.cards.map(id => `<div class="entity-card">${this.cardHtml(id, '').replace('draggable="true"', 'draggable="false"')}</div>`).join('');
-      return `<div class="entity-slot-section"><div class="slot-cards">${cards || '<span class="muted">비어 있음</span>'}</div></div>`;
-      }).join('');
-      return `<div class="slot-row entity-slot entity-group"><div class="section-title">${name || owner.kind} #${oi + 1} <span class="muted">(${Math.round(owner.x)}, ${Math.round(owner.y)}) · 슬롯 ${owner.slots.length}${Number.isFinite(entityStats(owner).lifetime) && Number.isFinite(owner.life) ? ` · ${owner.life.toFixed(1)}초` : ''}</span></div>${this.entityStatsHtml(owner, true)}${slots}</div>`;
+      const card = id => `<div class="entity-card">${this.cardHtml(id, '').replace('draggable="true"', 'draggable="false"')}</div>`;
+      const slots = owner.slots.map(slot => `<div class="entity-slot-section">${this.slotSectionsHtml(slot.cards, card)}</div>`).join('');
+      // 개체의 카드 슬롯은 닫힌 상태가 기본이며, 연 상태는 편집기를 다시 그려도 유지한다.
+      const open = (this.openEntitySlots ||= new WeakSet()).has(owner) ? ' open' : '';
+      return `<div class="slot-row entity-slot entity-group"><div class="section-title">${name || owner.kind} #${oi + 1} <span class="muted">(${Math.round(owner.x)}, ${Math.round(owner.y)}) · 슬롯 ${owner.slots.length}${Number.isFinite(entityStats(owner).lifetime) && Number.isFinite(owner.life) ? ` · ${owner.life.toFixed(1)}초` : ''}</span></div>${this.entityStatsHtml(owner, true)}
+        <details class="slot-toggle" data-entity="${oi}"${open}><summary>카드 슬롯 ${owner.slots.length}개</summary>${slots}</details></div>`;
     }).join('');
     const scroll = this.mode === 'editor' ? this.overlay.querySelector('.panel')?.scrollTop : 0;
     this.open(`<div class="panel editor"><h2>카드 편집</h2>${this.editorNavigation(g)}<p class="sub">각 개체의 카드 슬롯을 확인할 수 있습니다.</p><div class="slots">${rows || '<p class="muted">현재 이 종류의 개체가 없습니다.</p>'}</div><div style="text-align:center"><button class="btn primary" data-act="editor-close">${g.editorLevelUpBack ? '보상 선택으로 돌아가기' : '닫기'} <kbd>E</kbd> / <kbd>Esc</kbd></button></div></div>`, 'editor');
@@ -663,10 +681,10 @@ const UI = {
 
     const rows = deck.slots.map((slot, si) => {
       const eff = this.slotCosts(slot.cards);
-      const cards = slot.cards.map((id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`, eff[ci])).join('');
+      const card = (id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`, eff[ci]);
       return `
         <div class="slot-row card-slot-only${si === this.editSel ? ' sel' : ''}" data-slot="${si}">
-          <div class="slot-cards dropzone" data-zone="slot" data-slot="${si}">${cards}<div class="cell">+</div></div>
+          ${this.slotSectionsHtml(slot.cards, card, { slot: si })}
           ${this.costMeterHtml(deck, si)}
         </div>`;
     }).join('');
@@ -680,21 +698,21 @@ const UI = {
       <div class="panel editor">
         <h2>카드 편집</h2>
         ${this.editorNavigation(g)}
-        <p class="sub">슬롯은 각자 따로 실행되고, 카드는 왼쪽부터 실행됩니다. 쿨타임이 끝난 슬롯은 바로 다시 실행됩니다.</p>
+        <p class="sub">슬롯은 각자 따로 실행되며 조건 → 대상 → 행동 카드 슬롯 순서로 실행됩니다. 쿨타임이 끝난 슬롯은 바로 다시 실행됩니다.</p>
         <div class="points${deck.costPoints ? ' has' : ''}">${this.statHtml('uiCost', '코스트 포인트', deck.costPoints)}
           <span class="muted">슬롯 오른쪽 <b>+1</b> 로 제한 코스트 올리기</span></div>
-        ${this.entityStatsHtml(g.player, false)}<div class="slots">${deck.fixedSlots.map(slot => `<div class="slot-row"><div class="section-title">고정 슬롯 · 매 프레임 실행</div><div class="slot-cards">${slot.cards.map(id => `<div class="pcard t-action" title="${CARDS[id].desc}">${this.iconHtml(id, 32)}<span class="nm">${CARDS[id].name}</span></div>`).join('')}</div></div>`).join('')}${rows}
+        ${this.entityStatsHtml(g.player, false)}<div class="slots">${deck.fixedSlots.map(slot => `<div class="slot-row fixed-slot"><div class="section-title">고정 슬롯 · 매 프레임 실행</div>${this.slotSectionsHtml(slot.cards, id => `<div class="pcard t-${CARDS[id].type}" title="${CARDS[id].desc}">${this.iconHtml(id, 32)}<span class="nm">${CARDS[id].name}</span></div>`)}</div>`).join('')}${rows}
           <button class="slot-expand" data-act="slot-expand" ${deck.costPoints < SLOT_EXPAND_COST || deck.slots.length >= MAX_SLOTS ? 'disabled' : ''} aria-label="슬롯 확장 (${SLOT_EXPAND_COST}포인트)">
             <span class="slot-expand-plus" aria-hidden="true">+</span>
             <span>${deck.slots.length >= MAX_SLOTS ? '슬롯 최대' : `슬롯 확장 <span class="price">${SLOT_EXPAND_COST}${this.iconHtml('uiCost', 16)}</span>`}</span>
           </button>
         </div>
-        <div class="section-title">보관함 <span class="muted">· 클릭하면 선택한 슬롯에 추가</span></div>
+        <div class="section-title">보관함 <span class="muted">· 클릭하면 선택한 슬롯의 맞는 칸에 추가</span></div>
         <div class="inventory dropzone" data-zone="inv">${inv}</div>
         <div class="legend">
           <span><i style="background:${CARD_TYPES.target.color}"></i>대상 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
-          <span><i style="background:${CARD_TYPES.filter.color}"></i>대상 필터 카드</span>
+          <span><i style="background:${CARD_TYPES.filter.color}"></i>조건 카드</span>
         </div>
         <div class="editor-msg">${this.editMsg}</div>
         <div style="text-align:center"><button class="btn primary" data-act="editor-close">${g.editorLevelUpBack ? '보상 선택으로 돌아가기' : '닫기'} <kbd>E</kbd> / <kbd>Esc</kbd></button></div>
@@ -720,8 +738,16 @@ const UI = {
   /** 오버레이에 한 번만 거는 위임 이벤트 (편집기 모드일 때만 동작) */
   bindEditor() {
     const ov = this.overlay;
-    let drag = null;
+    let drag = null, dragType = null;
     let swipe = null;
+    // 개체 카드 슬롯 열기/닫기 상태를 기억한다 (toggle 은 버블링되지 않아 캡처로 받는다).
+    ov.addEventListener('toggle', e => {
+      const el = e.target;
+      if (this.mode !== 'editor' || !el.matches?.('details[data-entity]')) return;
+      const owner = this._entityEntries?.[Number(el.dataset.entity)]?.owner;
+      if (!owner) return;
+      if (el.open) this.openEntitySlots.add(owner); else this.openEntitySlots.delete(owner);
+    }, true);
     ov.addEventListener('touchstart', e => {
       if (this.mode !== 'editor' || e.target.closest('button, select, .pcard, .slot-cards')) return;
       const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY };
@@ -746,16 +772,17 @@ const UI = {
       ov.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
       marker.remove();
     };
+    // 카드는 자기 종류의 칸(조건 · 대상 · 행동 카드 슬롯)에만 놓을 수 있다.
     const targetZone = e => {
       const zone = e.target.closest('.dropzone');
-      if (zone) return zone;
+      if (zone) return !zone.dataset.section || zone.dataset.section === dragType ? zone : null;
       const row = e.target.closest('.slot-row');
-      return row && !e.target.closest('button, .slot-head') ? row.querySelector('.slot-cards') : null;
+      return row && !e.target.closest('button, .slot-head') ? row.querySelector(`.slot-cards[data-section="${dragType}"]`) : null;
     };
     const insertion = (zone, e) => {
       const cards = [...zone.querySelectorAll('.pcard')];
       const cell = zone.querySelector('.cell');
-      if (e.target.closest('.cell') || !cards.length) return { idx: cards.length, anchor: cell, after: false };
+      if (e.target.closest('.cell') || !cards.length) return { idx: zone.dataset.end != null ? Number(zone.dataset.end) : cards.length, anchor: cell, after: false };
       const rows = [];
       for (const card of cards) {
         const rect = card.getBoundingClientRect();
@@ -795,11 +822,13 @@ const UI = {
       const card = this.mode === 'editor' && e.target.closest('.pcard[data-src]');
       if (!card) return;
       drag = this.cardRef(card);
+      const deck = this.game.player.deck;
+      dragType = CARDS[drag.src === 'inv' ? deck.inventory[drag.idx] : deck.slots[drag.slot].cards[drag.idx]]?.type;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', 'card');
       card.classList.add('dragging');
     });
-    ov.addEventListener('dragend', () => { drag = null; clearOver(); });
+    ov.addEventListener('dragend', () => { drag = null; dragType = null; clearOver(); });
     ov.addEventListener('dragleave', e => {
       if (!ov.contains(e.relatedTarget)) clearTarget();
     });
@@ -831,7 +860,7 @@ const UI = {
         this.applyMove(ref, ref.src === 'inv' ? { dest: 'slot', slot: this.editSel } : { dest: 'inv' });
         return;
       }
-      const row = e.target.closest('.slot-row');
+      const row = e.target.closest('.slot-row[data-slot]');
       if (row) { this.editSel = Number(row.dataset.slot); this.refreshEditor(); }
     });
   },

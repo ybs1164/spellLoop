@@ -13,6 +13,8 @@ vm.runInContext(`
   game.start(); game.player.deck.slots = [];
   game.burst = game.addText = game.addFx = game.circleFx = () => {};
   const mechanicCard = (owner, mechanic) => owner.slot.cards.find(id => CARDS[id].mechanic === mechanic);
+  // 주기 카드는 행동과 같은 슬롯의 조건 칸에 있다.
+  const slotInterval = (owner, action) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === action)).cards.map(id => CARDS[id].interval).find(v => v != null);
   const necro = new Enemy('necro', 100, 0, 1);
   const lich = new Enemy('lich', 100, 0, 1);
   const summonCard = CARDS[necro.slot.cards.find(id => cardBaseId(id) === 'summon')];
@@ -22,9 +24,9 @@ vm.runInContext(`
   assert.equal(summonCard.entityOnly, true);
   assert.equal(CARDS.summon.name, '기사 소환');
   assert.equal(entityActionConfig(necro, 'summon').n, 3);
-  assert.equal(CARDS[necro.slot.cards[necro.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'summon') - 1]].interval, 6);
+  assert.equal(slotInterval(necro, 'summon'), 6);
   assert.equal(entityActionConfig(lich, 'summon').n, 6);
-  assert.equal(CARDS[lich.slot.cards[lich.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'summon') - 1]].interval, 5);
+  assert.equal(slotInterval(lich, 'summon'), 5);
   assert.ok(necro.slot.cards.some(cardId => cardBaseId(cardId) === 'summon') && lich.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
   assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'maxHp']);
   assert.equal(entityStats(game.player).moveSpeed, 170);
