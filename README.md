@@ -83,7 +83,7 @@ Shared entity stats are moveSpeed, attackPower, maxHp and knockback. Projectile 
 
 도주 이동은 `entityFlee`로 정의하며, 남은 도주 시간은 `escT`로 관리합니다. `수명 종료 시 → 슬롯 주인 → 소멸` 카드로 시간 조건과 제거 행동을 표현할 수 있으며, 기본 수명 만료는 이동이나 슬롯 구성과 독립적으로 처리됩니다. 도주로 소멸한 적은 사망 보상을 지급하지 않습니다.
 
-폭발 카드는 일반 `explode` 하나로 통합했습니다. 지뢰·유성·점액·심연·소멸 탄환 모두 반경 100, 슬롯 주인 공격력 260%, 넉백 260을 사용합니다. 지뢰의 제거는 같은 조건의 별도 `소멸` 슬롯으로 정의하며, 폭발 변형의 화상·플레이어 자해·부착 대상 전용 피해는 제거했습니다. 검증: `node tools/check-common-mechanics.cjs`, `node tools/check-common-action-modes.cjs`, `node tools/check-stat-ratios.cjs`.
+폭발 카드는 일반 `explode` 하나로 통합했습니다. 지뢰·유성·점액·심연·소멸 탄환 모두 반경 100, 슬롯 주인 공격력 260%, 넉백 260을 사용합니다. 지뢰는 한 슬롯의 `사거리 안 적 존재 → 슬롯 주인 → 폭발 → 소멸` 스택으로 조건을 한 번 검사하고 순서대로 실행하므로, 폭발로 마지막 적이 죽어도 제거됩니다. 연속 행동은 같은 슬롯으로 유지하며 새 조건·대상부터 슬롯을 나눕니다. 폭발 변형의 화상·플레이어 자해·부착 대상 전용 피해는 제거했습니다. 검증: `node tools/check-mine-sequence.cjs`, `node tools/check-common-mechanics.cjs`, `node tools/check-common-action-modes.cjs`, `node tools/check-stat-ratios.cjs`.
 
 소환은 개체별 개별 행동으로 분류하며, 설명에는 수량과 핵심 효과만 표시합니다.
 

@@ -193,6 +193,25 @@ class Game {
     } else this.resume();
   }
 
+  openInspector() {
+    if (!['playing', 'paused', 'levelup', 'editor'].includes(this.state)) return;
+    this.inspectorBack = { state: this.state, reward: UI.levelUpBack };
+    this.state = 'inspector';
+    UI.editorPage = UI.editorPage || 1;
+    UI.showEntityEditor(this);
+  }
+
+  closeInspector() {
+    if (this.state !== 'inspector') return;
+    const back = this.inspectorBack;
+    this.inspectorBack = null;
+    this.state = back.state;
+    if (back.state === 'editor') UI.showEditor(this);
+    else if (back.state === 'paused') UI.showPause(this);
+    else if (back.state === 'levelup') back.reward();
+    else UI.hideOverlay();
+  }
+
   /** 레벨이 오를 때마다: 코스트 포인트 +1, 카드 선택 1회 */
   onLevelUp(level) {
     const deck = this.player.deck;
@@ -233,6 +252,12 @@ class Game {
       if (Input.consume('Escape')) UI.closeCodex();
       Input.endFrame();
     }
+    // 개체 행동 조회는 화면에 진입 버튼을 두지 않는 별도 단축키다.
+    if (Input.consume('KeyI')) {
+      if (this.state === 'inspector') this.closeInspector();
+      else this.openInspector();
+      return;
+    }
     switch (this.state) {
       case 'title':
         this.cam.x += dt * 25; this.cam.y += dt * 12;
@@ -249,8 +274,11 @@ class Game {
         break;
       case 'editor':
         if (Input.consume('Escape') || Input.consume('KeyE') || Input.consume('Tab')) this.closeEditor();
-        else if (Input.consume('ArrowLeft')) UI.act('entity-page', { page: ((UI.editorPage || 0) + 6) % 7 });
-        else if (Input.consume('ArrowRight')) UI.act('entity-page', { page: ((UI.editorPage || 0) + 1) % 7 });
+        break;
+      case 'inspector':
+        if (Input.consume('Escape')) this.closeInspector();
+        else if (Input.consume('ArrowLeft')) UI.act('entity-page', { page: (UI.editorPage + 4) % 6 + 1 });
+        else if (Input.consume('ArrowRight')) UI.act('entity-page', { page: UI.editorPage % 6 + 1 });
         break;
       case 'levelup':
         if (Input.consume('KeyE') || Input.consume('Tab')) { this.openEditor(); break; }

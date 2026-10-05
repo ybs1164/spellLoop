@@ -217,7 +217,7 @@ vm.runInContext(`
   shooter.slot.cards[0] = entityChainCard('range', 200); shooter.slot.changed();
   shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 1);
-  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), 7, 'interval comes from the separate card');
+  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), 3.5, 'interval comes from the separate card');
   shooter.slot.cards = ['ifHurt', 'self', shotAction]; shooter.slot.changed(); shooter.shootCd = 0;
   game.player.hp = game.player.stats.maxHp;
   shooter.update(0.01, game.player, game);
@@ -225,7 +225,7 @@ vm.runInContext(`
   game.player.hp -= 1;
   shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 2);
-  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), entityStats(shooter).attackPeriod, 'removing the interval card falls back to the attack period state');
+  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), entityStats(shooter).attackPeriod * 0.5, 'removing the interval card falls back to the attack period state');
   const redirected = new Placed('turret', 0, 0, 1);
   assert.ok(redirected.slot.defaults.includes('nearestEnemy'));
   assert.ok(summoner.slot.defaults.includes('self'));
@@ -250,7 +250,7 @@ vm.runInContext(`
   redirected.update(0.01, game);
   assert.equal(game.projectiles.length, 1);
   assert.ok(game.projectiles[0].vy > 0 && Math.abs(game.projectiles[0].vx) < 0.001, 'target card controls the shot direction');
-  assert.equal(redirected.slot.cooldowns.get(2), 3);
+  assert.equal(redirected.slot.cooldowns.get(2), 1.5);
   assert.equal(game.projectiles[0].life, 1);
   assert.equal(game.projectiles[0].pierce, Infinity);
   assert.equal(game.projectiles[0].y, -6);
@@ -265,7 +265,7 @@ vm.runInContext(`
   const orbAction = orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe');
   orb.slot.cards.splice(orbAction, 0, entityChainCard('interval', 2)); orb.slot.changed(); orb.cd = 0;
   orb.update(0.01, game);
-  assert.equal(orb.slot.cooldowns.get(orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe')), 2);
+  assert.equal(orb.slot.cooldowns.get(orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe')), 1);
   assert.equal(orbVictim.hp, initialHp - 12);
   orb.slot.cards = []; orb.slot.changed(); orb.cd = 0;
   const beforeLife = orb.life;
@@ -411,7 +411,8 @@ vm.runInContext(`
       for (const slot of owner.slots) {
         assert.equal(slot.owner, owner);
         assert.ok(!slot.name);
-        assert.ok(slot.cards.filter(id => CARDS[id].type === 'action').length <= 1, 'one mechanic per slot');
+        const firstAction = slot.cards.findIndex(id => CARDS[id].type === 'action');
+        assert.ok(firstAction < 0 || slot.cards.slice(firstAction).every(id => CARDS[id].type === 'action'), 'actions run consecutively within a slot');
       }
       assert.equal(new Set(owner.slots.map(slot => slot.cooldowns)).size, owner.slots.length, 'independent cooldowns');
     }
@@ -421,7 +422,7 @@ vm.runInContext(`
   const attackSlot = archer.slots.find(slot => slot.cards.some(cardId => cardBaseId(cardId) === 'bolt'));
   const movementSlot = archer.slots.find(slot => slot.cards.some(id => CARDS[id].mechanic === 'entityMove'));
   const attackIndex = attackSlot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt');
-  assert.equal(attackSlot.cooldowns.get(attackIndex), 0.2, 'split preserves initial attack delay');
+  assert.equal(attackSlot.cooldowns.get(attackIndex), 0.1, 'split preserves initial attack delay');
   attackSlot.cooldowns.set(attackIndex, 3);
   movementSlot.changed(); archer.slot.syncSlots();
   assert.equal(attackSlot.cooldowns.get(attackIndex), 3, 'editing another slot preserves attack cooldown');

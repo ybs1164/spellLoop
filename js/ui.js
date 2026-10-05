@@ -310,13 +310,15 @@ const UI = {
       case 'title': g.toTitle(); break;
       case 'editor': g.openEditor(); break;
       case 'editor-close': g.closeEditor(); break;
+      case 'inspector-close': g.closeInspector(); break;
       case 'codex': this.showCodex(); break;
       case 'codex-tab': this.showCodex(data.tab); break;
       case 'codex-filter': this.codexFilter = data.filter; this.showCodex('entities'); break;
       case 'codex-close': this.closeCodex(); break;
       case 'entity-page':
+        if (this.mode !== 'inspector') break;
         this.editorPage = Number(data.page);
-        this.showEditor(g);
+        this.showEntityEditor(g);
         break;
       case 'entity-card-remove':
       case 'entity-card-up':
@@ -649,7 +651,7 @@ const UI = {
       return `<span class="step${s.ok ? '' : ' bad'}">${who} → <b class="${s.filter ? 'c-filter' : 'c-action'}">${CARDS[s.action].name}</b></span>`;
     }).join('');
     const warns = pv.warns.map((w) => `<span class="warn">⚠ ${w}</span>`).join('');
-    return `${over}${steps}<span class="muted">기본 실행 ${pv.time.toFixed(2)}초 · 필터 전 기준 ${pv.baseCooldown.toFixed(1)}초 + 대상 수 추가${slot.executionCost != null ? ` · 최근 ${slot.executedTargets}개 대상 / ${slot.executedActions}회 적용 · 쿨타임 ${pv.cooldown.toFixed(2)}초` : ' · 실행 대상에 따라 조정'}</span>${warns}`;
+    return `${over}${steps}<span class="muted">필터 전 기준 ${pv.baseCooldown.toFixed(1)}초 + 대상 수 추가${slot.executionCost != null ? ` · 최근 ${slot.executedTargets}개 대상 / ${slot.executedActions}회 적용 · 쿨타임 ${pv.cooldown.toFixed(2)}초` : ' · 실행 대상에 따라 조정'}</span>${warns}`;
   },
 
   editorEntities(g) {
@@ -659,9 +661,9 @@ const UI = {
   },
 
   editorNavigation(g) {
-    const labels = ['나의 슬롯', '아군', '적', '구조물 · 오브', '장판', '투사체', '보석 · 아이템'];
-    const page = this.editorPage || 0;
-    return `<div class="entity-navigation"><button class="btn" data-act="entity-page" data-page="${(page + 6) % 7}">◀</button>${labels.map((label, i) => `<button class="btn ${i === page ? 'primary' : ''}" data-act="entity-page" data-page="${i}">${label}</button>`).join('')}<button class="btn" data-act="entity-page" data-page="${(page + 1) % 7}">▶</button></div>`;
+    const labels = ['아군', '적', '구조물 · 오브', '장판', '투사체', '보석 · 아이템'];
+    const page = this.editorPage || 1;
+    return `<div class="entity-navigation"><button class="btn" data-act="entity-page" data-page="${(page + 4) % 6 + 1}">◀</button>${labels.map((label, i) => `<button class="btn ${i + 1 === page ? 'primary' : ''}" data-act="entity-page" data-page="${i + 1}">${label}</button>`).join('')}<button class="btn" data-act="entity-page" data-page="${page % 6 + 1}">▶</button></div>`;
   },
 
   entityName(owner, kind) {
@@ -681,13 +683,12 @@ const UI = {
       return `<div class="slot-row entity-slot entity-group"><div class="section-title">${name || owner.kind} #${oi + 1} <span class="muted">(${Math.round(owner.x)}, ${Math.round(owner.y)}) · 슬롯 ${owner.slots.length}${Number.isFinite(entityStats(owner).lifetime) && Number.isFinite(owner.life) ? ` · ${owner.life.toFixed(1)}초` : ''}</span></div>${this.entityStatsHtml(owner, true)}
         <details class="slot-toggle" data-entity="${oi}"${open}><summary>카드 슬롯 ${owner.slots.length}개</summary>${slots}</details></div>`;
     }).join('');
-    const scroll = this.mode === 'editor' ? this.overlay.querySelector('.panel')?.scrollTop : 0;
-    this.open(`<div class="panel editor"><h2>카드 편집</h2>${this.editorNavigation(g)}<p class="sub">각 개체의 카드 슬롯을 확인할 수 있습니다.</p><div class="slots">${rows || '<p class="muted">현재 이 종류의 개체가 없습니다.</p>'}</div><div style="text-align:center"><button class="btn primary" data-act="editor-close">${g.editorLevelUpBack ? '보상 선택으로 돌아가기' : '닫기'} <kbd>E</kbd> / <kbd>Esc</kbd></button></div></div>`, 'editor');
+    const scroll = this.mode === 'inspector' ? this.overlay.querySelector('.panel')?.scrollTop : 0;
+    this.open(`<div class="panel editor"><h2>개체 행동 속성</h2>${this.editorNavigation(g)}<p class="sub">각 개체의 스탯과 카드 슬롯을 확인할 수 있습니다.</p><div class="slots">${rows || '<p class="muted">현재 이 종류의 개체가 없습니다.</p>'}</div><div style="text-align:center"><button class="btn primary" data-act="inspector-close">닫기 <kbd>I</kbd> / <kbd>Esc</kbd></button></div></div>`, 'inspector');
     if (scroll) this.overlay.querySelector('.panel').scrollTop = scroll;
   },
 
   showEditor(g) {
-    if (this.editorPage) { this.showEntityEditor(g); return; }
     const deck = g.player.deck, stats = g.player.stats;
     if (this.editSel >= deck.slots.length) this.editSel = 0;
 
@@ -705,12 +706,15 @@ const UI = {
       ? deck.inventory.map((id, i) => this.cardHtml(id, `data-src="inv" data-idx="${i}"`)).join('')
       : '<span class="muted">보관함이 비었습니다. 레벨업으로 카드를 얻으세요.</span>';
 
-    const scroll = this.mode === 'editor' ? this.overlay.querySelector('.panel')?.scrollTop : 0;
+    const scrolls = ['.panel', '.editor-slot-pane', '.inventory'].map(selector =>
+      this.mode === 'editor' ? this.overlay.querySelector(selector)?.scrollTop || 0 : 0);
     this.open(`
-      <div class="panel editor">
+      <div class="editor player-editor">
+        <div class="editor-workspace">
+        <section class="panel editor-slot-pane" aria-label="슬롯">
         <h2>카드 편집</h2>
-        ${this.editorNavigation(g)}
-        <p class="sub">슬롯은 각자 따로 실행되며 조건 → 대상 → 행동 카드 슬롯 순서로 실행됩니다. 쿨타임이 끝난 슬롯은 바로 다시 실행됩니다.</p>
+        <p class="sub">슬롯은 조건 → 대상 → 행동 순서로 각각 실행됩니다.</p>
+        <div class="section-title">슬롯 <span class="muted">· 오른쪽 카드를 맞는 칸으로 드래그</span></div>
         <div class="points${deck.costPoints ? ' has' : ''}">${this.statHtml('uiCost', '코스트 포인트', deck.costPoints)}
           <span class="muted">슬롯 오른쪽 <b>+1</b> 로 제한 코스트 올리기</span></div>
         ${this.entityStatsHtml(g.player, false)}<div class="slots">${deck.fixedSlots.map(slot => `<div class="slot-row fixed-slot"><div class="section-title">고정 슬롯 · 매 프레임 실행</div>${this.slotSectionsHtml(slot.cards, id => `<div class="pcard t-${CARDS[id].type}" title="${CARDS[id].desc}">${this.iconHtml(id, 32)}<span class="nm">${CARDS[id].name}</span></div>`)}</div>`).join('')}${rows}
@@ -719,17 +723,25 @@ const UI = {
             <span>${deck.slots.length >= MAX_SLOTS ? '슬롯 최대' : `슬롯 확장 <span class="price">${SLOT_EXPAND_COST}${this.iconHtml('uiCost', 16)}</span>`}</span>
           </button>
         </div>
-        <div class="section-title">보관함 <span class="muted">· 클릭하면 선택한 슬롯의 맞는 칸에 추가</span></div>
+        </section>
+        <aside class="panel editor-inventory-pane" aria-label="보관함">
+        <h2>보관함 <span class="muted">${deck.inventory.length}장</span></h2>
+        <p class="inventory-hint">왼쪽 슬롯으로 드래그하세요.<br>클릭하면 선택한 슬롯에 추가됩니다.<br>슬롯 카드를 이곳으로 옮기면 보관합니다.</p>
         <div class="inventory dropzone" data-zone="inv">${inv}</div>
         <div class="legend">
           <span><i style="background:${CARD_TYPES.target.color}"></i>대상 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
           <span><i style="background:${CARD_TYPES.filter.color}"></i>조건 카드</span>
         </div>
-        <div class="editor-msg">${this.editMsg}</div>
+        </aside>
+        </div>
+        <div class="editor-msg" role="status">${this.editMsg}</div>
         <div style="text-align:center"><button class="btn primary" data-act="editor-close">${g.editorLevelUpBack ? '보상 선택으로 돌아가기' : '닫기'} <kbd>E</kbd> / <kbd>Esc</kbd></button></div>
       </div>`, 'editor');
-    if (scroll) this.overlay.querySelector('.panel').scrollTop = scroll;
+    ['.panel', '.editor-slot-pane', '.inventory'].forEach((selector, i) => {
+      const pane = this.overlay.querySelector(selector);
+      if (pane) pane.scrollTop = scrolls[i];
+    });
     this.editMsg = '';
   },
 
@@ -755,22 +767,22 @@ const UI = {
     // 개체 카드 슬롯 열기/닫기 상태를 기억한다 (toggle 은 버블링되지 않아 캡처로 받는다).
     ov.addEventListener('toggle', e => {
       const el = e.target;
-      if (this.mode !== 'editor' || !el.matches?.('details[data-entity]')) return;
+      if (this.mode !== 'inspector' || !el.matches?.('details[data-entity]')) return;
       const owner = this._entityEntries?.[Number(el.dataset.entity)]?.owner;
       if (!owner) return;
       if (el.open) this.openEntitySlots.add(owner); else this.openEntitySlots.delete(owner);
     }, true);
     ov.addEventListener('touchstart', e => {
-      if (this.mode !== 'editor' || e.target.closest('button, select, .pcard, .slot-cards')) return;
+      if (this.mode !== 'inspector' || e.target.closest('button, select, .pcard, .slot-cards')) return;
       const t = e.changedTouches[0]; swipe = { x: t.clientX, y: t.clientY };
     }, { passive: true });
     ov.addEventListener('touchend', e => {
-      if (!swipe || this.mode !== 'editor') return;
+      if (!swipe || this.mode !== 'inspector') return;
       const t = e.changedTouches[0], dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
       swipe = null;
       if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-        this.editorPage = ((this.editorPage || 0) + (dx < 0 ? 1 : 6)) % 7;
-        this.showEditor(this.game);
+        this.editorPage = (this.editorPage - 1 + (dx < 0 ? 1 : 5)) % 6 + 1;
+        this.showEntityEditor(this.game);
       }
     }, { passive: true });
     ov.addEventListener('touchcancel', () => { swipe = null; }, { passive: true });
@@ -865,7 +877,7 @@ const UI = {
     });
 
     ov.addEventListener('click', (e) => {
-      if (this.mode !== 'editor' || this.editorPage) return;
+      if (this.mode !== 'editor') return;
       const card = e.target.closest('.pcard[data-src]');
       if (card) {
         const ref = this.cardRef(card);

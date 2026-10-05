@@ -9,7 +9,7 @@
 
 function rollCard(exclude) {
   // weight 0 (저주 등) 은 보상으로 나오지 않는다
-  const ids = Object.keys(CARDS).filter((id) => !exclude.has(id) && (CARDS[id].weight ?? 1) > 0);
+  const ids = Object.keys(CARDS).filter((id) => !exclude.has(id) && !CARDS[id].entityOnly && !CARDS[id].configured && CARDS[id].group !== 'entity' && (CARDS[id].weight ?? 1) > 0);
   const total = ids.reduce((s, id) => s + (CARDS[id].weight ?? 1), 0);
   let r = Math.random() * total;
   for (const id of ids) {
@@ -28,6 +28,7 @@ function rollRewards(player, n) {
   const out = [];
   for (let i = 0; i < n; i++) {
     const id = rollCard(used);
+    if (id == null) break;
     used.add(id);
     out.push(id);
   }

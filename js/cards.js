@@ -122,7 +122,7 @@ const buff = (kind) => (ts, env) => ts.forEach(t => env.buff(kind, t));
  *  행동: run(targets, env) — accepts 에 있는 대상 종류에만 실행된다. group 은 도감 분류.
  *        여러 대상은 같은 프레임에 모두 적용하며 대상별 추가 대기시간은 쿨타임으로 옮긴다.
  *  필터: SkillDeck.runFilter가 조건을 통과한 대상만 남긴다.
- *  delay: 이 카드 실행 후 다음 카드까지 대기 시간(초), weight: 레벨업 보상 등장 가중치
+ *  weight: 레벨업 보상 등장 가중치
  */
 const CARDS = {
   /* ================= 대상 카드: 넓게 고른다 ================= */
@@ -217,312 +217,312 @@ const CARDS = {
 
   /* ================= 행동 카드: 기본 ================= */
   bolt: {
-    type: 'action', group: 0, name: '마탄', cost: 1, delay: 0.15, weight: 3, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '마탄', cost: 1, weight: 3, accepts: ALL_KINDS,
     desc: '피해 20의 마력탄을 발사한다.',
     run: (ts, env) => ts.forEach((t) => env.bolt(t)),
   },
   slash: {
-    type: 'action', group: 0, name: '참격', cost: 2, delay: 0.15, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '참격', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '반경 70을 즉시 베어 피해 24를 준다.', run: each('slash'),
   },
   explode: {
-    type: 'action', group: 0, name: '폭발', cost: 2, delay: 0.3, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '폭발', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '반경 100에 폭발을 일으켜 피해 26을 주고 밀쳐낸다.', run: each('explode'),
   },
   frost: {
-    type: 'action', group: 0, name: '빙결', cost: 2, delay: 0.25, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '빙결', cost: 2, weight: 2, accepts: ALL_KINDS,
     keys: ['freeze'], desc: '반경 70에 피해 4를 주고 0.9초간 얼린다 (중첩 시 시간 합산).', run: each('frost'),
   },
   poison: {
-    type: 'action', group: 0, name: '독 장판', cost: 3, delay: 0.3, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '독 장판', cost: 3, weight: 2, accepts: ALL_KINDS,
     desc: '4초간 초당 피해 12의 독 장판을 만들며, 불이 닿으면 일반 폭발 후 소멸한다.', run: each('poison'),
   },
   vortex: {
-    type: 'action', group: 0, name: '소용돌이', cost: 2, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '소용돌이', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '1.5초간 반경 160 적을 끌어당김.', run: (ts, env) => ts.forEach(t => env.vortex(env.at(t), t, env.frameDt)),
     zoneKinds: ['vortex', 'abyss'],   // 이 장판 자신의 슬롯에서는 매 프레임 작동한다
   },
   shockwave: {
-    type: 'action', group: 0, name: '충격파', cost: 1, delay: 0.25, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '충격파', cost: 1, weight: 2, accepts: ALL_KINDS,
     desc: '반경 110에 피해 12를 주고 밀쳐낸다.', run: each('shockwave'),
   },
   summon: {
-    type: 'action', group: 0, name: '기사 소환', cost: 3, delay: 0.4, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '기사 소환', cost: 3, weight: 1, accepts: ALL_KINDS,
     desc: '기사 1체를 10초간 소환한다.', run: (ts, env) => ts.forEach(t => env.summonKnight(env.at(t), env.summonMode)),
   },
   spawnOrb: {
-    type: 'action', group: 0, name: '오브 스폰', cost: 1, delay: 0, weight: 0,
+    type: 'action', group: 0, name: '오브 스폰', cost: 1, weight: 0,
     accepts: ALL_KINDS, icon: 'gems',
     effect: { reward: { kind: 'gem', value: 1, magnetChance: 0 } },
     desc: '대상 위치에 설정된 경험치 오브 또는 아이템을 생성한다.',
     run: (ts, env) => ts.forEach(t => env.summonKnight(env.at(t), 'reward')),
   },
   heal: {
-    type: 'action', group: 0, name: '치유', cost: 3, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '치유', cost: 3, weight: 1, accepts: ALL_KINDS,
     desc: '체력 10 회복.', run: buff('heal'),
   },
   shield: {
-    type: 'action', group: 0, name: '보호막', cost: 2, delay: 0.3, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '보호막', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '6초간 피해 25 흡수.', run: buff('shield'),
   },
   haste: {
-    type: 'action', group: 0, name: '질주', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '질주', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '4초간 이동 속도 +40%.', run: buff('haste'),
   },
   rage: {
-    type: 'action', group: 0, name: '분노', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 0, name: '분노', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '5초간 모든 피해 +50%.', run: buff('rage'),
   },
 
   /* ================= 1차: 능력치 → 행동 ================= */
   scatter: {
-    type: 'action', group: 1, name: '산탄', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '산탄', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '발당 피해 12의 마탄 5발을 부채꼴로 발사한다.',
     run: (ts, env) => ts.forEach((t) => env.scatter(t)),
   },
   lance: {
-    type: 'action', group: 1, name: '관통탄', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '관통탄', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '피해 16의 창을 발사해 경로를 관통한다.',
     run: (ts, env) => ts.forEach((t) => env.lance(t)),
   },
   focus: {
-    type: 'action', group: 1, name: '집중', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '집중', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '5초간 실행 간격 -35%.', run: buff('focus'),
   },
   amplify: {
-    type: 'action', group: 1, name: '증폭', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '증폭', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '6초간 범위 +40%.', run: buff('amplify'),
   },
   prolong: {
-    type: 'action', group: 1, name: '연장', cost: 1, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '연장', cost: 1, weight: 1, accepts: ALL_KINDS,
     desc: '8초간 지속시간 +50%.', run: buff('prolong'),
   },
   armor: {
-    type: 'action', group: 1, name: '철갑', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '철갑', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '6초간 받는 피해 -5.', run: buff('armor'),
   },
   pull: {
-    type: 'action', group: 'position', name: '끌어당기기', cost: 1, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 'position', name: '끌어당기기', cost: 1, weight: 2, accepts: ALL_KINDS,
     desc: '선택한 대상을 플레이어 쪽으로 최대 160 끌어당긴다.', run: (ts, env) => ts.forEach(t => env.pull(env.at(t), t, env.frameDt)),
   },
   magnet: {
-    type: 'action', group: 1, name: '자력', cost: 1, delay: 0.15, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '자력', cost: 1, weight: 2, accepts: ALL_KINDS,
     desc: '보석·설치물이 플레이어에게 계속 끌려온다. 설치물은 곁에서 멈춘다.', run: each('magnet'),
   },
 
 
   /* ================= 2차: 설치물 (멈춰 있는 투사체) ================= */
   orb: {
-    type: 'action', group: 2, name: '부유 구체', cost: 2, delay: 0.2, weight: 3, accepts: ALL_KINDS,
+    type: 'action', group: 2, name: '부유 구체', cost: 2, weight: 3, accepts: ALL_KINDS,
     keys: ['orb'], desc: '대상 위치에 구체 설치.',
     run: each('placeOrb'),
   },
   mine: {
-    type: 'action', group: 2, name: '지뢰', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 2, name: '지뢰', cost: 2, weight: 2, accepts: ALL_KINDS,
     keys: ['mine'], desc: '대상 위치에 지뢰 설치.', run: each('placeMine'),
   },
   turret: {
-    type: 'action', group: 2, name: '포탑', cost: 3, delay: 0.35, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 2, name: '포탑', cost: 3, weight: 1, accepts: ALL_KINDS,
     keys: ['turret'], desc: '대상 위치에 포탑 설치.', run: each('placeTurret'),
   },
   decoy: {
-    type: 'action', group: 2, name: '미끼', cost: 3, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 2, name: '미끼', cost: 3, weight: 1, accepts: ALL_KINDS,
     keys: ['decoy'], desc: '대상 위치에 미끼 설치.', run: each('placeDecoy'),
   },
 
   /* ================= 3차: 투사체 변주 ================= */
   boomerang: {
-    type: 'action', group: 3, name: '부메랑', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '부메랑', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '피해 16의 관통 칼날을 던져 되돌아오게 한다.',
     run: (ts, env) => ts.forEach((t) => env.boomerang(t)),
   },
   homing: {
-    type: 'action', group: 3, name: '유도탄', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '유도탄', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '피해 60의 추적 미사일을 발사한다.',
     run: (ts, env) => ts.forEach((t) => env.homing(t)),
   },
   laser: {
-    type: 'action', group: 3, name: '레이저', cost: 2, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '레이저', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '길이 450의 광선으로 피해 16을 주며 관통한다.',
     run: (ts, env) => ts.forEach((t) => env.laser(t)),
   },
   chain: {
-    type: 'action', group: 3, name: '연쇄 번개', cost: 2, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '연쇄 번개', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '최대 8체에 번개를 튕겨 각각 피해 12를 준다.',
     run: each('chain'),
   },
   meteor: {
-    type: 'action', group: 3, name: '유성', cost: 2, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '유성', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '0.8초 뒤 유성이 떨어져 반경 100에 피해 48을 준다.', run: each('meteor'),
   },
   blades: {
-    type: 'action', group: 3, name: '회전 칼날', cost: 3, delay: 0.3, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 3, name: '회전 칼날', cost: 3, weight: 1, accepts: ALL_KINDS,
     desc: '칼날 3개가 5초간 회전하며 피해 8을 준다.',
     run: each('blades'),
   },
 
   /* ================= 4차: 제어·약화 ================= */
   root: {
-    type: 'action', group: 4, name: '속박', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 4, name: '속박', cost: 2, weight: 2, accepts: ALL_KINDS,
     keys: ['root'], desc: '반경 60 적을 속박 1.6초 (중첩 시 시간 합산).', run: each('root'),
   },
   mark: {
-    type: 'action', group: 4, name: '표식', cost: 1, delay: 0.1, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 4, name: '표식', cost: 1, weight: 2, accepts: ALL_KINDS,
     keys: ['mark'], desc: '6초간 중첩당 받는 피해 +90% (각각 만료).',
     run: (ts, env) => ts.forEach((t) => env.mark(t)),
   },
   burn: {
-    type: 'action', group: 4, name: '화상', cost: 2, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 4, name: '화상', cost: 2, weight: 2, accepts: ALL_KINDS,
     keys: ['burn'], desc: '반경 55에 3초간 중첩당 초당 피해 9의 화상을 입힌다 (각각 만료).', run: each('burn'),
   },
   fear: {
-    type: 'action', group: 4, name: '공포', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 4, name: '공포', cost: 2, weight: 1, accepts: ALL_KINDS,
     keys: ['fear'], desc: '반경 120 적에게 공포 1.8초 (중첩 시 시간 합산).', run: each('fear'),
   },
   drain: {
-    type: 'action', group: 4, name: '흡혈', cost: 2, delay: 0.2, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 4, name: '흡혈', cost: 2, weight: 1, accepts: ALL_KINDS,
     desc: '피해 60을 준다.', run: (ts, env) => ts.forEach((t) => env.drain(t)),
   },
 
   /* ================= 5차: 이동·아군·메타 ================= */
   blink: {
-    type: 'action', group: 5, name: '순간이동', cost: 2, delay: 0.25, weight: 1, accepts: ALL_KINDS.filter((k) => k !== 'self'),
+    type: 'action', group: 5, name: '순간이동', cost: 2, weight: 1, accepts: ALL_KINDS.filter((k) => k !== 'self'),
     desc: '대상 위치로 이동하며 0.4초간 무적이 된다.',
     run: (ts, env) => env.blink(env.at(ts[0]), ts[0]),
   },
   dash: {
-    type: 'action', group: 5, name: '돌진', cost: 2, delay: 0.25, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 5, name: '돌진', cost: 2, weight: 2, accepts: ALL_KINDS,
     desc: '170만큼 돌진하며 경로에 피해 40을 준다.',
     run: (ts, env) => env.dash(ts[0]),
   },
   archer: {
-    type: 'action', group: 5, name: '궁수 소환', cost: 3, delay: 0.4, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 5, name: '궁수 소환', cost: 3, weight: 1, accepts: ALL_KINDS,
     desc: '궁수 소환 10초.', run: each('summonArcher'),
   },
   rally: {
-    type: 'action', group: 5, name: '격려', cost: 2, delay: 0.2, weight: 1, accepts: ['object', 'ally', 'zone', 'shot'],
+    type: 'action', group: 5, name: '격려', cost: 2, weight: 1, accepts: ['object', 'ally', 'zone', 'shot'],
     desc: '수명을 3초 늘린다.',
     run: (ts, env) => ts.forEach((t) => env.rally(env.at(t))),
   },
   ward: {
-    type: 'action', group: 5, name: '결계', cost: 4, delay: 0.4, weight: 1, accepts: ALL_KINDS,
+    type: 'action', group: 5, name: '결계', cost: 4, weight: 1, accepts: ALL_KINDS,
     desc: '3초간 반경 120의 결계를 만들어 적의 접근을 막는다.', run: (ts, env) => ts.forEach(t => env.ward(env.at(t), t, env.frameDt)),
     zoneKinds: ['ward'],
   },
 
   /* ================= 6차: 대상 조작 ================= */
   spread: {
-    type: 'action', group: 6, name: '전염', cost: 1, delay: 0.2, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 6, name: '전염', cost: 1, weight: 2, accepts: ALL_KINDS,
     keys: ['status'], desc: '상태 이상을 주변 적에게 옮긴다.',
     run: (ts, env) => ts.forEach((t) => env.spread(t)),
   },
   snipe: {
-    type: 'action', group: 6, name: '저격', cost: 3, delay: 0.3, weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 6, name: '저격', cost: 3, weight: 2, accepts: ALL_KINDS,
     desc: '즉시 저격해 공격력의 1000% 피해를 준다.',
     run: (ts, env) => ts.forEach((t) => env.snipe(t)),
   },
   refresh: {
-    type: 'action', group: 6, name: '갱신', cost: 1, delay: 0.15, weight: 2, accepts: ['object', 'ally', 'zone', 'shot'],
+    type: 'action', group: 6, name: '갱신', cost: 1, weight: 2, accepts: ['object', 'ally', 'zone', 'shot'],
     keys: ['placed'], desc: '남은 수명을 처음으로 되돌린다.',
     run: (ts, env) => ts.forEach((t) => env.refresh(env.at(t))),
   },
   split: {
-    type: 'action', group: 6, name: '분열', cost: 1, delay: 0.25, weight: 1, accepts: ['self', 'enemy', 'object', 'ally', 'zone', 'shot'],
+    type: 'action', group: 6, name: '분열', cost: 1, weight: 1, accepts: ['self', 'enemy', 'object', 'ally', 'zone', 'shot'],
     desc: '대상을 복제하거나 둘로 나눈다.',
     run: (ts, env) => ts.forEach((t) => env.split(t)),
   },
   absorb: {
-    type: 'action', group: 6, name: '흡수', cost: 1, delay: 0.15, weight: 1, accepts: ['object', 'ally', 'zone', 'shot', 'gem'],
+    type: 'action', group: 6, name: '흡수', cost: 1, weight: 1, accepts: ['object', 'ally', 'zone', 'shot', 'gem'],
     keys: ['placed'], desc: '대상을 회수하거나 아이템을 얻는다.',
     run: (ts, env) => ts.forEach((t) => env.absorb(env.at(t), t)),
   },
   swap: {
-    type: 'action', group: 6, name: '위치 교환', cost: 1, delay: 0.25, weight: 1, accepts: ALL_KINDS.filter((k) => k !== 'self' && k !== 'point'),
+    type: 'action', group: 6, name: '위치 교환', cost: 1, weight: 1, accepts: ALL_KINDS.filter((k) => k !== 'self' && k !== 'point'),
     desc: '대상과 위치를 바꾸며 0.3초간 무적이 된다.',
     run: (ts, env) => env.swap(env.at(ts[0])),
   },
 
   /* ================= 필터: 대상 조건에 따라 뒤 행동 실행 ================= */
   ifHurt: {
-    type: 'filter', name: '부상일 때', cost: 1, delay: 0.05, weight: 2, icon: 'heal',
+    type: 'filter', name: '부상일 때', cost: 1, weight: 2, icon: 'heal',
     desc: '체력이 최대보다 낮은 대상만 통과.',
     requires: ['health'],
     test: (t, env) => { const o = env.at(t); return o.hp < (o.maxHp ?? o.stats?.maxHp); },
   },
   ifLowHp: {
-    type: 'filter', name: '체력 절반 이하', cost: 1, delay: 0.05, weight: 2, icon: 'fHalf',
+    type: 'filter', name: '체력 절반 이하', cost: 1, weight: 2, icon: 'fHalf',
     desc: '체력이 50% 이하인 대상만 통과.',
     requires: ['health'],
     test: (t, env) => { const o = env.at(t); return o.hp <= (o.maxHp ?? o.stats?.maxHp) * 0.5; },
   },
   ifHealthy: {
-    type: 'filter', name: '체력 절반 초과', cost: 1, delay: 0.05, weight: 2, icon: 'fFullHp',
+    type: 'filter', name: '체력 절반 초과', cost: 1, weight: 2, icon: 'fFullHp',
     desc: '체력이 50% 초과인 대상만 통과.',
     requires: ['health'],
     test: (t, env) => { const o = env.at(t); return o.hp > (o.maxHp ?? o.stats?.maxHp) * 0.5; },
   },
   ifNear: {
-    type: 'filter', name: '가까울 때', cost: 1, delay: 0.05, weight: 2, icon: 'fNear',
+    type: 'filter', name: '가까울 때', cost: 1, weight: 2, icon: 'fNear',
     desc: '자신과 거리 160 이하인 대상만 통과.',
     requires: ['position'],
     test: (t, env) => { const o = env.at(t); return env.d2(t) <= 25600; },
   },
   ifFar: {
-    type: 'filter', name: '멀리 있을 때', cost: 1, delay: 0.05, weight: 2, icon: 'fFar',
+    type: 'filter', name: '멀리 있을 때', cost: 1, weight: 2, icon: 'fFar',
     desc: '자신과 거리 160 초과인 대상만 통과.',
     requires: ['position'],
     test: (t, env) => { const o = env.at(t); return env.d2(t) > 25600; },
   },
   ifFront: {
-    type: 'filter', name: '앞에 있을 때', cost: 1, delay: 0.05, weight: 2, icon: 'fFront',
+    type: 'filter', name: '앞에 있을 때', cost: 1, weight: 2, icon: 'fFront',
     desc: '앞쪽 120도 안에 있는 대상만 통과.',
     requires: ['position'],
     test: (t, env) => { const o = env.at(t); return env.inCone(t, Math.PI / 3); },
   },
   ifEnemyNear: {
-    type: 'filter', name: '적이 근처일 때', cost: 1, delay: 0.05, weight: 2, icon: 'fNearEnemy',
+    type: 'filter', name: '적이 근처일 때', cost: 1, weight: 2, icon: 'fNearEnemy',
     desc: '주변 180 안에 적이 있는 대상만 통과.',
     requires: ['position'],
     test: (t, env) => { const o = env.at(t); return env.enemyNear(t, 180); },
   },
   ifSafe: {
-    type: 'filter', name: '적이 없을 때', cost: 1, delay: 0.05, weight: 2, icon: 'fAway',
+    type: 'filter', name: '적이 없을 때', cost: 1, weight: 2, icon: 'fAway',
     desc: '주변 180 안에 적이 없는 대상만 통과.',
     requires: ['position'],
     test: (t, env) => { const o = env.at(t); return !env.enemyNear(t, 180); },
   },
   ifExpiring: {
-    type: 'filter', name: '사망 시', cost: 1, delay: 0, weight: 2, icon: 'fExpiring', deathEvent: true,
+    type: 'filter', name: '사망 시', cost: 1, weight: 2, icon: 'fExpiring', deathEvent: true,
     desc: '사망할 시 한 번 실행한다.',
     gate: (ts, env) => !!env.deathEvent,
   },
   ifMarked: {
-    type: 'filter', name: '표식이 있을 때', cost: 1, delay: 0.05, weight: 2, icon: 'fMarked',
+    type: 'filter', name: '표식이 있을 때', cost: 1, weight: 2, icon: 'fMarked',
     desc: '표식이 남아 있는 대상만 통과.',
     test: (t, env) => hasTargetState(env.at(t), 'mark'),
   },
   ifStopped: {
-    type: 'filter', name: '멈춰 있을 때', cost: 1, delay: 0.05, weight: 2, icon: 'fDebuffed',
+    type: 'filter', name: '멈춰 있을 때', cost: 1, weight: 2, icon: 'fDebuffed',
     desc: '빙결 또는 속박이 남아 있는 대상만 통과.',
     test: (t, env) => hasTargetState(env.at(t), 'freeze') || hasTargetState(env.at(t), 'root'),
   },
   ifBurning: {
-    type: 'filter', name: '불타고 있을 때', cost: 1, delay: 0.05, weight: 2, icon: 'burn',
+    type: 'filter', name: '불타고 있을 때', cost: 1, weight: 2, icon: 'burn',
     desc: '화상이 남아 있는 대상만 통과.',
     test: (t, env) => hasTargetState(env.at(t), 'burn'),
   },
   ifElite: {
-    type: 'filter', name: '강적일 때', cost: 1, delay: 0.05, weight: 2, icon: 'fElite',
+    type: 'filter', name: '강적일 때', cost: 1, weight: 2, icon: 'fElite',
     desc: '보스 또는 정예 적만 통과.',
     test: (t, env) => { const o = env.at(t); return t.kind === 'enemy' && (o.boss || o.def?.elite); },
   },
   ifMany: {
-    type: 'filter', name: '여럿일 때', cost: 1, delay: 0.05, weight: 2, icon: 'pack',
+    type: 'filter', name: '여럿일 때', cost: 1, weight: 2, icon: 'pack',
     desc: '현재 살아 있는 대상이 3개 이상일 때만 뒤 행동 실행.',
     gate: (ts, env) => ts.length >= 3,
   },
   ifSingle: {
-    type: 'filter', name: '하나일 때', cost: 1, delay: 0.05, weight: 2, icon: 'nearest',
+    type: 'filter', name: '하나일 때', cost: 1, weight: 2, icon: 'nearest',
     desc: '현재 살아 있는 대상이 정확히 1개일 때만 뒤 행동 실행.',
     gate: (ts, env) => ts.length === 1,
   },
@@ -641,9 +641,8 @@ CARDS.vortex.desc += ` 끌어당기는 속도: 시전자 ${statRatioText('knockb
 CARDS.ward.desc += ` 밀어내는 속도: 시전자 ${statRatioText('knockback', ACTION_STAT_RATIOS.ward.forceSpeed)}.`;
 CARDS.mine.desc += ' 일반 폭발 카드를 사용한다.';
 
-const TARGET_DELAY = 0.05;
-
-function cardDelay(id) { return CARDS[id].delay ?? TARGET_DELAY; }
+const COOLDOWN_SCALE = 0.5;
+function scaledCooldown(seconds) { return seconds * COOLDOWN_SCALE; }
 /** 대상·행동 묶음의 코스트를 합산한다. */
 const ALL_TARGET_KINDS = Object.keys(TARGET_KINDS).filter((k) => TARGET_KINDS[k].inAll);
 
@@ -681,7 +680,7 @@ function costLabel(cost) { return cost > 0 ? `${cost}` : cost < 0 ? `−${-cost}
 
 CARDS.inputMove = {
   type: 'action', actionId: 'inputMove', name: '입력 방향 이동', icon: 'uiSpeed',
-  cost: 0, delay: 0, weight: 0, group: 'entity', requires: ['position'], accepts: ALL_KINDS,
+  cost: 0, weight: 0, group: 'entity', requires: ['position'], accepts: ALL_KINDS,
   effect: Object.freeze({ continuous: true, scaleRate: false }),
   desc: '매 프레임 화살표/WASD 입력 방향으로 이동 속도 스탯만큼 이동한다.',
   run: (targets, env) => {
@@ -750,7 +749,7 @@ class SkillDeck {
   static cooldownOf(slot, extra = slot.extraCooldown || 0, cost = slot.executionCost ?? cardsCost(slot.cards)) {
     const healingActions = slot.healingActions ?? slot.cards.filter(id => id === 'heal').length;
     const summoned = slot.summoned ?? slot.cards.some(id => id === 'summon' || id === 'archer');
-    return cost === 0 ? FIZZLE_CD : (Math.max(SLOT_CD_MIN, cost * SLOT_CD_PER_COST) + extra) * (healingActions > 0 ? 10 : 1) * (summoned ? 2 : 1);
+    return scaledCooldown(cost === 0 ? FIZZLE_CD : (Math.max(SLOT_CD_MIN, cost * SLOT_CD_PER_COST) + extra) * (healingActions > 0 ? 10 : 1) * (summoned ? 2 : 1));
   }
 
   /** 대상 카드 비용은 실제 행동을 받은 대상 비율만 부담한다. */
@@ -790,7 +789,6 @@ class SkillDeck {
     slot.cast = {
       cards: slot.cards.slice(),
       i: 0,
-      wait: 0,
       queue: [],            // 동시에 실행할 대상 묶음 { act, targets, delay, mul }
       ctx: {
         targets: null, base: null, kind: null, last: null, flag: null, pendingFilters: [],
@@ -838,23 +836,19 @@ class SkillDeck {
   /** 슬롯 하나의 실행을 dt 만큼 진행한다 */
   stepCast(slot, dt, game, cd) {
     const c = slot.cast;
-    c.wait -= dt;
-    while (c.wait <= 0) {
-      if (c.queue.length) { c.wait += this.runStep(c.queue.shift(), c.ctx, c.env) * cd; continue; }
-      if (c.i >= c.cards.length) break;
+    while (c.queue.length || c.i < c.cards.length) {
+      if (c.queue.length) { this.runStep(c.queue.shift(), c.ctx, c.env); continue; }
       const at = c.i, id = c.cards[c.i++], card = CARDS[id];
-      if (card.type === 'filter') { this.runFilter(id, at, c); c.wait += cardDelay(id) * cd; }
-      // 대기열은 대상 묶음 전체를 실행한 뒤 행동당 한 번만 기다린다.
-      else if (!this.runCard(id, c.ctx, c.env, at, c.queue)) c.wait += cardDelay(id) * cd;
+      if (card.type === 'filter') this.runFilter(id, at, c);
+      else this.runCard(id, c.ctx, c.env, at, c.queue);
     }
-    if (c.i >= c.cards.length && !c.queue.length && c.wait <= 0) this.endCast(slot);
+    this.endCast(slot);
   }
 
   /** 살아 있는 대상 모두를 같은 프레임에 실행하고 대상 수에 따른 추가 쿨타임을 적립한다. */
   runStep(step, ctx, env) {
     const live = (step.targets || [step.t]).filter(t => env.alive(t) && actionApplies(CARDS[step.act], t, env));
     if (!live.length) return 0;
-    let applied = 0;
     env.setMul(step.mul);
     try {
       for (const t of live) {
@@ -873,7 +867,6 @@ class SkillDeck {
             ctx.healingActions = (ctx.healingActions || 0) + 1;
           }
         }
-        applied++;
         ctx.fired++;
         const obj = env.at(t);
         ctx.hit.add(obj);
@@ -890,8 +883,7 @@ class SkillDeck {
     } finally {
       env.setMul(1);
     }
-    ctx.extraCooldown = (ctx.extraCooldown || 0) + step.delay * Math.max(0, applied - 1);
-    return applied ? step.delay : 0;
+    return 0;
   }
 
   /** 제어 조건은 바로 뒤 대상 카드에 적용한다. */
@@ -961,8 +953,7 @@ class SkillDeck {
     if (!live.length) return false;
     // 최종 대상 위에 마지막으로 쓴 대상 카드 아이콘을 띄운다
     if (ctx.flag) { env.flag(live, ctx.flag); ctx.flag = null; }
-    const delay = cardDelay(id);
-    queue.push({ act, at, chain: ctx.chain, targets: live.slice(), delay, mul: ctx.mul });
+    queue.push({ act, at, chain: ctx.chain, targets: live.slice(), mul: ctx.mul });
     return true;
   }
 
@@ -973,12 +964,11 @@ class SkillDeck {
   preview(slotIdx, stats) {
     const slot = this.slots[slotIdx], cards = slot.cards;
     const steps = [], warns = [];
-    let chain = null, kinds = null, used = true, time = 0, pending = [], filters = [], prevType = null;
+    let chain = null, kinds = null, used = true, pending = [], filters = [], prevType = null;
     const kindsOf = (kind) => kind === 'all' ? ALL_TARGET_KINDS : [kind];
     for (const id of cards) {
       const c = CARDS[id], prev = prevType;
       prevType = c.type;
-      time += cardDelay(id);
       if (c.type === 'filter') { pending.push(id); continue; }
       if (c.type === 'target') {
         // 대상 칸의 연속한 대상 카드는 하나의 대상 묶음으로 합친다.
@@ -1004,7 +994,7 @@ class SkillDeck {
     }
     if (chain && !used) warns.push('마지막 대상 카드 뒤에 행동 카드가 없습니다');
     if (pending.length) warns.push('조건 카드 뒤에 대상 카드가 없습니다');
-    return { steps, warns, time: time * stats.cooldown, cooldown: SkillDeck.cooldownOf(slot) * stats.cooldown, baseCooldown: SkillDeck.cooldownOf(slot, 0, cardsCost(cards.filter(id => CARDS[id].type !== 'filter'))) * stats.cooldown };
+    return { steps, warns, cooldown: SkillDeck.cooldownOf(slot) * stats.cooldown, baseCooldown: SkillDeck.cooldownOf(slot, 0, cardsCost(cards.filter(id => CARDS[id].type !== 'filter'))) * stats.cooldown };
   }
 
   /* ---------------- 성장 ---------------- */
@@ -1135,7 +1125,7 @@ CARDS.entitySelf = {
   resolve: env => env.ownerTarget ? [env.ownerTarget] : [],
 };
 CARDS.ifLifetimeEnded = {
-  type: 'filter', name: '수명 종료 시', cost: 1, delay: 0, weight: 0,
+  type: 'filter', name: '수명 종료 시', cost: 1, weight: 0,
   entityOnly: true, icon: 'fExpiring', requires: ['lifetime'],
   desc: '선택한 대상의 남은 수명이나 도주 시간이 0 이하일 때만 뒤 행동을 실행한다.',
   test: (t, env) => {
@@ -1174,7 +1164,7 @@ CARDS.entityAttached = {
   },
 };
 CARDS.ifPlayerContact = {
-  type: 'filter', name: '플레이어와 접촉 시', cost: 1, delay: 0, weight: 0,
+  type: 'filter', name: '플레이어와 접촉 시', cost: 1, weight: 0,
   entityOnly: true, icon: 'fNearEnemy', afterMovement: true, requires: ['position'],
   desc: '선택한 대상과 플레이어의 반경이 겹칠 때만 뒤 행동을 실행한다.',
   test: (t, env) => {
@@ -1198,7 +1188,7 @@ function entityCanHit(source, target, effect) {
 for (const [rule, name] of Object.entries({ opposing: '충돌 대상: 다른 팀', same: '충돌 대상: 같은 팀', friendly: '충돌 대상: 아군 팀', hostile: '충돌 대상: 적군 팀', all: '충돌 대상: 모든 팀' })) {
   CARDS[`entityHitTeam_${rule}`] = {
     type: 'filter', name, desc: `뒤 접촉 피해·탄환 충돌 행동의 팀을 '${name}'으로 정한다. 대상 목록을 걸러내는 조건은 아니다.`,
-    cost: 1, weight: 0, delay: 0, entityOnly: true, icon: 'fNearEnemy', hitTeamRule: rule,
+    cost: 1, weight: 0, entityOnly: true, icon: 'fNearEnemy', hitTeamRule: rule,
   };
 }
 // 카드의 수치가 실행의 유일한 원본이다. 개체 속성은 기본 카드를 고를 때만 읽는다.
@@ -1255,7 +1245,7 @@ for (const id of Object.keys(ENTITY_EFFECT_DEFAULTS)) {
   const [explicitName, explicitDesc] = entityPlayerText(id, effect, entityEffectText(id, effect));
   ENTITY_ACTIONS[id] = [explicitName, explicitDesc];
   CARDS[id] = {
-    type: 'action', name: explicitName, desc: explicitDesc, cost, delay: 0, weight: 0,
+    type: 'action', name: explicitName, desc: explicitDesc, cost, weight: 0,
     mechanic: id, effect,
     requires: ['position'], accepts: ALL_KINDS, group: 'entity', icon, entityOnly: true,
     run: (targets, env) => {
@@ -1273,7 +1263,7 @@ function entityChainCard(type, value, radius = false) {
   if (ENTITY_CHAIN_CARDS.has(key)) return ENTITY_CHAIN_CARDS.get(key);
   const id = `entityChain_${ENTITY_CHAIN_CARDS.size + 1}`;
   CARDS[id] = {
-    type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0,
+    type: 'filter', entityOnly: true, cost: 1, weight: 0,
     icon: type === 'interval' ? 'haste' : 'fNearEnemy',
     name: type === 'interval' ? `주기 ${value}초` : `거리 ${value} 이내`,
     desc: type === 'interval' ? `뒤 행동의 반복 주기를 ${value}초로 정한다.` : `슬롯 주인과 거리 ${value}${radius ? ' + 대상 반경' : ''} 이내인 대상만 고른다.`,
@@ -1506,7 +1496,7 @@ CARDS.entityMovementDistance = {
   },
 };
 CARDS.entityInSight = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNearEnemy',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNearEnemy',
   name: '시야 이내', desc: '슬롯 주인과 거리가 시야 상태 이내인 대상만 고른다.',
   test: (t, env) => {
     const o = env.at(t), sight = entityStats(env.owner).sight;
@@ -1515,7 +1505,7 @@ CARDS.entityInSight = {
 };
 // 사거리·팀·주기는 숫자를 가진 카드 대신 개체 상태를 읽는 공용 카드로 둔다.
 CARDS.entityInReach = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNear',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNear',
   name: '사거리 이내', desc: '슬롯 주인과 거리가 사거리 상태 + 대상 반경 이내인 대상만 고른다.',
   test: (t, env) => {
     const o = env.at(t), reach = entityStats(env.owner).reach + (o.radius || o.r || 0);
@@ -1528,7 +1518,7 @@ CARDS.entityInReach = {
   },
 };
 CARDS.entityInArea = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNear',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNear',
   name: '범위 이내', desc: '슬롯 주인과 거리가 범위 상태 이내인 대상만 고른다.',
   test: (t, env) => {
     const o = env.at(t), owner = env.owner, radius = owner.r ?? owner.radius ?? entityStats(owner).range;
@@ -1540,17 +1530,17 @@ CARDS.entityInArea = {
   },
 };
 CARDS.entityEnemyInReach = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNearEnemy',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'fNearEnemy',
   name: '사거리 안 적 존재', desc: '슬롯 주인의 사거리 상태 안에 살아 있는 적이 있을 때만 실행한다.',
   test: (t, env) => env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).reach).length > 0,
 };
 CARDS.entitySameTeam = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'allies',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'allies',
   name: '같은 팀', desc: '슬롯 주인과 같은 팀인 대상만 고른다.',
   test: (t, env) => entityTeam(env.owner) === entityTeam(env.at(t)),
 };
 CARDS.entityOtherTeam = {
-  type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'enemies',
+  type: 'filter', entityOnly: true, cost: 1, weight: 0, icon: 'enemies',
   name: '다른 팀', desc: '슬롯 주인과 다른 팀인 대상만 고른다.',
   test: (t, env) => entityTeam(env.owner) !== entityTeam(env.at(t)),
 };
@@ -1585,20 +1575,28 @@ function entityInitialCard(id, owner, kind) {
   }
 }
 
-// Give each action its own target/filter chain and cooldown storage.
+// Consecutive actions share a slot; a new condition or target starts another stack.
 function entityActionSlots(owner, kind, cards) {
   const slots = [];
-  let selection = [], pending = [];
+  let selection = [], pending = [], actionSlot = null;
   for (const id of cards) {
     const card = CARDS[id];
     if (card.type === 'filter') {
+      actionSlot = null;
       pending.push(id);
       selection.push(id);
     } else if (card.type === 'target') {
+      actionSlot = null;
       selection = [...pending, id];
       pending = [];
     } else if (card.type === 'action') {
-      slots.push(new EntitySlot(owner, kind, [...selection, id]));
+      if (actionSlot) {
+        actionSlot.cards = [...actionSlot.cards, id];
+        actionSlot.defaults = actionSlot.cards.slice();
+      } else {
+        actionSlot = new EntitySlot(owner, kind, [...selection, id]);
+        slots.push(actionSlot);
+      }
       pending = [];
     }
   }
@@ -1906,8 +1904,7 @@ function entitySlot(owner, kind) {
   if (kind === 'pickup') chain.push('ifPlayerContact', 'entitySelf', 'absorb');
   if (owner.kind === 'mine' && kind === 'object') {
     owner.reach ??= 58;
-    chain.push('entityEnemyInReach', 'entitySelf', 'explode', 'entitySelf');
-    chain.push('entityEnemyInReach', 'entitySelf', 'disappear', 'entitySelf');
+    chain.push('entityEnemyInReach', 'entitySelf', 'explode', 'disappear', 'entitySelf');
   }
   if (kind === 'zone' && ['meteor', 'slime', 'abyss'].includes(owner.kind) || kind === 'shot' && owner.blastOnEnd || kind === 'object' && owner.kind === 'barrel') {
     chain.push('ifExpiring', 'entitySelf', 'explode', 'entitySelf');
@@ -1959,7 +1956,7 @@ function entitySlot(owner, kind) {
     const attack = owner.kind === 'archer' ? 'bolt' : 'snipe';
     for (const slot of owner.slots) {
       const index = slot.cards.findIndex(id => cardBaseId(id) === attack);
-      if (index >= 0) slot.cooldowns.set(index, 0.2);
+      if (index >= 0) slot.cooldowns.set(index, scaledCooldown(0.2));
     }
   }
   return owner.slot;
@@ -2084,7 +2081,8 @@ class EntitySlot {
       const stats = entityStats(this.owner);
       const derived = ratios.map(([, reference]) => stats[reference.stat] * reference.ratio);
       const field = (name) => { const at = ratios.findIndex(([f]) => f === name); return at < 0 ? effect[name] : derived[at]; };
-      const cd = field('separateInterval') ? interval ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST) : field('cd');
+      const rawCd = field('separateInterval') ? interval ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST) : field('cd');
+      const cd = rawCd == null ? rawCd : scaledCooldown(rawCd);
       const previous = this.effectCache.get(cacheKey);
       if (previous && previous.derived && previous.cd === cd && previous.hitTeamRule === hitTeamRule
         && previous.derived.every((v, i) => jsonNumber(v) === jsonNumber(derived[i]))) return previous.value;
@@ -2096,7 +2094,8 @@ class EntitySlot {
     }
     effect = entityResolvedEffect(this.owner, card.mechanic, effect);
     const signature = JSON.stringify(effect);
-    const cd = effect.separateInterval ? interval ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST) : effect.cd;
+    const rawCd = effect.separateInterval ? interval ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST) : effect.cd;
+    const cd = rawCd == null ? rawCd : scaledCooldown(rawCd);
     const previous = this.effectCache.get(cacheKey);
     if (previous && previous.signature === signature && previous.cd === cd && previous.hitTeamRule === hitTeamRule) return previous.value;
     const value = { ...effect, ...(cd != null ? { cd } : {}), ...(hitTeamRule ? { hitTeamRule } : {}) };
@@ -2313,7 +2312,7 @@ class EntitySlot {
     if (!ready || !valid.length) return;
     if (step.continuous) enabled.add(id);
     // 복제 행동이 실행 중인 슬롯을 계승할 때 새 개체도 이번 쿨타임을 받는다.
-    else this.cooldowns.set(index, period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST));
+    else this.cooldowns.set(index, scaledCooldown(period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST)));
     this.enabled = enabled;
     this.effects = effects;
     const previousRule = game.actionHitTeamRule;
@@ -2366,7 +2365,7 @@ class EntitySlots extends EntitySlot {
     };
   }
   changed() {
-    // Legacy combined-chain edits also keep actions in separate slots.
+    // Legacy combined-chain edits preserve consecutive actions in the same slot.
     const defaults = entityActionSlots(this.owner, this.kind, this.defaults);
     this.slots = entityActionSlots(this.owner, this.kind, this.cards);
     this.slots.forEach((slot, index) => { slot.defaults = defaults[index]?.cards.slice() || []; });

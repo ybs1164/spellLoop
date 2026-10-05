@@ -20,15 +20,16 @@ get(`
   run(['group', 'record']);
 `);
 assert.equal(get('hits.length'), 3);
+assert.equal(get('clock'), 0.01, 'the entire stack executes in the first frame');
 assert.equal(get('new Set(hits.map(h => h.at)).size'), 1, 'all targets fire in the same frame');
-assert.ok(Math.abs(get('deck.slots[0].extraCooldown') - 0.4) < 1e-9);
-assert.ok(Math.abs(get('deck.slots[0].cdMax') - 1.1) < 1e-9, 'base cooldown plus saved target delays');
+assert.ok(Math.abs(get('deck.slots[0].extraCooldown') - 0) < 1e-9);
+assert.ok(Math.abs(get('deck.slots[0].cdMax') - 0.35) < 1e-9, 'halved cooldown without execution delays');
 get(`
   const ctx = { fired: 0, hit: new Set(), extraCooldown: 0, lastKills: 0 };
   targets[1].dead = true;
   const wait = deck.runStep({ act: 'record', targets, delay: 0.2, mul: 1 }, ctx, env);
 `);
 assert.equal(get('ctx.fired'), 2, 'dead targets are skipped');
-assert.equal(get('ctx.extraCooldown'), 0.2, 'dead targets do not add cooldown');
-assert.equal(get('wait'), 0.2);
+assert.equal(get('ctx.extraCooldown'), 0, 'dead targets do not add cooldown');
+assert.equal(get('wait'), 0);
 console.log('Simultaneous target and proportional cooldown checks passed.');

@@ -45,13 +45,45 @@ vm.runInContext(`
 
   // 플레이어가 아닌 개체의 카드 슬롯은 닫힌 채로 그리고, 펼친 상태는 유지한다.
   game.enemies = [necro];
-  UI.editorPage = 2; UI.showEditor(game);
+  UI.editorPage = 2; UI.showEntityEditor(game);
   assert.ok(UI.html.includes('<details class="slot-toggle" data-entity="0">'));
   assert.ok(UI.html.includes('조건 카드 슬롯') && UI.html.includes('대상 카드 슬롯') && UI.html.includes('행동 카드 슬롯'));
-  UI.openEntitySlots.add(necro); UI.showEditor(game);
+  UI.openEntitySlots.add(necro); UI.showEntityEditor(game);
   assert.ok(UI.html.includes('data-entity="0" open'));
   UI.editorPage = 0; UI.showEditor(game);
   assert.ok(!UI.html.includes('<details'), 'player slots are always open');
   assert.equal((UI.html.match(/data-section="filter"/g) || []).length, deck.slots.length);
+
+  // 편집기에는 개체 조회 진입 UI가 없고, I 키 조회는 원래 화면으로 돌아온다.
+  assert.ok(!UI.html.includes('data-act="entity-page"'));
+  assert.ok(!UI.html.includes('inspector'));
+  UI.game = game;
+  UI.updateHud = () => {};
+  UI.hideOverlay = () => { UI.mode = null; };
+  UI.showPause = () => { UI.mode = 'pause'; };
+  const press = key => { Input.pressed.add(key); game.update(0); Input.endFrame(); };
+  for (const state of ['playing', 'paused', 'levelup', 'editor']) {
+    let rewardsRestored = 0;
+    UI.levelUpBack = () => { rewardsRestored++; UI.mode = 'levelup'; };
+    game.state = state;
+    const cardsBefore = JSON.stringify(deck.slots);
+    press('KeyI');
+    assert.equal(game.state, 'inspector');
+    assert.equal(UI.mode, 'inspector');
+    UI.editorPage = 1;
+    press('ArrowLeft'); assert.equal(UI.editorPage, 6);
+    press('ArrowRight'); assert.equal(UI.editorPage, 1);
+    press(state === 'paused' ? 'Escape' : 'KeyI');
+    assert.equal(game.state, state);
+    assert.equal(JSON.stringify(deck.slots), cardsBefore);
+    if (state === 'levelup') assert.equal(rewardsRestored, 1);
+    if (state === 'editor') assert.equal(UI.mode, 'editor');
+  }
+  game.state = 'editor';
+  press('ArrowRight');
+  assert.equal(UI.mode, 'editor', 'arrow keys cannot open entity inspection from the editor');
+  game.editorLevelUpBack = () => { UI.mode = 'levelup'; };
+  press('KeyI'); press('KeyI'); press('KeyE');
+  assert.equal(game.state, 'levelup', 'inspection preserves the editor reward return path');
 `, context);
 console.log('Slot sections: condition/target/action ordering, joined targets, entity slots and collapsible editor passed.');
