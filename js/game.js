@@ -32,6 +32,7 @@ for (const name of CARD_EFFECTS) CARD_EFFECT_DELEGATES[name] = function (...args
   try { return g[name](...args); } finally { g.actionActor = previous; }
 };
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
+const TEXT_FONT = `bold 13px ${FONT}`;   // 피해 숫자
 
 // 장판 종류별 기본값. s: 장판을 만드는 쪽의 능력치 배율 (범위·지속시간)
 function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
@@ -61,6 +62,8 @@ function createZone(kind, source, o, t, s) {
 // 도감에 보여 줄 장판 종류
 const ZONE_KINDS = ['poison', 'vortex', 'blades', 'slime', 'ward', 'meteor', 'abyss', 'healingField', 'shieldField', 'burningField'];
 
+const BG_COLOR = '#10131c';
+
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -78,6 +81,8 @@ class Game {
 
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // 미리 구운 도장·타일은 화면 배율 해상도로 만들므로 배율이 바뀌면 다시 굽는다
+    if (Px.scale !== this.dpr) { Px.setScale(this.dpr); PixelCircle.clear(); Sprites.clearTiles(); this._textBitmaps?.clear(); }
     this.w = window.innerWidth;
     this.h = window.innerHeight;
     this.canvas.width = Math.floor(this.w * this.dpr);
@@ -1665,7 +1670,8 @@ class Game {
    * o: { life, follow, style: 'burst'|'wave'|'pulse', fill: 바깥 띠 진하기(0~1), spark: 반짝이 색, sparks: 개수 }
    */
   circleFx(x, y, r, color, o = {}) {
-    this.addFx({ kind: 'circle', x, y, r, color, life: 0.35, style: 'burst', seed: randInt(0, 9999), ...o });
+    // 반짝이 배치는 8가지 중 하나: 같은 묶음의 원이 합성 도장을 나눠 쓰게 한다 (난수 소비는 그대로)
+    this.addFx({ kind: 'circle', x, y, r, color, life: 0.35, style: 'burst', seed: randInt(0, 7), ...o });
   }
 
   drawZones(ctx) {
@@ -1730,8 +1736,10 @@ class Game {
           const t = 1 - z.life / z.max;
           ctx.fillStyle = Px.dither(ctx, 'rgba(60,0,40,0.55)', Px.G * 2);
           Px.disc(ctx, z.x, z.y, z.r, Px.G * 2);
-          ctx.fillStyle = `rgba(20,0,16,${0.45 + t * 0.35})`;
+          ctx.globalAlpha = fade * (0.45 + t * 0.35);
+          ctx.fillStyle = '#140010';
           Px.disc(ctx, z.x, z.y, z.r * (0.4 + t * 0.2));
+          ctx.globalAlpha = fade;
           ctx.fillStyle = 'rgba(255,59,107,0.75)';
           for (let i = 0; i < 4; i++) {
             const a = this.clock * 6 + i * (TAU / 4);
@@ -2034,8 +2042,12 @@ class Game {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#10131c';
-    ctx.fillRect(0, 0, this.w, this.h);
+    // 바닥 패턴에 지우기 색·단계 색조까지 구워 두었으므로, 패턴이 있으면 화면 전체를 한 번만 칠한다
+    const floor = Sprites.floorPattern(ctx, 3, BG_COLOR, this.player && this.stage && this.stage.ground);
+    if (!floor) {
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, this.w, this.h);
+    }
 
     const shaking = this.state === 'playing' && this.shakeMag > 0;
     const sx = shaking ? rand(-1, 1) * this.shakeMag : 0;
@@ -2043,13 +2055,15 @@ class Game {
 
     ctx.save();
     ctx.translate(Math.round(this.w / 2 - this.cam.x + sx), Math.round(this.h / 2 - this.cam.y + sy));
-    this.drawGround(ctx);
+    this.drawGround(ctx, floor);
 
     if (this.player) {
       this.drawZones(ctx);
       for (const o of this.objects) if (this.inView(o.x, o.y, 30)) o.draw(ctx);
       for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(ctx);
-      for (const e of this.enemies) if (this.inView(e.x, e.y, e.radius + 60)) e.draw(ctx, this.clock, this);
+      // 적이 실제로 그리는 범위(스프라이트·방패 r+24·머리 위 표시 r+18)만큼만 여유를 둔다
+      const enemyPad = this.shakeMag + 2;
+      for (const e of this.enemies) if (this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + enemyPad)) e.draw(ctx, this.clock, this);
       for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(ctx);
       if (this.state !== 'gameover') this.player.draw(ctx, this.clock);
       for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(ctx);
@@ -2065,13 +2079,20 @@ class Game {
       }
       ctx.globalAlpha = 1;
 
-      ctx.font = `bold 13px ${FONT}`;
+      ctx.font = TEXT_FONT;
       ctx.textAlign = 'center';
+      // 글꼴이 준비되면 숫자 글자는 그림자까지 구운 비트맵으로 찍는다 (fillText 두 번 → drawImage 한 번)
+      const cached = this._fontReady || (this._fontReady = !!document.fonts?.check(TEXT_FONT));
       for (const t of this.texts) {
         if (!this.inView(t.x, t.y, 200 + this.shakeMag)) continue;
         // 도트 폰트 + 딱딱한 그림자 (벡터 외곽선 대신)
         const x = Math.round(t.x), y = Math.round(t.y);
         ctx.globalAlpha = Math.min(1, t.life / 0.3);
+        if (cached) {
+          const b = this.textBitmap(ctx, t.text, t.color);
+          ctx.drawImage(b.c, x - b.ox, y - b.oy, b.w, b.h);
+          continue;
+        }
         ctx.fillStyle = '#000000';
         ctx.fillText(t.text, x + 2, y + 2);
         ctx.fillStyle = t.color;
@@ -2084,15 +2105,39 @@ class Game {
     if (this.player) this.drawScreenUI(ctx);
   }
 
-  drawGround(ctx) {
+  /** 그림자를 포함한 글자 비트맵 (화면 배율 해상도). 기준점 (ox, oy) 가 fillText 의 (x, y) 에 해당한다. */
+  textBitmap(ctx, text, color) {
+    const cache = this._textBitmaps || (this._textBitmaps = new Map());
+    const key = `${color}|${text}`;
+    let b = cache.get(key);
+    if (b) return b;
+    const m = ctx.measureText(text);
+    const left = Math.ceil(m.actualBoundingBoxLeft) + 2, right = Math.ceil(m.actualBoundingBoxRight) + 4;
+    const up = Math.ceil(m.actualBoundingBoxAscent) + 2, down = Math.ceil(m.actualBoundingBoxDescent) + 4;
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round((left + right) * this.dpr));
+    c.height = Math.max(1, Math.round((up + down) * this.dpr));
+    const g = c.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    g.font = TEXT_FONT;
+    g.textAlign = 'center';
+    g.fillStyle = '#000000';
+    g.fillText(text, left + 2, up + 2);
+    g.fillStyle = color;
+    g.fillText(text, left, up);
+    if (cache.size >= 600) cache.clear();
+    b = { c, ox: left, oy: up, w: left + right, h: up + down };
+    cache.set(key, b);
+    return b;
+  }
+
+  drawGround(ctx, floor) {
     const g = 64;
     const left = this.cam.x - this.w / 2 - g, right = this.cam.x + this.w / 2 + g;
     const top = this.cam.y - this.h / 2 - g, bottom = this.cam.y + this.h / 2 + g;
-    const floor = Sprites.floorPattern(ctx, 3);
     if (floor) {
       ctx.fillStyle = floor;
       ctx.fillRect(left, top, right - left, bottom - top);
-      this.drawStageTint(ctx, left, top, right - left, bottom - top);
       return;
     }
     const cx0 = Math.floor(left / g), cx1 = Math.floor(right / g);
@@ -2121,14 +2166,6 @@ class Game {
         }
       }
     }
-  }
-
-  /** 단계별 바닥 분위기 색 (타이틀 화면에선 없음) */
-  drawStageTint(ctx, x, y, w, h) {
-    const tint = this.player && this.stage && this.stage.ground;
-    if (!tint) return;
-    ctx.fillStyle = tint;
-    ctx.fillRect(x, y, w, h);
   }
 
   drawScreenUI(ctx) {

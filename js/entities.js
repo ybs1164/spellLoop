@@ -226,8 +226,10 @@ class Player {
     drawShadow(ctx, x, y + r + 4, r);
 
     if (this.has('rage')) {
-      ctx.fillStyle = `rgba(255,70,70,${0.16 + Math.sin(time * 10) * 0.06})`;
+      ctx.globalAlpha = 0.16 + Math.sin(time * 10) * 0.06;
+      ctx.fillStyle = '#ff4646';
       Px.disc(ctx, x, y - 2, r + 12);
+      ctx.globalAlpha = 1;
     }
     if (this.has('haste')) {
       ctx.fillStyle = 'rgba(91,227,122,0.35)';
@@ -332,6 +334,7 @@ class Enemy {
     this.attackPeriod = undefined; this.summonPeriod = undefined; this.supportPeriod = undefined; this.reach = undefined; this.gimmick = undefined;
     this.cardBuffs = undefined; this.cardScales = undefined; this.cardMove = undefined; this.cardPower = undefined;
     this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
+    this._body = null;   // 그리기용 몸체 합성 묶음 (Sprites.bodyFamily)
     entitySlot(this, "enemy");
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);
   }
@@ -416,34 +419,50 @@ class Enemy {
 
   draw(ctx, time, game) {
     const { x, y, radius: r } = this;
-    drawShadow(ctx, x, y + r * 0.95, r * 0.9);
-
-    if (this.rootT > 0) {
-      // 속박: 발밑의 덩굴 도트 (타원 외곽선 대신 채운 디더 + 가시)
-      ctx.fillStyle = Px.dither(ctx, 'rgba(181,228,140,0.8)');
-      Px.ellipse(ctx, x, y + r * 0.95, r * 1.1, Math.max(Px.G * 2, r * 0.4));
-      ctx.fillStyle = '#b5e48c';
-      for (const k of [-0.7, 0, 0.7]) ctx.fillRect(Px.snap(x + k * r), Px.snap(y + r * 0.95 - Px.G * 3), Px.G, Px.G * 3);
-    }
-
     const bob = this.freezeT > 0 ? 0 : Math.round(Math.sin(this.wobble) * 1.5);
     const flip = Math.cos(this.ang) < 0;
     const sy = y - r * 0.15 + bob;
-    if (this.traits.includes('fire')) {
-      // 일렁이는 불꽃 아우라
-      ctx.fillStyle = `rgba(255,110,40,${0.14 + Math.sin(time * 9 + this.wobble) * 0.06})`;
-      Px.disc(ctx, x, sy, r + 6);
+    const fire = this.traits.includes('fire');
+    const alpha = this.escT > 0 && this.escT < 4 && Math.floor(time * 10) % 2 === 0 ? 0.4 : this.traits.includes('undead') ? 0.78 : 1;
+    // 종족 색조는 본체와 한 장으로 합성한 타일을 쓴다
+    const overlay = this.tint, overlayAlpha = this.def.tint ? 0.62 : 0.28;
+    let drawn;
+    if (this.rootT <= 0 && !this.def.loot) {
+      // 흔한 경우: 그림자·불꽃 아우라·본체·색조를 합성한 몸체 한 장 (아우라 밝기는 0.02 단계)
+      let family = this._body;
+      if (!family || family.r !== r || family.idx !== this.sprite) {
+        family = this._body = Sprites.bodyFamily('td', this.sprite, this.scale, { overlay, overlayAlpha, shadowRx: r * 0.9, shadowDy: r * 1.1, auraR: fire ? r + 6 : 0, auraColor: '#ff6e28' });
+        family.r = r;
+      }
+      if (Sprites.drawBody(ctx, family, x, sy, flip, bob, alpha, fire ? 0.14 + Math.sin(time * 9 + this.wobble) * 0.06 : 0)) drawn = true;
     }
-    const ghostly = this.traits.includes('undead') ? 0.78 : 1;
-    const o = { flip, alpha: this.escT > 0 && this.escT < 4 && Math.floor(time * 10) % 2 === 0 ? 0.4 : ghostly };
-    if (this.def.loot) {
-      // 금빛 광채 + 뒤로 흩날리는 금가루
-      ctx.fillStyle = `rgba(255,209,102,${0.22 + Math.sin(time * 8) * 0.08})`;
-      Px.disc(ctx, x, sy, r + 10);
-      if (Math.random() < 0.3) game.burst(x, y, '#ffd166', 1);
+    if (drawn === undefined) {
+      drawShadow(ctx, x, y + r * 0.95, r * 0.9);
+      if (this.rootT > 0) {
+        // 속박: 발밑의 덩굴 도트 (타원 외곽선 대신 채운 디더 + 가시)
+        ctx.fillStyle = Px.dither(ctx, 'rgba(181,228,140,0.8)');
+        Px.ellipse(ctx, x, y + r * 0.95, r * 1.1, Math.max(Px.G * 2, r * 0.4));
+        ctx.fillStyle = '#b5e48c';
+        for (const k of [-0.7, 0, 0.7]) ctx.fillRect(Px.snap(x + k * r), Px.snap(y + r * 0.95 - Px.G * 3), Px.G, Px.G * 3);
+      }
+      // 일렁이는 광채는 불투명 색 + globalAlpha 로 칠해 같은 크기의 원 도장을 재사용한다 (rgba 알파와 같은 결과)
+      if (fire) {
+        ctx.globalAlpha = 0.14 + Math.sin(time * 9 + this.wobble) * 0.06;
+        ctx.fillStyle = '#ff6e28';
+        Px.disc(ctx, x, sy, r + 6);
+        ctx.globalAlpha = 1;
+      }
+      if (this.def.loot) {
+        // 금빛 광채 + 뒤로 흩날리는 금가루
+        ctx.globalAlpha = 0.22 + Math.sin(time * 8) * 0.08;
+        ctx.fillStyle = '#ffd166';
+        Px.disc(ctx, x, sy, r + 10);
+        ctx.globalAlpha = 1;
+        if (Math.random() < 0.3) game.burst(x, y, '#ffd166', 1);
+      }
+      drawn = Sprites.draw(ctx, 'td', this.sprite, x, sy, this.scale, overlay ? { flip, alpha, overlay, overlayAlpha } : { flip, alpha });
     }
-    if (Sprites.draw(ctx, 'td', this.sprite, x, sy, this.scale, o)) {
-      if (this.tint) Sprites.draw(ctx, 'td', this.sprite, x, sy, this.scale, { flip, tint: this.tint, alpha: this.def.tint ? 0.62 : 0.28 });
+    if (drawn) {
       let tint = null, alpha = 0.5;
       if (this.flash > 0) { tint = '#ffffff'; alpha = 1; }
       else if (this.healT > 0) { tint = '#7dff9a'; alpha = 0.6; }
@@ -901,9 +920,10 @@ class Pickup {
         break;
       }
       case 'chest': {
-        const glow = 0.35 + Math.sin(this.t * 1.5) * 0.2;
-        ctx.fillStyle = `rgba(255,209,102,${glow})`;
+        ctx.globalAlpha = 0.35 + Math.sin(this.t * 1.5) * 0.2;
+        ctx.fillStyle = '#ffd166';
         Px.disc(ctx, x, y, 24);
+        ctx.globalAlpha = 1;
         if (!Sprites.icon(ctx, 'chest', x, y, 3)) {
           ctx.fillStyle = '#b8792a'; ctx.fillRect(x - 12, y - 9, 24, 18);
         }

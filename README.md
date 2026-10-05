@@ -38,7 +38,7 @@
 
 ## 성능
 
-게임 중 **F3**으로 업데이트·렌더 시간과 개체 수를 표시합니다. 측정: `node tools/bench-frame.cjs` (단계별 `stage0`~`stage7`), 렌더 `NODE_PATH=$(npm root -g) node tools/bench-render.cjs`, 브라우저 스트레스 `NODE_PATH=$(npm root -g) node tools/stress-browser.cjs`. 결과: [인게임 최적화](reports/ingame-optimization-plan.md).
+게임 중 **F3**으로 업데이트·렌더 시간과 개체 수를 표시합니다. 측정: `node tools/bench-frame.cjs` (단계별 `stage0`~`stage7`), 렌더 `NODE_PATH=$(npm root -g) node tools/bench-render.cjs`, 브라우저 스트레스 `NODE_PATH=$(npm root -g) node tools/stress-browser.cjs` (`STRESS_RECHECK=8`이면 8ms를 넘은 렌더 프레임을 다시 그려 VM 순간 정지와 실제 무거운 프레임을 구분). 결과: [인게임 최적화](reports/ingame-optimization-plan.md).
 
 ## 리소스 출처
 
