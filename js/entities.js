@@ -752,8 +752,9 @@ class Projectile {
         this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
       }
     }
-    this.x += (this.slot.has('entityMove') ? this.vx : 0) * dt * (this.cardMove || 1) * (this.directMove ?? 1);
-    this.y += (this.slot.has('entityMove') ? this.vy : 0) * dt * (this.cardMove || 1) * (this.directMove ?? 1);
+    const moving = this.slot.has('entityMove');
+    this.x += (moving ? this.vx : 0) * dt * (this.cardMove || 1) * (this.directMove ?? 1);
+    this.y += (moving ? this.vy : 0) * dt * (this.cardMove || 1) * (this.directMove ?? 1);
   }
 
   draw(ctx) {

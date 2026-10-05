@@ -432,6 +432,14 @@ class Game {
     }
   }
 
+  /** (x, y) 반경 r 안의 살아 있는 적 수 (공간 해시 기준, skip 제외) */
+  countNearEnemies(x, y, r, skip) {
+    const near = this.hash.query(x, y, r, this._count ||= []), r2 = r * r;
+    let n = 0;
+    for (const o of near) if (o !== skip && !o.dead && dist2(o.x, o.y, x, y) <= r2) n++;
+    return n;
+  }
+
   collideProjectiles() {
     for (const pr of this.projectiles) this.collideShot(pr);
   }
@@ -464,7 +472,10 @@ class Game {
     const consume = target => { s.hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
     this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
     if (s.dead) return;
-    for (const o of [...this.objects, ...(this.allies || [])]) {
+    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외)
+    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
+    for (let i = 0; i < total; i++) {
+      const o = i < nObjects ? objects[i] : allies[i - nObjects];
       if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
       if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
       this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
@@ -478,7 +489,9 @@ class Game {
   }
 
   collideStructures(dt) {
-    for (const o of [...this.objects, ...(this.allies || [])]) {
+    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
+    for (let i = 0; i < total; i++) {
+      const o = i < nObjects ? objects[i] : allies[i - nObjects];
       if (o.dead) continue;
       o.contactCd = Math.max(0, (o.contactCd || 0) - dt);
       if (o.contactCd > 0) continue;
@@ -555,7 +568,7 @@ class Game {
       clusterPoint: (r, near) => {
         let best = null, bestN = -1;
         for (const e of g.nearestEnemies(p.x, p.y, 40, r)) {
-          const n = g.hash.query(e.x, e.y, near, []).filter((o) => !o.dead && dist2(o.x, o.y, e.x, e.y) <= near * near).length;
+          const n = g.countNearEnemies(e.x, e.y, near, null);
           if (n > bestN) { best = e; bestN = n; }
         }
         return best ? [{ kind: 'point', x: best.x, y: best.y }] : [];
@@ -581,7 +594,7 @@ class Game {
       /** e 주변 r 안의 다른 적 수 */
       /** e 가 나에게 등을 보이고 있는가 (바라보는 방향이 나와 90° 넘게 벌어짐) */
       facingAway: (e) => Math.cos(angDiff(Math.atan2(p.y - e.y, p.x - e.x), e.ang)) < 0,
-      crowd: (e, r) => g.hash.query(e.x, e.y, r, []).filter((o) => o !== e && !o.dead && dist2(o.x, o.y, e.x, e.y) <= r * r).length,
+      crowd: (e, r) => g.countNearEnemies(e.x, e.y, r, e),
       enemyNear: (t, r) => {
         const o = obj(t), r2 = r * r;
         for (const e of g.enemies) if (!e.dead && e !== o && dist2(o.x, o.y, e.x, e.y) <= r2) return true;
@@ -590,7 +603,7 @@ class Game {
       lifeRatio: (t) => { const o = obj(t); return o.max ? o.life / o.max : 1; },
       hpRatio: () => p.hp / p.stats.maxHp,
       recentlyHurt: () => p.hurtT > 0,
-      enemiesAround: (r) => g.hash.query(p.x, p.y, r, []).filter((e) => !e.dead && dist2(e.x, e.y, p.x, p.y) <= r * r).length,
+      enemiesAround: (r) => g.countNearEnemies(p.x, p.y, r, null),
       bossAlive: () => g.enemies.some((e) => e.boss && !e.dead),
 
       flag: (ts, id) => g.markTargets(ts, id),
@@ -703,7 +716,8 @@ class Game {
     const timer = direct ? key : key + 'T';
     if (key === 'mark' || key === 'burn') {
       const stackKey = key === 'mark' ? 'markStacks' : direct ? 'directBurnStacks' : 'burnStacks';
-      if (!o[stackKey]) {
+      const fresh = !o[stackKey];
+      if (fresh) {
         o[stackKey] = [];
         const previous = key === 'mark' ? Math.max(o.markT || 0, o.directStates?.mark || 0) : timers[timer] || 0;
         if (previous > 0) o[stackKey].push({ time: previous, dps: key === 'burn' ? (direct ? 9 : o.burnDps || 0) : 0 });
@@ -711,7 +725,8 @@ class Game {
       o[stackKey].push({ time: duration, dps });
       timers[timer] = Math.max(timers[timer] || 0, duration);
       if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
-      if (key === 'burn' && !direct) o.burnDps = o.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+      // burnDps 는 항상 직전 스택 합계이므로 새 스택만 더한다 (앞에서부터 더한 합과 같은 값).
+      if (key === 'burn' && !direct) o.burnDps = fresh ? o.burnStacks.reduce((sum, s) => sum + s.dps, 0) : o.burnDps + dps;
     } else timers[timer] = Math.max(0, timers[timer] || 0) + duration;
   }
 
