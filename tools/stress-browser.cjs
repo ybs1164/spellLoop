@@ -1,12 +1,14 @@
 // Runs a long fixed-seed fight in headless Chromium (update + render per frame) and reports frame-time spikes.
 // 사용: NODE_PATH=$(npm root -g) node tools/stress-browser.cjs [저장소 경로]   (STRESS_STAGE=스테이지 번호, STRESS_SECONDS=게임 시간)
+// STRESS_RECHECK=ms: 렌더가 그보다 느린 프레임은 같은 상태를 두 번 더 그려 최솟값도 기록한다.
+//   공유 VM 의 순간 정지(수십 ms)처럼 재현되지 않는 지연과 실제로 무거운 프레임을 구분한다 (원래 값도 함께 출력).
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..'));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2' };
-const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.env.STRESS_SECONDS || 240);
+const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.env.STRESS_SECONDS || 240), RECHECK = Number(process.env.STRESS_RECHECK || 0);
 
 (async () => {
   const server = http.createServer((req, res) => {
@@ -21,7 +23,7 @@ const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.en
   await page.addInitScript(() => { window.requestAnimationFrame = () => 0; });
   await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
   await page.waitForTimeout(500);
-  const result = await page.evaluate(({ stage, seconds }) => {
+  const result = await page.evaluate(({ stage, seconds, recheck }) => {
     let rng = 11;
     Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);
     game.start([stage]);
@@ -43,10 +45,24 @@ const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.en
       game.render();
       ctx.getImageData(0, 0, 1, 1);
       const t2 = performance.now();
-      frames.push([t1 - t0, t2 - t1, game.enemies.length]);
+      let best = t2 - t1;
+      if (recheck && best > recheck) {
+        // 같은 상태를 다시 그린다: 난수 상태를 되돌리고 그리기 중 파티클 생성(보물 금가루)은 막는다
+        const seed = rng, burst = game.burst;
+        game.burst = () => {};
+        for (let k = 0; k < 2; k++) {
+          rng = seed;
+          const a = performance.now();
+          game.render();
+          ctx.getImageData(0, 0, 1, 1);
+          best = Math.min(best, performance.now() - a);
+        }
+        rng = seed; game.burst = burst;
+      }
+      frames.push([t1 - t0, t2 - t1, game.enemies.length, best]);
     }
     return frames;
-  }, { stage: STAGE, seconds: SECONDS });
+  }, { stage: STAGE, seconds: SECONDS, recheck: RECHECK });
   await browser.close();
   server.close();
   const total = result.map(([u, r]) => u + r), sorted = total.slice().sort((a, b) => a - b);
@@ -57,5 +73,9 @@ const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.en
     `>16.7ms ${total.filter(v => v > 1000 / 60).length} >33ms ${total.filter(v => v > 1000 / 30).length} peak enemies ${Math.max(...result.map(f => f[2]))}`);
   // 스파이크가 업데이트·렌더 중 어디서 나는지: 각 부분의 p99·최대와 업데이트가 16.7ms 를 넘은 프레임 수
   const part = i => { const v = result.map(f => f[i]).sort((a, b) => a - b); return `p99 ${v[Math.floor(v.length * 0.99)].toFixed(1)} max ${v.at(-1).toFixed(1)}`; };
-  console.log(`  update ${part(0)} (>16.7ms ${result.filter(f => f[0] > 1000 / 60).length})  render ${part(1)} (>16.7ms ${result.filter(f => f[1] > 1000 / 60).length})`);
+  console.log(`  update ${part(0)} (>16.7ms ${result.filter(f => f[0] > 1000 / 60).length})  render ${part(1)} (>16.7ms ${result.filter(f => f[1] > 1000 / 60).length}, >10ms ${result.filter(f => f[1] > 10).length})`);
+  if (RECHECK) {
+    const worst = result.slice().sort((a, b) => b[3] - a[3]);
+    console.log(`  render rechecked ${part(3)} (>10ms ${result.filter(f => f[3] > 10).length}) worst frames: ${worst.slice(0, 5).map(f => `${f[3].toFixed(1)}ms@${f[2]}`).join(' ')}`);
+  }
 })();
