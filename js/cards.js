@@ -2031,17 +2031,56 @@ class EntitySlot {
     this.effectCache.set(cacheKey, { signature, cd, hitTeamRule, value });
     return value;
   }
-  /** 카드 스택의 카드 정의·기본 id (카드 목록이 바뀔 때만 다시 만든다) */
-  compiledCards() {
-    if (this._compiledFor !== this._cards) {
-      this._compiledFor = this._cards;
-      this._compiled = this._cards.map(cardId => ({ card: CARDS[cardId], id: cardBaseId(cardId) }));
-    }
-    return this._compiled;
+  /**
+   * 카드 스택을 실행 계획으로 컴파일한다 (카드 목록이 바뀔 때만 다시 만든다).
+   * 조건 → 대상 → 행동 순서로 읽으며 주기·충돌·소환 설정, 대상 조건, 사망 연계를 미리 정해 두고,
+   * 실행할 때는 대상 해석과 쿨타임 판정만 한다.
+   */
+  compilePlan() {
+    if (this._planFor === this._cards) return this._plan;
+    const steps = [];
+    let interval, hitTeamRule, summonMode, deathChain = false, prevType, targetCard;
+    let pendingFilters = [], targetFilters = NO_FILTERS, movementFilters = NO_FILTERS;
+    this._cards.forEach((cardId, index) => {
+      const card = CARDS[cardId], id = cardBaseId(cardId), prev = prevType;
+      prevType = card.type;
+      if (prev === 'action' && card.type !== 'action') { interval = undefined; hitTeamRule = undefined; summonMode = undefined; }
+      if (card.type === 'filter') {
+        if (card.summonMode) summonMode = card.summonMode;
+        else if (card.interval != null) interval = card.interval;
+        else if (card.hitTeamRule) hitTeamRule = card.hitTeamRule;
+        else pendingFilters.push(card);
+      } else if (card.type === 'target') {
+        // 대상 칸의 연속한 대상 카드는 같은 조건을 적용해 대상을 합친다.
+        const joined = prev === 'target';
+        if (!joined) {
+          const any = pendingFilters.length > 0;
+          deathChain = any && pendingFilters.some(filter => filter.deathEvent);
+          targetFilters = any ? Object.freeze(pendingFilters.slice()) : NO_FILTERS;
+          movementFilters = any ? Object.freeze(pendingFilters.filter(filter => filter.afterMovement)) : NO_FILTERS;
+        }
+        targetCard = joined ? null : card;
+        steps.push({ target: true, card, id, reset: !joined, eager: EAGER_TARGETS.has(id), chain: deathChain,
+          preFilters: targetFilters.filter(filter => !filter.afterMovement) });
+        if (pendingFilters.length) pendingFilters = [];
+      } else if (card.type === 'action') {
+        const zoneMode = this.kind === 'zone' && !!card.zoneKinds?.includes(this.owner.kind);
+        const mode = card.effect?.passive ? 'passive' : card.entityOnly && (card.mechanic || card.runsWhileBlocked) ? 'mechanic' : 'normal';
+        steps.push({ target: false, card, id, index, mode, interval, hitTeamRule, summonMode, deathChain, targetFilters, movementFilters,
+          selectedCard: targetCard, continuous: !!(card.effect?.continuous || zoneMode),
+          deferred: !!(targetCard?.afterMovement || movementFilters.length || card.effect?.afterMovement || zoneMode),
+          directDebuff: ['mark', 'root', 'burn'].includes(id), direct: DIRECT_ACTIONS.includes(id) });
+      }
+    });
+    this._planFor = this._cards;
+    this._plan = { steps, interval, hitTeamRule };
+    return this._plan;
   }
+  /** 슬롯 주인 대상 (읽기 전용이라 한 번 만들어 재사용한다) */
   target() {
+    if (this._target) return this._target;
     const kind = this.kind === 'pickup' && this.owner.kind === 'gem' ? 'gem' : this.kind;
-    return { kind, [TARGET_KINDS[kind].key]: this.owner };
+    return (this._target = { kind, [TARGET_KINDS[kind].key]: this.owner });
   }
   has(id) {
     if (id === 'entityZone') id = { abyss: 'vortex', vortex: 'vortex', poison: 'snipe', ward: 'ward', blades: 'entityHit' }[this.owner.kind];
@@ -2093,7 +2132,7 @@ class EntitySlot {
     const effects = context.sharedEffects || new Map();
     const baseEnv = game.cardEnv(owner);
     const canAct = context.deathEvent || ownerCanAct(owner);
-    let interval, hitTeamRule, summonMode, deathChain = false, prevType;
+    let interval, hitTeamRule;
     const enableMechanic = (id, effect, selected) => {
       if (context.deathEvent) return;
       enabled.add(id);
@@ -2113,101 +2152,48 @@ class EntitySlot {
     }
     if (ownsEnv) this._envBusy = true;
     try {
-      let targets = [], pendingFilters = [], movementFilters = [], targetCard, targetFilters = [];
+      const plan = this.compilePlan();
       // 대상 해석은 처음 필요할 때까지 미룬다. 그 사이에는 쿨타임으로 건너뛴 행동만 지나가므로
       // 세계 상태가 같아 바로 해석한 것과 결과가 같다. 난수·상태를 바꾸는 대상 카드는 바로 해석한다.
-      let unresolved = [];
+      let targets = NO_TARGETS;
+      const unresolved = [];
       const resolveTargets = () => {
         if (!unresolved.length) return targets;
-        const pending = unresolved;
-        unresolved = [];
-        for (const { card, filters, chain } of pending) {
+        for (let i = 0; i < unresolved.length; i++) {
+          const { card, preFilters, chain } = unresolved[i];
           let picked = card.resolve(env, { deck: game.player.deck }).filter(t => env.alive(t) || (chain && env.at(t) === owner));
-          if (filters.length) for (const filter of filters.filter(filter => !filter.afterMovement)) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+          for (const filter of preFilters) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
           // 대상 배열은 제자리에서 바꾸지 않으므로 첫 묶음은 복사 없이 그대로 쓴다.
           targets = targets.length ? targets.concat(picked) : picked;
         }
+        unresolved.length = 0;
         return targets;
       };
       const afterMovement = context.sharedAfterMovement || [];
-      this.compiledCards().forEach(({ card, id }, index) => {
-        const prev = prevType;
-        prevType = card.type;
-        if (prev === 'action' && card.type !== 'action') { interval = undefined; hitTeamRule = undefined; summonMode = undefined; }
-        if (card.type === 'filter') {
-          if (card.summonMode) summonMode = card.summonMode;
-          else if (card.interval != null) interval = card.interval;
-          else if (card.hitTeamRule) hitTeamRule = card.hitTeamRule;
-          else pendingFilters.push(card);
-        } else if (card.type === 'target') {
-          // 대상 칸의 연속한 대상 카드는 같은 조건을 적용해 대상을 합친다.
-          const joined = prev === 'target';
-          if (!joined) {
-            const any = pendingFilters.length > 0;
-            deathChain = any && pendingFilters.some(filter => filter.deathEvent);
-            targetFilters = any ? pendingFilters.slice() : NO_FILTERS;
-            movementFilters = any ? pendingFilters.filter(filter => filter.afterMovement) : NO_FILTERS;
-            targets = NO_TARGETS;
-            unresolved = [];
-          }
-          targetCard = joined ? null : card;
-          unresolved.push({ card, filters: targetFilters, chain: deathChain });
-          if (EAGER_TARGETS.has(id)) resolveTargets();
-          if (pendingFilters.length) pendingFilters = [];
+      const run = { dt, game, context, env, canAct, enabled, effects, resolveTargets };
+      for (const step of plan.steps) {
+        if (step.target) {
+          if (step.reset) { targets = NO_TARGETS; unresolved.length = 0; }
+          unresolved.push(step);
+          if (step.eager) resolveTargets();
+          continue;
         }
-        else if (card.type === 'action') {
-          if (context.deathEvent && !deathChain) return;
-          const passive = card.effect;
-          if (passive?.passive) {
-            if (canAct && entityMechanicTargets(passive, resolveTargets(), env)) env.enableMechanic(id, passive, targets);
-          } else if (card.entityOnly && (card.mechanic || card.runsWhileBlocked)) {
-            if (canAct || card.runsWhileBlocked) card.run(resolveTargets().filter(t => movementFilters.every(filter => filter.test(t, env))), env);
-          }
-          else {
-            const deferredFilters = movementFilters.slice();
-            const selectedCard = targetCard, filters = targetFilters.slice(), period = interval ?? entityActionPeriod(owner, id), teamRule = hitTeamRule, selectedSummonMode = summonMode;
-            const zoneMode = this.kind === 'zone' && !!card.zoneKinds?.includes(owner.kind);
-            const deferred = selectedCard?.afterMovement || deferredFilters.length || card.effect?.afterMovement || zoneMode;
-            // 미뤄 실행하는 행동은 지금의 대상을 잡아 두고, 바로 실행하는 행동은 실제로 실행할 때만 해석한다.
-            let selected = deferred && !context.deathEvent ? resolveTargets().slice() : null;
-            const execute = () => {
-              const rate = (owner.cardRate || 1) * (owner.rallyT > 0 ? 2 : 1);
-              const continuous = card.effect?.continuous || zoneMode;
-              const remaining = continuous ? 0 : Math.max(0, (this.cooldowns.get(index) || 0) - dt * rate);
-              this.cooldowns.set(index, remaining);
-              // 대상 판정은 부작용이 없으므로 실행 조건이 먼저 어긋나면 건너뛴다.
-              const ready = canAct && (context.deathEvent || ownerCanAct(owner)) && (context.deathEvent || !remaining);
-              if (!ready && !selectedCard?.afterMovement) return;
-              let current = selected ??= resolveTargets().slice();
-              if (selectedCard?.afterMovement) {
-                current = selectedCard.resolve(env, { deck: game.player.deck });
-                for (const filter of filters) current = filter.gate ? (filter.gate(current, env) ? current : []) : current.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
-              }
-              const valid = current.filter(t => deferredFilters.every(filter => filter.test(t, env))).filter(t => (env.alive(t) || (context.deathEvent && env.at(t) === owner)) && actionApplies(card, t, env) && (!teamRule || !DIRECT_ACTIONS.includes(id) || entityCanHit(owner, env.at(t), { hitTeamRule: teamRule })));
-              if (ready && valid.length) {
-                if (continuous) enabled.add(id);
-                this.enabled = enabled;
-                this.effects = effects;
-                const previousRule = game.actionHitTeamRule;
-                game.actionHitTeamRule = teamRule;
-                const previousActor = game.actionActor, previousCard = game.actionCard;
-                try {
-                  game.actionActor = owner;
-                  game.actionCard = card;
-                  // Every entity slot applies debuffs to its selected recipients.
-                  if (['mark', 'root', 'burn'].includes(id)) {
-                    game.actionActor = owner;
-                    for (const target of valid) game.directAction(id, target);
-                  } else card.run(valid, continuous ? { ...env, summonMode: selectedSummonMode, frameDt: dt * (card.effect?.scaleRate === false ? 1 : rate) } : { ...env, summonMode: selectedSummonMode });
-                } finally { game.actionHitTeamRule = previousRule; game.actionActor = previousActor; game.actionCard = previousCard; }
-                if (!continuous) this.cooldowns.set(index, period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST));
-              }
-            };
-            if (deferred && !context.deathEvent) afterMovement.push(execute);
-            else execute();
-          }
-        }
-      });
+        if (context.deathEvent && !step.deathChain) continue;
+        // enableMechanic 이 읽는 주기·충돌 설정은 이 행동 시점의 값이다.
+        interval = step.interval; hitTeamRule = step.hitTeamRule;
+        const { card, id } = step;
+        if (step.mode === 'passive') {
+          if (canAct && entityMechanicTargets(card.effect, resolveTargets(), env)) env.enableMechanic(id, card.effect, targets);
+        } else if (step.mode === 'mechanic') {
+          if (canAct || card.runsWhileBlocked) card.run(resolveTargets().filter(t => step.movementFilters.every(filter => filter.test(t, env))), env);
+        } else if (step.deferred && !context.deathEvent) {
+          // 미뤄 실행하는 행동은 지금의 대상을 잡아 두고, 바로 실행하는 행동은 실제로 실행할 때만 해석한다.
+          const selected = resolveTargets().slice(), period = step.interval ?? entityActionPeriod(owner, id);
+          afterMovement.push(() => this.executeStep(step, selected, run, period));
+        } else this.executeStep(step, null, run, step.interval ?? entityActionPeriod(owner, id));
+      }
+      // 미뤄진 실행은 카드 스택을 끝까지 읽은 뒤의 설정 값을 본다.
+      interval = plan.interval; hitTeamRule = plan.hitTeamRule;
       if (context.deathEvent) return;
       this.enabled = enabled;
       this.effects = effects;
@@ -2217,6 +2203,41 @@ class EntitySlot {
       // 개체 틱을 미루는 실행은 묶음 슬롯이 틱을 마친 뒤 풀어 준다.
       if (ownsEnv && !context.deferTick) this._envBusy = false;
     }
+  }
+  /** 일반 행동 하나를 쿨타임에 맞춰 실행한다. selected 가 없으면 실행할 때 대상을 해석한다. period 는 행동을 읽은 시점의 주기. */
+  executeStep(step, selected, run, period) {
+    const { card, id, index, selectedCard } = step;
+    const { dt, game, context, env, canAct, enabled, effects } = run, owner = this.owner;
+    const rate = (owner.cardRate || 1) * (owner.rallyT > 0 ? 2 : 1);
+    const remaining = step.continuous ? 0 : Math.max(0, (this.cooldowns.get(index) || 0) - dt * rate);
+    this.cooldowns.set(index, remaining);
+    // 대상 판정은 부작용이 없으므로 실행 조건이 먼저 어긋나면 건너뛴다.
+    const ready = canAct && (context.deathEvent || ownerCanAct(owner)) && (context.deathEvent || !remaining);
+    if (!ready && !selectedCard?.afterMovement) return;
+    let current = selected ?? run.resolveTargets().slice();
+    if (selectedCard?.afterMovement) {
+      current = selectedCard.resolve(env, { deck: game.player.deck });
+      for (const filter of step.targetFilters) current = filter.gate ? (filter.gate(current, env) ? current : []) : current.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+    }
+    if (step.movementFilters.length) current = current.filter(t => step.movementFilters.every(filter => filter.test(t, env)));
+    const teamRule = step.hitTeamRule;
+    const valid = current.filter(t => (env.alive(t) || (context.deathEvent && env.at(t) === owner)) && actionApplies(card, t, env) && (!teamRule || !step.direct || entityCanHit(owner, env.at(t), { hitTeamRule: teamRule })));
+    if (!ready || !valid.length) return;
+    if (step.continuous) enabled.add(id);
+    this.enabled = enabled;
+    this.effects = effects;
+    const previousRule = game.actionHitTeamRule;
+    game.actionHitTeamRule = teamRule;
+    const previousActor = game.actionActor, previousCard = game.actionCard;
+    try {
+      game.actionActor = owner;
+      game.actionCard = card;
+      // Every entity slot applies debuffs to its selected recipients.
+      if (step.directDebuff) {
+        for (const target of valid) game.directAction(id, target);
+      } else card.run(valid, step.continuous ? { ...env, summonMode: step.summonMode, frameDt: dt * (card.effect?.scaleRate === false ? 1 : rate) } : { ...env, summonMode: step.summonMode });
+    } finally { game.actionHitTeamRule = previousRule; game.actionActor = previousActor; game.actionCard = previousCard; }
+    if (!step.continuous) this.cooldowns.set(index, period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST));
   }
   tickOwner(dt, game, context, enabled, afterMovement = []) {
     const owner = this.owner;
@@ -2277,8 +2298,9 @@ class EntitySlots extends EntitySlot {
     if (this.owner.dead && !context.deathEvent) return;
     const enabled = new Set(), effects = new Map(), afterMovement = [];
     const slots = this.slots, owned = slots.filter(slot => !slot._envBusy);
+    const shared = { ...context, sharedEnabled: enabled, sharedEffects: effects, sharedAfterMovement: afterMovement, deferTick: true };
     try {
-      for (const slot of slots) slot.update(dt, game, { ...context, sharedEnabled: enabled, sharedEffects: effects, sharedAfterMovement: afterMovement, deferTick: true });
+      for (const slot of slots) slot.update(dt, game, shared);
       this.enabled = enabled; this.effects = effects;
       if (!context.deathEvent) this.tickOwner(dt, game, context, enabled, afterMovement);
     } finally {
