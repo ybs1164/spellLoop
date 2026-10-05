@@ -27,7 +27,8 @@ vm.runInContext(`
   assert.equal(entityActionConfig(lich, 'summon').n, 6);
   assert.equal(entityStats(lich).summonPeriod, 5);
   assert.ok(necro.slot.cards.some(cardId => cardBaseId(cardId) === 'summon') && lich.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
-  assert.deepEqual(Object.keys(entityStats(game.player)), ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'defense', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp']);
+  assert.ok(entityStats(game.player) instanceof EntityCombatStats);
+  assert.deepEqual(ENTITY_STAT_NAMES, ['knockbackResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward', 'shotSpeed', 'shotCount', 'summonCount', 'defense', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp']);
   assert.equal(entityStats(game.player).moveSpeed, 170);
   assert.equal(entityStats(game.player).attackPower, 10);
   assert.equal(entityStats(game.player).maxHp, 100);

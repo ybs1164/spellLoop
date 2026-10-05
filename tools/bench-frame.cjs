@@ -1,5 +1,5 @@
 // Measures Game.step cost per frame on fixed-seed scenarios and prints a state fingerprint.
-// 사용: node tools/bench-frame.cjs [시나리오...]   (BENCH_FRAMES=프레임 수, stage0~stage7 은 이름으로 지정할 때만 실행)
+// 사용: node tools/bench-frame.cjs [시나리오...]   (BENCH_FRAMES=프레임 수, BENCH_SPIKES=ms 스파이크 원인 출력, stage0~stage7 은 이름으로 지정할 때만 실행)
 const fs = require('node:fs');
 const sources = ['util', 'input', 'cards', 'entities', 'stages', 'upgrades', 'icons', 'ui', 'game'].map(name => fs.readFileSync(`js/${name}.js`, 'utf8')).join('\n');
 const only = process.argv.slice(2);
@@ -57,18 +57,44 @@ for (const [name, scenario] of Object.entries(scenarios)) {
   let tick = 0;
   Input.axis = () => ({ x: Math.cos(tick / 90), y: Math.sin(tick / 70) });
   setup(g);
+  // BENCH_SPIKES=ms: 그보다 느린 프레임마다 시간을 많이 쓴 Game 메서드·생성자(포함 시간)를 출력한다.
+  const spikes = Number(process_env.BENCH_SPIKES || 0), frameCost = new Map();
+  if (spikes) {
+    const wrap = (obj, name, label) => {
+      const f = obj[name];
+      if (typeof f !== 'function' || name === 'constructor' || name === 'step') return;
+      obj[name] = function (...args) {
+        const t = performance.now();
+        try { return f.apply(this, args); } finally { frameCost.set(label, (frameCost.get(label) || 0) + performance.now() - t); }
+      };
+    };
+    // 프레임 단계와 카드 행동만 잰다 (자주 불리는 작은 메서드까지 감싸면 계측 비용이 결과를 가린다).
+    const parts = ['updateSpawns', 'updateTargetBuffs', 'separateEnemies', 'updateZones', 'updateStatuses', 'collideProjectiles', 'updateHazards',
+      'collideStructures', 'resolveEntityDeaths', 'killEnemy', 'spawnEnemy', 'spawnProjectile', 'dropGem', 'hitCircle', 'enemyShoot', 'configuredSummon'];
+    for (const name of [...parts, ...CARD_EFFECTS]) wrap(g, name, name);
+    for (const cls of [Enemy, Ally, Placed, Projectile, Pickup]) wrap(cls.prototype, 'update', cls.name + '.update');
+  }
+  let over16 = 0, over33 = 0, worst = 0;
   const times = [];
   for (; tick < frames && g.state === 'playing'; tick++) {
     const t = performance.now();
     g.step(dt);
     const spent = performance.now() - t;
     times.push(spent);
+    if (spent > 1000 / 60) over16++;
+    if (spent > 1000 / 30) over33++;
+    worst = Math.max(worst, spent);
+    if (spikes && spent > spikes) {
+      const top = [...frameCost].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => k + ' ' + v.toFixed(1)).join(', ');
+      console.log('  spike', tick, spent.toFixed(1) + 'ms', 'enemies', g.enemies.length, 'shots', g.projectiles.length + g.hazards.length, '|', top);
+    }
+    frameCost.clear();
     if (process_env.BENCH_STACKS && tick % 200 === 0) { const all = [g.player, ...g.enemies, ...g.allies, ...g.objects]; console.log('  stacks', tick, Math.max(0, ...all.map(o => (o.burnStacks?.length || 0) + (o.directBurnStacks?.length || 0) + (o.markStacks?.length || 0)))); }
     if (process_env.BENCH_SLOW && spent > Number(process_env.BENCH_SLOW)) console.log('  slow frame', tick, spent.toFixed(0) + 'ms', 'enemies', g.enemies.length, 'shots', g.projectiles.length + g.hazards.length, 'zones', g.zones.length, 'objects', g.objects.length, 'allies', g.allies.length, 'pickups', g.pickups.length);
   }
   const avg = times.reduce((a, b) => a + b, 0) / times.length;
   times.sort((a, b) => a - b);
   console.log(name.padEnd(8), 'avg', avg.toFixed(2).padStart(6) + 'ms', 'p95', times[Math.floor(times.length * 0.95)].toFixed(2).padStart(6) + 'ms',
-    'frames', tick, 'enemies', g.enemies.length, 'pickups', g.pickups.length, 'shots', g.projectiles.length + g.hazards.length, 'objects', g.objects.length, 'fp', fingerprint(g));
+    'max', worst.toFixed(1) + 'ms', '>16ms', over16, '>33ms', over33, 'frames', tick, 'enemies', g.enemies.length, 'pickups', g.pickups.length, 'shots', g.projectiles.length + g.hazards.length, 'objects', g.objects.length, 'fp', fingerprint(g));
 }
 `)(console, new Proxy({}, { get: () => 0 }), Object.create(Math), only, Number(process.env.BENCH_FRAMES || 600), only.some(name => name.startsWith('stage')), process.env);

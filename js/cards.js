@@ -17,7 +17,11 @@ const SLOT_SECTIONS = [
 const SLOT_SECTION_ORDER = { filter: 0, target: 1, action: 2 };
 function slotSectionOf(id) { return SLOT_SECTION_ORDER[CARDS[id]?.type] ?? 2; }
 /** 카드 스택을 조건 → 대상 → 행동 순서로 정렬한다. 같은 칸 안의 순서는 유지한다. */
-function sortSlotCards(cards) { return cards.slice().sort((a, b) => slotSectionOf(a) - slotSectionOf(b)); }
+function sortSlotCards(cards) {
+  // 대부분 이미 칸 순서대로라 정렬을 건너뛴다 (안정 정렬이므로 결과는 같다).
+  for (let i = 1; i < cards.length; i++) if (slotSectionOf(cards[i - 1]) > slotSectionOf(cards[i])) return cards.slice().sort((a, b) => slotSectionOf(a) - slotSectionOf(b));
+  return cards.slice();
+}
 /** 정렬된 카드 스택을 세 칸으로 나눈다. start 는 슬롯 전체 기준 첫 카드 위치다. */
 function slotSections(cards) {
   let start = 0;
@@ -1277,6 +1281,9 @@ function entityChainCard(type, value, radius = false) {
       : type === 'interval' ? { interval: value } : { test: (t, env) => {
       const o = env.at(t);
       return dist2(env.owner.x, env.owner.y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
+    }, near: env => {
+      const x = env.owner.x, y = env.owner.y;
+      return o => dist2(x, y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
     } }),
   };
   ENTITY_CHAIN_CARDS.set(key, id);
@@ -1294,6 +1301,59 @@ function entityActionText(id, effect, showRatios = false) {
   return [name, (effect.separateInterval ? desc.replace(/\d+(?:\.\d+)?초마다\s*/g, '') : desc) + suffix];
 }
 // 개체가 전투 스탯과 기믹 수치를 소유하고 행동 카드는 공유한다.
+/** 개체 공통 스탯. 접근자는 프로토타입에 두고 개체 참조만 갖는다 (개체마다 접근자 함수를 만들지 않도록). */
+class EntityCombatStats {
+  #owner;
+  constructor(owner) { this.#owner = owner; }
+  get knockbackResistance() { const owner = this.#owner; return owner.knockbackResistance; }
+  set knockbackResistance(value) { const owner = this.#owner; owner.knockbackResistance = clamp(value, 0, 1); }
+  get lifetime() { const owner = this.#owner; return owner.max; }
+  set lifetime(value) {
+    const owner = this.#owner;
+    owner.max = Math.max(0, value);
+    if (Number.isFinite(owner.life)) owner.life = Math.min(owner.life, owner.max);
+    else if (owner.def?.escape) owner.escT = Math.min(owner.escT, owner.max);
+    else if (Number.isFinite(owner.max)) owner.life = owner.max;
+  }
+  get range() { const owner = this.#owner; return Math.max(0, Math.round(owner.range)); }
+  set range(value) { const owner = this.#owner; owner.range = Math.max(0, Math.round(value)); }
+  get moveSpeed() { const owner = this.#owner; return Math.round(owner.baseSpeed ?? owner.speed); }
+  set moveSpeed(value) { const owner = this.#owner; if (owner.baseSpeed != null) owner.baseSpeed = Math.round(value); else owner.speed = Math.round(value); }
+  get attackPower() { const owner = this.#owner; return Math.round(owner.damage); }
+  set attackPower(value) { const owner = this.#owner; owner.damage = Math.round(value); }
+  get knockback() { const owner = this.#owner; return Math.round(owner.knockback); }
+  set knockback(value) { const owner = this.#owner; owner.knockback = Math.round(value); }
+  get sight() { const owner = this.#owner; return owner.sight; }
+  set sight(value) { const owner = this.#owner; owner.sight = Math.max(0, Math.round(value)); }
+  get keepDistance() { const owner = this.#owner; return owner.keepDistance; }
+  set keepDistance(value) { const owner = this.#owner; owner.keepDistance = Math.max(0, value); }
+  get xpReward() { const owner = this.#owner; return owner instanceof Enemy ? owner.xp : 0; }
+  set xpReward(value) { const owner = this.#owner; if (owner instanceof Enemy) owner.xp = Math.max(0, Math.round(value)); }
+  get shotSpeed() { const owner = this.#owner; return owner.shotSpeed; }
+  set shotSpeed(value) { const owner = this.#owner; owner.shotSpeed = Math.max(0, Math.round(value)); }
+  get shotCount() { const owner = this.#owner; return owner.shotCount; }
+  set shotCount(value) { const owner = this.#owner; owner.shotCount = Math.max(1, Math.round(value)); }
+  get summonCount() { const owner = this.#owner; return owner.summonCount; }
+  set summonCount(value) { const owner = this.#owner; owner.summonCount = Math.max(1, Math.round(value)); }
+  get defense() { const owner = this.#owner; return owner.armor ?? 0; }
+  set defense(value) { const owner = this.#owner; owner.armor = Math.max(0, value); }
+  get shotPower() { const owner = this.#owner; return owner.shotPower; }
+  set shotPower(value) { const owner = this.#owner; owner.shotPower = Math.max(0, Math.round(value)); }
+  get reach() { const owner = this.#owner; return owner.reach ?? 0; }
+  set reach(value) { const owner = this.#owner; owner.reach = Math.max(0, value); }
+  get attackPeriod() { const owner = this.#owner; return owner.attackPeriod ?? 0; }
+  set attackPeriod(value) { const owner = this.#owner; owner.attackPeriod = Math.max(0, value); }
+  get summonPeriod() { const owner = this.#owner; return owner.summonPeriod ?? 0; }
+  set summonPeriod(value) { const owner = this.#owner; owner.summonPeriod = Math.max(0, value); }
+  get supportPeriod() { const owner = this.#owner; return owner.supportPeriod ?? 0; }
+  set supportPeriod(value) { const owner = this.#owner; owner.supportPeriod = Math.max(0, value); }
+  get pierce() { const owner = this.#owner; return owner.pierceLimit; }
+  set pierce(value) { const owner = this.#owner; owner.pierceLimit = Math.max(0, value); }
+  get maxHp() { const owner = this.#owner; return Math.round(owner.stats?.maxHp ?? owner.maxHp ?? 0); }
+  set maxHp(value) { const owner = this.#owner; value = Math.round(value); if (owner.stats) owner.stats.maxHp = value; else owner.maxHp = value; if (Number.isFinite(owner.hp)) owner.hp = Math.min(owner.hp, value); }
+}
+// 개체 스탯 이름 (선언 순서). 스탯 객체의 접근자는 프로토타입에 있어 Object.keys 로는 보이지 않는다.
+const ENTITY_STAT_NAMES = Object.freeze(Object.getOwnPropertyNames(EntityCombatStats.prototype).filter(name => name !== 'constructor'));
 function entityStats(owner) {
   if (owner.combatStats) return owner.combatStats;
   if (owner.kind === 'vortex' || owner.kind === 'ward' || owner.kind === 'abyss' || owner instanceof Pickup) owner.baseSpeed ??= 170;
@@ -1310,53 +1370,7 @@ function entityStats(owner) {
   owner.summonCount ??= owner.def?.summon?.n ?? 1;
   owner.pierceLimit ??= Infinity;
   owner.shotPower ??= owner.def?.shoot?.damage ?? 0;
-  owner.combatStats = {
-    get knockbackResistance() { return owner.knockbackResistance; },
-    set knockbackResistance(value) { owner.knockbackResistance = clamp(value, 0, 1); },
-    get lifetime() { return owner.max; },
-    set lifetime(value) {
-      owner.max = Math.max(0, value);
-      if (Number.isFinite(owner.life)) owner.life = Math.min(owner.life, owner.max);
-      else if (owner.def?.escape) owner.escT = Math.min(owner.escT, owner.max);
-      else if (Number.isFinite(owner.max)) owner.life = owner.max;
-    },
-    get range() { return Math.max(0, Math.round(owner.range)); },
-    set range(value) { owner.range = Math.max(0, Math.round(value)); },
-    get moveSpeed() { return Math.round(owner.baseSpeed ?? owner.speed); },
-    set moveSpeed(value) { if (owner.baseSpeed != null) owner.baseSpeed = Math.round(value); else owner.speed = Math.round(value); },
-    get attackPower() { return Math.round(owner.damage); },
-    set attackPower(value) { owner.damage = Math.round(value); },
-    get knockback() { return Math.round(owner.knockback); },
-    set knockback(value) { owner.knockback = Math.round(value); },
-    get sight() { return owner.sight; },
-    set sight(value) { owner.sight = Math.max(0, Math.round(value)); },
-    get keepDistance() { return owner.keepDistance; },
-    set keepDistance(value) { owner.keepDistance = Math.max(0, value); },
-    get xpReward() { return owner instanceof Enemy ? owner.xp : 0; },
-    set xpReward(value) { if (owner instanceof Enemy) owner.xp = Math.max(0, Math.round(value)); },
-    get shotSpeed() { return owner.shotSpeed; },
-    set shotSpeed(value) { owner.shotSpeed = Math.max(0, Math.round(value)); },
-    get shotCount() { return owner.shotCount; },
-    set shotCount(value) { owner.shotCount = Math.max(1, Math.round(value)); },
-    get summonCount() { return owner.summonCount; },
-    set summonCount(value) { owner.summonCount = Math.max(1, Math.round(value)); },
-    get defense() { return owner.armor ?? 0; },
-    set defense(value) { owner.armor = Math.max(0, value); },
-    get shotPower() { return owner.shotPower; },
-    set shotPower(value) { owner.shotPower = Math.max(0, Math.round(value)); },
-    get reach() { return owner.reach ?? 0; },
-    set reach(value) { owner.reach = Math.max(0, value); },
-    get attackPeriod() { return owner.attackPeriod ?? 0; },
-    set attackPeriod(value) { owner.attackPeriod = Math.max(0, value); },
-    get summonPeriod() { return owner.summonPeriod ?? 0; },
-    set summonPeriod(value) { owner.summonPeriod = Math.max(0, value); },
-    get supportPeriod() { return owner.supportPeriod ?? 0; },
-    set supportPeriod(value) { owner.supportPeriod = Math.max(0, value); },
-    get pierce() { return owner.pierceLimit; },
-    set pierce(value) { owner.pierceLimit = Math.max(0, value); },
-    get maxHp() { return Math.round(owner.stats?.maxHp ?? owner.maxHp ?? 0); },
-    set maxHp(value) { value = Math.round(value); if (owner.stats) owner.stats.maxHp = value; else owner.maxHp = value; if (Number.isFinite(owner.hp)) owner.hp = Math.min(owner.hp, value); },
-  };
+  owner.combatStats = new EntityCombatStats(owner);
   return owner.combatStats;
 }
 const ENTITY_BASIC_DAMAGE = new Set(['entityHit']);
@@ -1369,12 +1383,52 @@ function entityRatioFields(id, effect) {
   if (id === 'entityKeep' && effect.distance != null) fields.distance = 'keepDistance';
   return fields;
 }
+/** entityResolvedEffect 와 같은 값을 주되 fields 만 담는다 */
+function entityResolvedFields(owner, effect, fields) {
+  const stats = entityStats(owner), resolved = {};
+  for (const field of fields) {
+    const reference = effect.statRatios?.[field];
+    resolved[field] = reference ? stats[reference.stat] * reference.ratio : effect[field];
+  }
+  return resolved;
+}
 function entityResolvedEffect(owner, id, effect) {
   const stats = entityStats(owner), resolved = { ...effect };
   for (const [field, reference] of Object.entries(effect.statRatios || {})) resolved[field] = stats[reference.stat] * reference.ratio;
   return resolved;
 }
+// 입력이 같으면 결과도 같으므로 입력 문자열로 먼저 찾는다 (효과 복사·정규화·JSON 비교를 건너뛴다).
+// 숫자가 아닌 값(Infinity·NaN)과 undefined 도 구분한다. 결과 카드가 지워졌으면 다시 만든다.
+function hasSpecialValue(value) {
+  if (value === undefined || typeof value === 'number' && !Number.isFinite(value)) return true;
+  if (!value || typeof value !== 'object') return false;
+  for (const key in value) if (hasSpecialValue(value[key])) return true;
+  return false;
+}
+const FROZEN_INPUT_KEYS = new WeakMap();
+function entityInputKey(value) {
+  // 특수값이 없으면 replacer 없이 직렬화해도 같은 문자열이 나온다. 동결된 값은 문자열을 기억해 둔다.
+  const frozen = value && typeof value === 'object' && deepFrozen(value);
+  if (frozen && FROZEN_INPUT_KEYS.has(value)) return FROZEN_INPUT_KEYS.get(value);
+  const key = hasSpecialValue(value)
+    ? JSON.stringify(value, (_, v) => v === undefined ? '\u0000undefined' : typeof v === 'number' && !Number.isFinite(v) ? `\u0000${v}` : v)
+    : JSON.stringify(value);
+  if (frozen) FROZEN_INPUT_KEYS.set(value, key);
+  return key;
+}
+const ENTITY_BEHAVIOR_INPUTS = new Map();
+const ENTITY_CONFIGURED_INPUTS = new Map();
 function entityBehaviorCard(id, values = {}, owner) {
+  const inputKey = id + entityInputKey(values), cached = ENTITY_BEHAVIOR_INPUTS.get(inputKey);
+  if (cached && CARDS[cached] && (cached === id || ENTITY_VARIANTS.has(id + JSON.stringify(CARDS[cached].effect)))) {
+    if (owner) entityStats(owner);
+    return cached;
+  }
+  const result = buildEntityBehaviorCard(id, values, owner);
+  ENTITY_BEHAVIOR_INPUTS.set(inputKey, result);
+  return result;
+}
+function buildEntityBehaviorCard(id, values, owner) {
   const effect = { ...ENTITY_EFFECT_DEFAULTS[id], ...values };
   if (id === 'entityHit') { delete effect.playerTargeted; delete effect.side; }
   if (entityUsesPlayer(id, effect)) effect.playerTargeted = true;
@@ -1467,6 +1521,11 @@ CARDS.entityInReach = {
     const o = env.at(t), reach = entityStats(env.owner).reach + (o.radius || o.r || 0);
     return dist2(env.owner.x, env.owner.y, o.x, o.y) <= reach ** 2;
   },
+  // test 와 같은 식으로 개체를 바로 판정한다 (전체 대상을 감싸기 전에 먼 개체를 거르는 데 쓴다).
+  near: env => {
+    const owner = env.owner, x = owner.x, y = owner.y, base = entityStats(owner).reach;
+    return o => dist2(x, y, o.x, o.y) <= (base + (o.radius || o.r || 0)) ** 2;
+  },
 };
 CARDS.entityInArea = {
   type: 'filter', entityOnly: true, cost: 1, weight: 0, delay: 0, icon: 'fNear',
@@ -1474,6 +1533,10 @@ CARDS.entityInArea = {
   test: (t, env) => {
     const o = env.at(t), owner = env.owner, radius = owner.r ?? owner.radius ?? entityStats(owner).range;
     return dist2(owner.x, owner.y, o.x, o.y) <= radius ** 2;
+  },
+  near: env => {
+    const owner = env.owner, x = owner.x, y = owner.y, radius = owner.r ?? owner.radius ?? entityStats(owner).range;
+    return o => dist2(x, y, o.x, o.y) <= radius ** 2;
   },
 };
 CARDS.entityEnemyInReach = {
@@ -1570,6 +1633,14 @@ const ENTITY_CARD_LOOKS = {
   homingTurn: ['적 추적', 'homing', '탄이 가까운 적 쪽으로 방향을 튼다.'],
 };
 function entityConfiguredCard(cardId, values, native = false) {
+  if (cardBaseId(cardId) === 'explode') return 'explode';
+  const inputKey = `${cardId}|${native}|${entityInputKey(values)}`, cached = ENTITY_CONFIGURED_INPUTS.get(inputKey);
+  if (cached && CARDS[cached]) return cached;
+  const result = buildEntityConfiguredCard(cardId, values, native);
+  ENTITY_CONFIGURED_INPUTS.set(inputKey, result);
+  return result;
+}
+function buildEntityConfiguredCard(cardId, values, native) {
   const base = CARDS[cardId], actionId = cardBaseId(cardId);
   if (actionId === 'explode') return 'explode';
   const effect = freezeEntityValues(copyEntityValues({ ...base.effect, ...values }));
@@ -1734,7 +1805,8 @@ function entitySlot(owner, kind) {
   const temporaryCards = new Set();
   for (const id of cards) {
     const initial = id === 'entitySelf' ? id : entityInitialCard(id, owner, kind);
-    const effect = id === 'entitySelf' ? undefined : entityResolvedEffect(owner, id, CARDS[initial].effect);
+    // 필요한 필드(주기·플레이어 대상)만 스탯 비율을 반영해 읽는다.
+    const effect = id === 'entitySelf' ? undefined : entityResolvedFields(owner, CARDS[initial].effect, ['cd', 'playerTargeted', 'redirectTargets']);
     if (initial !== id && effect?.cd != null) temporaryCards.add(initial);
     {
       if (id === 'entityMove') {
@@ -2060,8 +2132,10 @@ class EntitySlot {
           movementFilters = any ? Object.freeze(pendingFilters.filter(filter => filter.afterMovement)) : NO_FILTERS;
         }
         targetCard = joined ? null : card;
+        const preFilters = targetFilters.filter(filter => !filter.afterMovement);
         steps.push({ target: true, card, id, reset: !joined, eager: EAGER_TARGETS.has(id), chain: deathChain,
-          preFilters: targetFilters.filter(filter => !filter.afterMovement) });
+          preFilters, fusedTests: preFilters.length > 0 && preFilters.every(filter => !filter.gate),
+          nearFilter: card === CARDS.all && preFilters.every(filter => !filter.gate) ? preFilters.find(filter => filter.near) : undefined });
         if (pendingFilters.length) pendingFilters = [];
       } else if (card.type === 'action') {
         const zoneMode = this.kind === 'zone' && !!card.zoneKinds?.includes(this.owner.kind);
@@ -2160,9 +2234,23 @@ class EntitySlot {
       const resolveTargets = () => {
         if (!unresolved.length) return targets;
         for (let i = 0; i < unresolved.length; i++) {
-          const { card, preFilters, chain } = unresolved[i];
-          let picked = card.resolve(env, { deck: game.player.deck }).filter(t => env.alive(t) || (chain && env.at(t) === owner));
-          for (const filter of preFilters) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+          const step = unresolved[i], { card, preFilters, chain, fusedTests } = step;
+          let picked;
+          if (fusedTests) {
+            // 조건이 모두 개별 판정(test)이면 한 번에 거른다. 판정은 부작용이 없어 대상마다 같은 순서로 부르면 결과가 같다.
+            picked = [];
+            // 「전체」에 거리 조건이 붙으면 먼 개체를 대상으로 감싸기 전에 같은 판정으로 건너뛴다.
+            const source = step.nearFilter ? game.allTargets(step.nearFilter.near(env)) : card.resolve(env, { deck: game.player.deck });
+            for (const t of source) {
+              if (!(env.alive(t) || (chain && env.at(t) === owner))) continue;
+              let pass = true;
+              for (const filter of preFilters) if (!((!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env))) { pass = false; break; }
+              if (pass) picked.push(t);
+            }
+          } else {
+            picked = card.resolve(env, { deck: game.player.deck }).filter(t => env.alive(t) || (chain && env.at(t) === owner));
+            for (const filter of preFilters) picked = filter.gate ? (filter.gate(picked, env) ? picked : []) : picked.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));
+          }
           // 대상 배열은 제자리에서 바꾸지 않으므로 첫 묶음은 복사 없이 그대로 쓴다.
           targets = targets.length ? targets.concat(picked) : picked;
         }
@@ -2214,7 +2302,7 @@ class EntitySlot {
     // 대상 판정은 부작용이 없으므로 실행 조건이 먼저 어긋나면 건너뛴다.
     const ready = canAct && (context.deathEvent || ownerCanAct(owner)) && (context.deathEvent || !remaining);
     if (!ready && !selectedCard?.afterMovement) return;
-    let current = selected ?? run.resolveTargets().slice();
+    let current = selected ?? run.resolveTargets();   // 아래에서 거른 새 배열만 쓰므로 복사하지 않는다
     if (selectedCard?.afterMovement) {
       current = selectedCard.resolve(env, { deck: game.player.deck });
       for (const filter of step.targetFilters) current = filter.gate ? (filter.gate(current, env) ? current : []) : current.filter(t => (!filter.requires || filter.requires.every(f => env.features(t)[f])) && filter.test(t, env));

@@ -6,6 +6,10 @@ const SWARM_INTERVAL = 60;
 const MAX_HAZARDS = 200;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
+// 행동 위임 함수: env.bolt(...) 처럼 환경의 메서드로 불리며, 환경의 owner 를 행동 주체로 둔다.
+// 개체마다 함수를 새로 만들지 않도록 모든 카드 환경이 같은 함수를 공유한다.
+const CARD_EFFECT_DELEGATES = {};
+
 // allTargets·decoyCandidates 목록 순서별 대상 래퍼
 const TARGET_LIST_WRAP = [
   e => ({ kind: 'enemy', e }), o => ({ kind: 'object', o }), a => ({ kind: 'ally', a }), z => ({ kind: 'zone', z }),
@@ -22,6 +26,11 @@ const CARD_EFFECTS = [
   'blink', 'dash', 'summonArcher', 'rally', 'ward',
   'spread', 'snipe', 'refresh', 'split', 'absorb', 'swap',
 ];
+for (const name of CARD_EFFECTS) CARD_EFFECT_DELEGATES[name] = function (...args) {
+  const g = this.game, previous = g.actionActor;
+  g.actionActor = this.owner;
+  try { return g[name](...args); } finally { g.actionActor = previous; }
+};
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
 
 // 장판 종류별 기본값. s: 장판을 만드는 쪽의 능력치 배율 (범위·지속시간)
@@ -412,24 +421,55 @@ class Game {
     for (const e of this.enemies) if (!e.dead) this.hash.insert(e);
   }
 
+  /**
+   * 겹친 적을 서로 밀어낸다. 공간 해시와 같은 칸·같은 순서로 이웃을 훑되 좌표를 타입 배열에 옮겨 계산한다
+   * (적마다 객체 형태가 달라 속성 읽기가 느리다). 계산 순서와 값은 객체에서 직접 하던 것과 같다.
+   */
   separateEnemies() {
-    const near = this._near;
-    for (const a of this.enemies) {
-      this.hash.query(a.x, a.y, a.radius + MAX_ENEMY_RADIUS, near);
-      const wa = a.boss ? 0.05 : 0.5;
-      for (const b of near) {
-        if (b === a) continue;
-        const dx = a.x - b.x, dy = a.y - b.y;
-        const min = a.radius + b.radius;
-        const d2 = dx * dx + dy * dy;
-        if (d2 >= min * min) continue;
-        if (d2 === 0) { a.x += rand(-1, 1); continue; }
-        const d = Math.sqrt(d2);
-        const push = ((min - d) / d) * wa;   // 쌍마다 양쪽이 각자 절반씩 밀려남
-        a.x += dx * push;
-        a.y += dy * push;
+    const list = this.enemies, n = list.length, cs = this.hash.cs;
+    let buf = this._sep;
+    if (!buf || buf.x.length < n) {
+      const size = Math.max(n, 2 * (buf?.x.length || 256));
+      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size), grid: new Map(), stamp: 0 };
+    }
+    const X = buf.x, Y = buf.y, R = buf.r, grid = buf.grid, stamp = ++buf.stamp;
+    // rebuildHash 직후라 지금 좌표가 해시에 넣은 좌표와 같다. 살아 있는 적만 배열 순서대로 칸에 넣는다.
+    for (let i = 0; i < n; i++) {
+      const e = list[i];
+      X[i] = e.x; Y[i] = e.y; R[i] = e.radius;
+      if (e.dead) continue;
+      const k = this.hash.key(Math.floor(X[i] / cs), Math.floor(Y[i] / cs));
+      let cell = grid.get(k);
+      if (!cell) { cell = []; grid.set(k, cell); }
+      if (cell.stamp !== stamp) { cell.length = 0; cell.stamp = stamp; }
+      cell.push(i);
+    }
+    if (grid.size > 4096) for (const [k, cell] of grid) if (cell.stamp !== stamp) grid.delete(k);
+    for (let ai = 0; ai < n; ai++) {
+      const reach = R[ai] + MAX_ENEMY_RADIUS, wa = list[ai].boss ? 0.05 : 0.5;
+      const x0 = Math.floor((X[ai] - reach) / cs), x1 = Math.floor((X[ai] + reach) / cs);
+      const y0 = Math.floor((Y[ai] - reach) / cs), y1 = Math.floor((Y[ai] + reach) / cs);
+      for (let cx = x0; cx <= x1; cx++) {
+        for (let cy = y0; cy <= y1; cy++) {
+          const cell = grid.get(this.hash.key(cx, cy));
+          if (!cell || cell.stamp !== stamp) continue;
+          for (let j = 0; j < cell.length; j++) {
+            const bi = cell[j];
+            if (bi === ai) continue;
+            const dx = X[ai] - X[bi], dy = Y[ai] - Y[bi];
+            const min = R[ai] + R[bi];
+            const d2 = dx * dx + dy * dy;
+            if (d2 >= min * min) continue;
+            if (d2 === 0) { X[ai] += rand(-1, 1); continue; }
+            const d = Math.sqrt(d2);
+            const push = ((min - d) / d) * wa;   // 쌍마다 양쪽이 각자 절반씩 밀려남
+            X[ai] += dx * push;
+            Y[ai] += dy * push;
+          }
+        }
       }
     }
+    for (let i = 0; i < n; i++) { const e = list[i]; e.x = X[i]; e.y = Y[i]; }
   }
 
   /** (x, y) 반경 r 안의 살아 있는 적 수 (공간 해시 기준, skip 제외) */
@@ -611,12 +651,8 @@ class Game {
       /** 지금 실행하는 행동의 피해 배율 (「일점 집중」·「연타」) */
       setMul: (m) => { p.cardMul = m; },
       entityCount: () => g.objects.length + g.zones.length + g.allies.length + g.enemies.length + g.hazards.length + g.projectiles.length,
-      // 대상에서 효과로 이어지는 행동들은 Game 의 같은 이름 메서드로 넘긴다
-      ...Object.fromEntries(CARD_EFFECTS.map((name) => [name, (...args) => {
-        const previous = g.actionActor;
-        g.actionActor = owner;
-        try { return g[name](...args); } finally { g.actionActor = previous; }
-      }])),
+      // 대상에서 효과로 이어지는 행동들은 Game 의 같은 이름 메서드로 넘긴다 (모든 환경이 함께 쓰는 함수)
+      ...CARD_EFFECT_DELEGATES,
     };
   }
 
@@ -626,16 +662,17 @@ class Game {
     return key ? t[key] : t;
   }
 
-  allTargets() {
+  /** keep 이 주어지면 그 판정을 통과한 개체만 담는다 (순서는 같다). */
+  allTargets(keep) {
     // 대상 래퍼는 읽기 전용이므로 개체마다 한 번 만들어 재사용한다.
     const wraps = this._targetWraps ||= new WeakMap();
-    const out = [{ kind: 'self' }];
+    const out = !keep || keep(this.player) ? [{ kind: 'self' }] : [];
     const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
     for (let i = 0; i < lists.length; i++) {
       const list = lists[i];
       if (!list) continue;
       for (const o of list) {
-        if (o.dead) continue;
+        if (o.dead || keep && !keep(o)) continue;
         let w = wraps.get(o);
         if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
         out.push(w);
@@ -847,13 +884,21 @@ class Game {
 
   /** (x, y) 반경 r 안의 적 모두에게 피해. 넉백은 중심에서 바깥쪽으로. */
   hitCircle(x, y, r, dmg, knock, each, elem) {
-    const near = this.hash.query(x, y, r + MAX_ENEMY_RADIUS, []);
-    for (const e of near) {
-      if (e.dead) continue;
-      const rr = r + e.radius;
-      if (dist2(x, y, e.x, e.y) > rr * rr) continue;
-      if (each) each(e);
-      if (dmg > 0) this.damageEnemy(e, dmg, e.x - x || rand(-1, 1), e.y - y, knock, undefined, elem);
+    // 호출 깊이마다 질의 배열을 재사용한다 (피해 → 사망 → 폭발처럼 안에서 다시 불릴 수 있다).
+    const pool = this._hitPool ||= [], depth = this._hitDepth = (this._hitDepth || 0) + 1;
+    const near = this.hash.query(x, y, r + MAX_ENEMY_RADIUS, pool[depth] ||= []);
+    try {
+      for (let i = 0; i < near.length; i++) {
+        const e = near[i];
+        if (e.dead) continue;
+        const rr = r + e.radius;
+        if (dist2(x, y, e.x, e.y) > rr * rr) continue;
+        if (each) each(e);
+        if (dmg > 0) this.damageEnemy(e, dmg, e.x - x || rand(-1, 1), e.y - y, knock, undefined, elem);
+      }
+    } finally {
+      near.length = 0;
+      this._hitDepth = depth - 1;
     }
   }
 
@@ -1246,8 +1291,9 @@ class Game {
 
   burn(o, t) {
     const p = this.player, r = 55 * p.stats.area, dur = 3 * p.stats.duration;
-    this.carryStatus(t, { burnT: dur, burnDps: this.actionDamage('burn') });
-    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { this.addDebuff(e, 'burn', dur, this.actionDamage('burn')); });
+    const dps = this.actionDamage('burn');   // 범위 안 적마다 같은 값이라 한 번만 계산한다
+    this.carryStatus(t, { burnT: dur, burnDps: dps });
+    this.hitCircle(o.x, o.y, r, 0, 0, (e) => { this.addDebuff(e, 'burn', dur, dps); });
     this.circleFx(o.x, o.y, r, '#ff7b2e', { life: 0.35, spark: '#ffe08a' });
     this.burst(o.x, o.y, '#ffb347', 8);
   }
