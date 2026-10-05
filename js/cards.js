@@ -1951,6 +1951,20 @@ function inheritEntitySlots(source, target, kind) {
   target.slot = new EntitySlots(target, kind, target.slots);
 }
 
+// 유인 카드가 들어 있는 슬롯 구성이 바뀔 때마다 증가한다 (Game 의 유인 후보 캐시 무효화).
+let entityDecoyEpoch = 0;
+function isDecoyCard(id) { return CARDS[id]?.mechanic === 'entityDecoy' || cardBaseId(id) === 'entityDecoy'; }
+function trackDecoySlot(slot, cards) {
+  const may = cards.some(isDecoyCard);
+  if (may || slot._mayDecoy) entityDecoyEpoch++;
+  slot._mayDecoy = may;
+}
+/** 이 개체의 슬롯이 유인 행동을 가질 수 있는가 (has('entityDecoy') 의 상위 집합) */
+function slotMayHaveDecoy(o) {
+  const s = o.slot;
+  return !!s && (s._mayDecoy || !!s.enabled?.has('entityDecoy') || !!s.slots?.some(x => x._mayDecoy));
+}
+
 class EntitySlot {
   constructor(owner, kind, cards) {
     this.owner = owner;
@@ -1964,7 +1978,7 @@ class EntitySlot {
   }
   // 개체 슬롯도 조건 → 대상 → 행동 칸 순서로 카드 스택을 유지한다.
   get cards() { return this._cards; }
-  set cards(cards) { this._cards = sortSlotCards(cards); }
+  set cards(cards) { this._cards = sortSlotCards(cards); trackDecoySlot(this, this._cards); }
   get defaults() { return this._defaults; }
   set defaults(cards) { this._defaults = sortSlotCards(cards); }
   configuredEffect(effect, interval, hitTeamRule, card) {
@@ -2136,7 +2150,7 @@ class EntitySlot {
 class EntitySlots extends EntitySlot {
   // 여러 슬롯을 이어 붙인 목록이므로 칸 정렬을 하지 않는다.
   get cards() { return this._cards; }
-  set cards(cards) { this._cards = cards; }
+  set cards(cards) { this._cards = cards; trackDecoySlot(this, cards); }
   get defaults() { return this._defaults; }
   set defaults(cards) { this._defaults = cards; }
   constructor(owner, kind, slots) {

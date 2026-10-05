@@ -6,6 +6,12 @@ const SWARM_INTERVAL = 60;
 const MAX_HAZARDS = 200;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
+// allTargets·decoyCandidates 목록 순서별 대상 래퍼
+const TARGET_LIST_WRAP = [
+  e => ({ kind: 'enemy', e }), o => ({ kind: 'object', o }), a => ({ kind: 'ally', a }), z => ({ kind: 'zone', z }),
+  s => ({ kind: 'shot', s }), s => ({ kind: 'shot', s }), g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g }),
+];
+
 const CARD_EFFECTS = [
   'directAction',
   'bolt', 'slash', 'explode', 'frost', 'shockwave', 'poison', 'vortex', 'summonKnight',
@@ -287,6 +293,7 @@ class Game {
     compact(this.objects);
     compact(this.zones);
     compact(this.pickups);
+    this._decoyScan = null;
 
     const k = Math.min(1, dt * 10);
     this.cam.x += (p.x - this.cam.x) * k;
@@ -512,6 +519,16 @@ class Game {
    * 위치 효과는 at(t) 가 돌려주는 객체(x, y 를 가진 살아 있는 개체)를 받는다.
    */
   cardEnv(owner = this.player) {
+    // 환경은 개체마다 한 번만 만든다. 호출부는 항상 전개 복사한 뒤 필드를 덧붙인다.
+    const cache = this._cardEnvs ||= new WeakMap();
+    const hit = cache.get(owner);
+    if (hit && hit.player === this.player) return hit.env;
+    const env = this.buildCardEnv(owner);
+    cache.set(owner, { player: this.player, env });
+    return env;
+  }
+
+  buildCardEnv(owner) {
     const g = this, p = this.player;
     const obj = (t) => g.targetObj(t);
     const d2 = (t) => { const o = obj(t); return dist2(o.x, o.y, owner.x, owner.y); };
@@ -565,7 +582,11 @@ class Game {
       /** e 가 나에게 등을 보이고 있는가 (바라보는 방향이 나와 90° 넘게 벌어짐) */
       facingAway: (e) => Math.cos(angDiff(Math.atan2(p.y - e.y, p.x - e.x), e.ang)) < 0,
       crowd: (e, r) => g.hash.query(e.x, e.y, r, []).filter((o) => o !== e && !o.dead && dist2(o.x, o.y, e.x, e.y) <= r * r).length,
-      enemyNear: (t, r) => { const o = obj(t); return g.nearestEnemies(o.x, o.y, Infinity, r).some(e => e !== o); },
+      enemyNear: (t, r) => {
+        const o = obj(t), r2 = r * r;
+        for (const e of g.enemies) if (!e.dead && e !== o && dist2(o.x, o.y, e.x, e.y) <= r2) return true;
+        return false;
+      },
       lifeRatio: (t) => { const o = obj(t); return o.max ? o.life / o.max : 1; },
       hpRatio: () => p.hp / p.stats.maxHp,
       recentlyHurt: () => p.hurtT > 0,
@@ -593,13 +614,21 @@ class Game {
   }
 
   allTargets() {
-    const wrap = (list, kind, key) => (list || []).filter(o => !o.dead).map(o => ({ kind, [key]: o }));
-    return [
-      { kind: 'self' }, ...wrap(this.enemies, 'enemy', 'e'),
-      ...wrap(this.objects, 'object', 'o'), ...wrap(this.allies, 'ally', 'a'),
-      ...wrap(this.zones, 'zone', 'z'), ...wrap([...(this.projectiles || []), ...(this.hazards || [])], 'shot', 's'),
-      ...(this.pickups || []).filter(o => !o.dead).map(g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g })),
-    ];
+    // 대상 래퍼는 읽기 전용이므로 개체마다 한 번 만들어 재사용한다.
+    const wraps = this._targetWraps ||= new WeakMap();
+    const out = [{ kind: 'self' }];
+    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
+      if (!list) continue;
+      for (const o of list) {
+        if (o.dead) continue;
+        let w = wraps.get(o);
+        if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
+        out.push(w);
+      }
+    }
+    return out;
   }
 
   actionValue(id, field, owner = this.actionActor || this.player) {
@@ -1068,20 +1097,40 @@ class Game {
   }
 
   /** 미끼가 있으면 적이 대신 쫓는다. */
+  /**
+   * 유인 카드를 가질 수 있는 개체 목록 (allTargets 순서).
+   * 목록이 같은 프레임에 늘어난 부분만 이어서 훑고, 정리(compact)·유인 슬롯 변경 시 다시 만든다.
+   */
+  decoyCandidates() {
+    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    let scan = this._decoyScan;
+    if (!scan || scan.epoch !== entityDecoyEpoch) scan = this._decoyScan = { epoch: entityDecoyEpoch, lists: [] };
+    for (let i = 0; i < lists.length; i++) {
+      const arr = lists[i] || [];
+      let entry = scan.lists[i];
+      if (!entry || entry.arr !== arr || entry.n > arr.length) entry = scan.lists[i] = { arr, n: 0, found: [] };
+      for (; entry.n < arr.length; entry.n++) if (slotMayHaveDecoy(arr[entry.n])) entry.found.push(arr[entry.n]);
+    }
+    return scan.lists;
+  }
+
   redirectedPlayerTarget(unit) {
     let best = { kind: 'self' }, distance = Infinity;
     if (unit === this.player) return best;
-    for (const source of this.allTargets()) {
-      const owner = this.targetObj(source);
-      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) continue;
+    const visit = (owner, wrap) => {
+      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) return;
       const effect = owner.slot.effect('entityDecoy');
-      if (!effect) continue;
-      for (const target of effect.targets || [source]) {
+      if (!effect) return;
+      for (const target of effect.targets || [wrap(owner)]) {
         const center = this.targetObj(target);
         if (center.dead || center === unit) continue;
         const d = dist2(center.x, center.y, unit.x, unit.y);
         if (d < effect.range ** 2 && d < distance) { best = target; distance = d; }
       }
+    };
+    visit(this.player, () => ({ kind: 'self' }));
+    for (const [i, entry] of this.decoyCandidates().entries()) {
+      for (const o of entry.found) visit(o, TARGET_LIST_WRAP[i]);
     }
     return best;
   }
@@ -1693,6 +1742,16 @@ class Game {
 
   nearestEnemies(x, y, n, range) {
     const r2 = range * range;
+    if (n === 1) {
+      // 가장 가까운 하나: 정렬 없이 훑는다 (같은 거리면 앞선 적, 안정 정렬과 같은 결과)
+      let best = null, bestD = Infinity;
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        const d = dist2(x, y, e.x, e.y);
+        if (d <= r2 && (best === null || d < bestD)) { best = e; bestD = d; }
+      }
+      return best ? [best] : [];
+    }
     const list = [];
     for (const e of this.enemies) {
       if (e.dead) continue;
