@@ -1715,6 +1715,7 @@ class Game {
 
   drawFx(ctx) {
     for (const f of this.fx) {
+      if (!this.fxInView(f)) continue;
       const t = 1 - f.life / f.max;   // 0 → 1
       ctx.globalAlpha = Math.max(0, 1 - t * t);
       switch (f.kind) {
@@ -1967,6 +1968,18 @@ class Game {
     return Math.abs(x - this.cam.x) < this.w / 2 + r && Math.abs(y - this.cam.y) < this.h / 2 + r;
   }
 
+  /** 이펙트가 그리는 범위가 화면(흔들림 포함)에 걸치는가. 여유를 넉넉히 둬 결과 화면은 같다. */
+  fxInView(f) {
+    const margin = this.shakeMag + 32;
+    if (f.kind === 'beam' || f.kind === 'zap') {
+      const pad = (f.w || 0) + 24 + margin;
+      const x0 = Math.min(f.x, f.x1), x1 = Math.max(f.x, f.x1), y0 = Math.min(f.y, f.y1), y1 = Math.max(f.y, f.y1);
+      return x1 > this.cam.x - this.w / 2 - pad && x0 < this.cam.x + this.w / 2 + pad && y1 > this.cam.y - this.h / 2 - pad && y0 < this.cam.y + this.h / 2 + pad;
+    }
+    if (f.kind === 'icon') return this.inView(f.x, f.y, (f.off || 0) + 48 + margin);
+    return this.inView(f.x, f.y, (f.r || 0) * 1.3 + 16 + margin);
+  }
+
   render() {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -1987,13 +2000,14 @@ class Game {
       for (const o of this.objects) if (this.inView(o.x, o.y, 30)) o.draw(ctx);
       for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(ctx);
       for (const e of this.enemies) if (this.inView(e.x, e.y, e.radius + 60)) e.draw(ctx, this.clock, this);
-      for (const a of this.allies) a.draw(ctx);
+      for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(ctx);
       if (this.state !== 'gameover') this.player.draw(ctx, this.clock);
       for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(ctx);
       this.drawHazards(ctx);
       this.drawFx(ctx);
 
       for (const pt of this.particles) {
+        if (!this.inView(pt.x, pt.y, 16 + this.shakeMag)) continue;
         ctx.globalAlpha = Math.max(0, pt.life / pt.max);
         ctx.fillStyle = pt.color;
         const s = pt.size > 3.2 ? Px.G * 2 : Px.G;
@@ -2004,6 +2018,7 @@ class Game {
       ctx.font = `bold 13px ${FONT}`;
       ctx.textAlign = 'center';
       for (const t of this.texts) {
+        if (!this.inView(t.x, t.y, 200 + this.shakeMag)) continue;
         // 도트 폰트 + 딱딱한 그림자 (벡터 외곽선 대신)
         const x = Math.round(t.x), y = Math.round(t.y);
         ctx.globalAlpha = Math.min(1, t.life / 0.3);
