@@ -73,12 +73,14 @@ if (!parts.length || parts.includes('game')) {
   const STAGES_PARTS = ['rebuildHash', 'separateEnemies', 'collideProjectiles', 'updateHazards', 'collideStructures', 'collidePlayer', 'hitCircle', 'hitLine'];
   const counts = (process_env.SPATIAL_GAME_N || '400,1000,2000,4000').split(',').map(Number);
   console.log('\\ngame: Game.step avg / p95 ms 와 단계별 프레임당 평균 ms (' + FRAMES + '프레임, dt 1/60)');
-  for (const n of counts) for (const kind of ['hash', 'quad']) {
-    SPATIAL_INDEX_KIND = kind;
+  // hash-generic: 해시이지만 밀어내기도 쿼드트리와 같은 범용 질의 경로로 돈다 (전용 인라인 경로의 몫을 가르기 위함).
+  for (const n of counts) for (const kind of (process_env.SPATIAL_KINDS || 'hash,hash-generic,quad').split(',')) {
+    SPATIAL_INDEX_KIND = kind === 'quad' ? 'quad' : 'hash';
     rng = 7;
     const g = Object.create(Game.prototype);
     Object.assign(g, { events: new EventBus(), hash: createSpatialIndex(), _near: [], w: 1000, h: 800, clock: 0 });
     g.start([0]);
+    if (kind === 'hash-generic') g.separateEnemies = g.separateEnemiesIndexed;
     for (const m of ['addText', 'burst', 'circleFx', 'addFx', 'shake', 'showBanner', 'markTargets', 'updateSpawns']) g[m] = () => {};
     g.openLevelUp = () => { g.pendingLevelUps = 0; };
     g.player.takeDamage = () => {};
@@ -105,7 +107,7 @@ if (!parts.length || parts.includes('game')) {
     const avg = times.reduce((a, b) => a + b, 0) / times.length;
     // hitCircle·hitLine 은 다른 단계 안에서도 불리므로 따로 표시한다.
     const per = name => ((cost.get(name) || 0) / times.length).toFixed(2);
-    console.log(('N=' + n).padEnd(7), kind, 'step avg', avg.toFixed(2).padStart(7), 'p95', times[Math.floor(times.length * 0.95)].toFixed(2).padStart(7),
+    console.log(('N=' + n).padEnd(7), kind.padEnd(12), 'step avg', avg.toFixed(2).padStart(7), 'p95', times[Math.floor(times.length * 0.95)].toFixed(2).padStart(7),
       '| rebuild', per('rebuildHash'), 'separate', per('separateEnemies'), 'shots', per('collideProjectiles'), 'hazards', per('updateHazards'),
       'structures', per('collideStructures'), 'player', per('collidePlayer'), '| hitCircle', per('hitCircle'), 'hitLine', per('hitLine'),
       '| enemies avg', Math.round(alive / times.length), 'shots', g.projectiles.length + g.hazards.length);
