@@ -66,7 +66,7 @@ class Game {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.events = new EventBus();
-    this.hash = new SpatialHash(64);
+    this.hash = createSpatialIndex();
     this._near = [];
     this.state = 'title';
     this.player = null;
@@ -303,6 +303,7 @@ class Game {
     compact(this.zones);
     compact(this.pickups);
     this._decoyScan = null;
+    this._structIndex = null;   // 압축으로 번호가 바뀌었다
 
     const k = Math.min(1, dt * 10);
     this.cam.x += (p.x - this.cam.x) * k;
@@ -426,6 +427,7 @@ class Game {
    * (적마다 객체 형태가 달라 속성 읽기가 느리다). 계산 순서와 값은 객체에서 직접 하던 것과 같다.
    */
   separateEnemies() {
+    if (!(this.hash instanceof SpatialHash)) return this.separateEnemiesIndexed();
     const list = this.enemies, n = list.length, cs = this.hash.cs;
     let buf = this._sep;
     if (!buf || buf.x.length < n) {
@@ -472,6 +474,44 @@ class Game {
     for (let i = 0; i < n; i++) { const e = list[i]; e.x = X[i]; e.y = Y[i]; }
   }
 
+  /** 공간 인덱스와 같은 종류의 새 인덱스 */
+  newSpatialIndex() { return createSpatialIndex(this.hash instanceof SpatialHash ? 'hash' : 'quad'); }
+
+  /** separateEnemies 의 쿼드트리판: 같은 계산을 하되 이웃은 적 번호를 담은 별도 인덱스에서 찾는다. */
+  separateEnemiesIndexed() {
+    const list = this.enemies, n = list.length;
+    let buf = this._sep;
+    if (!buf || buf.x.length < n) {
+      const size = Math.max(n, 2 * (buf?.x.length || 256));
+      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size), grid: new Map(), stamp: 0 };
+    }
+    const X = buf.x, Y = buf.y, R = buf.r, index = this._sepIndex ||= this.newSpatialIndex(), out = this._sepOut ||= [];
+    index.clear();
+    for (let i = 0; i < n; i++) {
+      const e = list[i];
+      X[i] = e.x; Y[i] = e.y; R[i] = e.radius;
+      if (!e.dead) index.insert(i, X[i], Y[i]);
+    }
+    for (let ai = 0; ai < n; ai++) {
+      const reach = R[ai] + MAX_ENEMY_RADIUS, wa = list[ai].boss ? 0.05 : 0.5;
+      index.query(X[ai], Y[ai], reach, out);
+      for (let j = 0; j < out.length; j++) {
+        const bi = out[j];
+        if (bi === ai) continue;
+        const dx = X[ai] - X[bi], dy = Y[ai] - Y[bi];
+        const min = R[ai] + R[bi];
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= min * min) continue;
+        if (d2 === 0) { X[ai] += rand(-1, 1); continue; }
+        const d = Math.sqrt(d2);
+        const push = ((min - d) / d) * wa;
+        X[ai] += dx * push;
+        Y[ai] += dy * push;
+      }
+    }
+    for (let i = 0; i < n; i++) { const e = list[i]; e.x = X[i]; e.y = Y[i]; }
+  }
+
   /** (x, y) 반경 r 안의 살아 있는 적 수 (공간 해시 기준, skip 제외) */
   countNearEnemies(x, y, r, skip) {
     const near = this.hash.query(x, y, r, this._count ||= []), r2 = r * r;
@@ -481,7 +521,23 @@ class Game {
   }
 
   collideProjectiles() {
+    this.rebuildStructureIndex();
     for (const pr of this.projectiles) this.collideShot(pr);
+  }
+
+  /** 설치물·아군(이 순서로 이어 붙인 번호)을 탄 충돌용 인덱스에 넣는다. 프레임 끝 압축 때 버린다. */
+  rebuildStructureIndex() {
+    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
+    const index = this._structIndexStore ||= this.newSpatialIndex();
+    index.clear();
+    let maxR = 0;
+    for (let i = 0; i < total; i++) {
+      const o = i < nObjects ? objects[i] : allies[i - nObjects];
+      if (o.dead) continue;
+      index.insert(i, o.x, o.y);
+      if (o.radius > maxR) maxR = o.radius;
+    }
+    this._structIndex = { index, objects, allies, nObjects, total, maxR };
   }
 
   collideEnemyPoints(source, hit, points, consume, projectileEvent = false) {
@@ -512,15 +568,30 @@ class Game {
     const consume = target => { s.hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
     this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
     if (s.dead) return;
-    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외)
+    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외).
+    // 인덱스를 지은 뒤의 번호는 그대로 훑고, 그 앞은 인덱스에서 찾아 원래 번호 순서로 본다.
     const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
-    for (let i = 0; i < total; i++) {
-      const o = i < nObjects ? objects[i] : allies[i - nObjects];
-      if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
-      if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
-      this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
-      consume(o);
-      if (s.dead) return;
+    const built = this._structIndex, indexed = built && built.objects === objects && built.allies === allies && built.nObjects === nObjects ? built.total : 0;
+    let order = null, depth = 0;
+    if (indexed) {
+      // 피해 → 사망 연계로 다시 불릴 수 있어 호출 깊이마다 질의 배열을 따로 쓴다.
+      const pool = this._structPool ||= [];
+      depth = this._structDepth = (this._structDepth || 0) + 1;
+      order = built.index.query(s.x, s.y, radius + built.maxR, pool[depth] ||= []).sort((a, b) => a - b);
+    }
+    try {
+      const count = order ? order.length + total - indexed : total;
+      for (let k = 0; k < count; k++) {
+        const i = order ? (k < order.length ? order[k] : indexed + k - order.length) : k;
+        const o = i < nObjects ? objects[i] : allies[i - nObjects];
+        if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
+        if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
+        this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
+        consume(o);
+        if (s.dead) return;
+      }
+    } finally {
+      if (depth) this._structDepth = depth - 1;
     }
     const p = this.player;
     if (entityCanHit(s, p, hit) && !s.hitSet.has(p) && dist2(s.x, s.y, p.x, p.y) < (radius + p.radius * 0.8) ** 2) {
@@ -905,13 +976,21 @@ class Game {
   /** 선분 (x0,y0)-(x1,y1) 에서 폭 w 안의 적 모두에게 피해 */
   hitLine(x0, y0, x1, y1, w, dmg, knock) {
     const dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy || 1;
-    for (const e of this.enemies) {
-      if (e.dead) continue;
-      const t = clamp(((e.x - x0) * dx + (e.y - y0) * dy) / len2, 0, 1);
-      const rr = w + e.radius;
-      if (dist2(e.x, e.y, x0 + dx * t, y0 + dy * t) <= rr * rr) this.damageEnemy(e, dmg, dx, dy, knock);
+    // 선분을 감싸는 정사각형으로 질의한다. 질의 배열은 hitCircle 과 같은 깊이별 풀을 쓴다.
+    const pool = this._hitPool ||= [], depth = this._hitDepth = (this._hitDepth || 0) + 1;
+    const near = this.hash.query((x0 + x1) / 2, (y0 + y1) / 2, Math.max(Math.abs(dx), Math.abs(dy)) / 2 + w + MAX_ENEMY_RADIUS, pool[depth] ||= []);
+    try {
+      for (let i = 0; i < near.length; i++) {
+        const e = near[i];
+        if (e.dead) continue;
+        const t = clamp(((e.x - x0) * dx + (e.y - y0) * dy) / len2, 0, 1);
+        const rr = w + e.radius;
+        if (dist2(e.x, e.y, x0 + dx * t, y0 + dy * t) <= rr * rr) this.damageEnemy(e, dmg, dx, dy, knock);
+      }
+    } finally {
+      near.length = 0;
+      this._hitDepth = depth - 1;
     }
-
   }
 
   /** 폭발 한 번 (범위 배율 적용, 연출 포함) */

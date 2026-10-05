@@ -1,12 +1,12 @@
 // Runs a long fixed-seed fight in headless Chromium (update + render per frame) and reports frame-time spikes.
-// 사용: NODE_PATH=$(npm root -g) node tools/stress-browser.cjs [저장소 경로]   (STRESS_STAGE=스테이지 번호, STRESS_SECONDS=게임 시간)
+// 사용: NODE_PATH=$(npm root -g) node tools/stress-browser.cjs [저장소 경로]   (STRESS_STAGE=스테이지 번호, STRESS_SECONDS=게임 시간, STRESS_INDEX=quad|hash 공간 인덱스)
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const { chromium } = require('playwright');
 const ROOT = path.resolve(process.argv[2] || path.join(__dirname, '..'));
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.woff2': 'font/woff2' };
-const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.env.STRESS_SECONDS || 240);
+const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.env.STRESS_SECONDS || 240), INDEX = process.env.STRESS_INDEX || 'quad';
 
 (async () => {
   const server = http.createServer((req, res) => {
@@ -21,7 +21,9 @@ const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.en
   await page.addInitScript(() => { window.requestAnimationFrame = () => 0; });
   await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
   await page.waitForTimeout(500);
-  const result = await page.evaluate(({ stage, seconds }) => {
+  const result = await page.evaluate(({ stage, seconds, index }) => {
+    SPATIAL_INDEX_KIND = index;
+    game.hash = createSpatialIndex(index);
     let rng = 11;
     Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);
     game.start([stage]);
@@ -46,13 +48,13 @@ const STAGE = Number(process.env.STRESS_STAGE ?? 7), SECONDS = Number(process.en
       frames.push([t1 - t0, t2 - t1, game.enemies.length]);
     }
     return frames;
-  }, { stage: STAGE, seconds: SECONDS });
+  }, { stage: STAGE, seconds: SECONDS, index: INDEX });
   await browser.close();
   server.close();
   const total = result.map(([u, r]) => u + r), sorted = total.slice().sort((a, b) => a - b);
   const at = q => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
   const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
-  console.log(`stage${STAGE} frames ${total.length} avg ${avg(total).toFixed(2)}ms (update ${avg(result.map(f => f[0])).toFixed(2)} + render ${avg(result.map(f => f[1])).toFixed(2)})`,
+  console.log(`${INDEX} stage${STAGE} frames ${total.length} avg ${avg(total).toFixed(2)}ms (update ${avg(result.map(f => f[0])).toFixed(2)} + render ${avg(result.map(f => f[1])).toFixed(2)})`,
     `p95 ${at(0.95).toFixed(1)} p99 ${at(0.99).toFixed(1)} max ${sorted.at(-1).toFixed(1)}ms`,
     `>16.7ms ${total.filter(v => v > 1000 / 60).length} >33ms ${total.filter(v => v > 1000 / 30).length} peak enemies ${Math.max(...result.map(f => f[2]))}`);
   // 스파이크가 업데이트·렌더 중 어디서 나는지: 각 부분의 p99·최대와 업데이트가 16.7ms 를 넘은 프레임 수

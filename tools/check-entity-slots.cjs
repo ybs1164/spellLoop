@@ -10,7 +10,7 @@ vm.runInContext(`
   UI.open = function(html, mode) { this.html = html; this.mode = mode; };
   UI.overlay = { querySelector: () => null };
   const game = Object.create(Game.prototype);
-  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+  game.events = new EventBus(); game.hash = createSpatialIndex(); game._near = [];
   game.w = 1000; game.h = 800; game.clock = 0;
   game.openLevelUp = function() { this.pendingLevelUps = 0; };
   game.start();

@@ -9,7 +9,7 @@ vm.runInContext(`
   const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, actual + ' != ' + expected);
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
-  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+  game.events = new EventBus(); game.hash = createSpatialIndex(); game._near = [];
   game.w = 1000; game.h = 800; game.clock = 0; game.start();
   game.player.deck.slots = [];
   game.burst = game.addText = game.addFx = game.circleFx = game.shake = () => {};

@@ -7,7 +7,7 @@ for(const name of ['util','input','cards','entities','stages','icons','ui','game
 vm.runInContext(`
 UI.hideOverlay=UI.showHud=()=>{};
 const g=Object.create(Game.prototype);
-Object.assign(g,{events:new EventBus(),hash:new SpatialHash(64),_near:[],w:1000,h:800,clock:0});
+Object.assign(g,{events:new EventBus(),hash:createSpatialIndex(),_near:[],w:1000,h:800,clock:0});
 g.start([0,3,6]);
 for(const stage of STAGES){
   g.stage=stage;g.stageStart=0;g.time=180;g.nextSwarmAt=Infinity;g.lootAt=null;

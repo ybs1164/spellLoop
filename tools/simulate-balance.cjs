@@ -10,7 +10,7 @@ const targets = Object.keys(CARDS).filter(k => CARDS[k].type === 'target');
 function setup(seed, scenario, cards) {
   rngState = seed;
   const g = Object.create(Game.prototype);
-  Object.assign(g, { player: new Player(0,0), enemies: [], projectiles: [], hazards: [], allies: [], objects: [], zones: [], pickups: [], fallen: [], fx: [], particles: [], texts: [], events: new EventBus(), hash: new SpatialHash(64), _near: [], time: 0, kills: 0, state: 'playing', stage:{dmgMul:1}, w: 1280, h: 720, cam: {x:0,y:0}, shakeMag:0, pendingLevelUps:0 });
+  Object.assign(g, { player: new Player(0,0), enemies: [], projectiles: [], hazards: [], allies: [], objects: [], zones: [], pickups: [], fallen: [], fx: [], particles: [], texts: [], events: new EventBus(), hash: createSpatialIndex(), _near: [], time: 0, kills: 0, state: 'playing', stage:{dmgMul:1}, w: 1280, h: 720, cam: {x:0,y:0}, shakeMag:0, pendingLevelUps:0 });
   for (const k of ['addText','burst','circleFx','addFx','markTargets','shake','showBanner','onLevelUp']) g[k] = () => {};
   g.endRun = () => { g.player.hp = 100; };
   const p = g.player;

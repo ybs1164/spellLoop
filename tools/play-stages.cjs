@@ -55,7 +55,7 @@ function steer(g) {
 for(let seed=1;seed<=Number(${JSON.stringify(process.env.PLAY_SEEDS || '3')});seed++) {
   rng=seed;
   const g=Object.create(Game.prototype);
-  Object.assign(g,{events:new EventBus(),hash:new SpatialHash(64),_near:[],w:1000,h:800,clock:0});
+  Object.assign(g,{events:new EventBus(),hash:createSpatialIndex(),_near:[],w:1000,h:800,clock:0});
   const route = testStage === undefined ? (seed%3===1 ? [0,3,6] : seed%3===2 ? [1,4,7] : [2,5,7]) : [testStage];
   g.start(route);
   for(const method of ['addText','burst','circleFx','addFx','shake','showBanner','markTargets'])g[method]=()=>{};

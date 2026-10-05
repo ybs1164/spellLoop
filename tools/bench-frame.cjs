@@ -1,10 +1,11 @@
 // Measures Game.step cost per frame on fixed-seed scenarios and prints a state fingerprint.
-// 사용: node tools/bench-frame.cjs [시나리오...]   (BENCH_FRAMES=프레임 수, BENCH_SPIKES=ms 스파이크 원인 출력, stage0~stage7 은 이름으로 지정할 때만 실행)
+// 사용: node tools/bench-frame.cjs [시나리오...]   (BENCH_INDEX=quad|hash 공간 인덱스, BENCH_FRAMES=프레임 수, BENCH_SPIKES=ms 스파이크 원인 출력, stage0~stage7 은 이름으로 지정할 때만 실행)
 const fs = require('node:fs');
 const sources = ['util', 'input', 'cards', 'entities', 'stages', 'upgrades', 'icons', 'ui', 'game'].map(name => fs.readFileSync(`js/${name}.js`, 'utf8')).join('\n');
 const only = process.argv.slice(2);
 new Function('console', 'TD', 'Math', 'only', 'FRAMES', 'process_stages', 'process_env', sources + `
 UI.hideOverlay = UI.showHud = UI.showEnd = () => {};
+SPATIAL_INDEX_KIND = process_env.BENCH_INDEX || SPATIAL_INDEX_KIND;
 let rng = 1;
 Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);
 const scenarios = {
@@ -49,7 +50,7 @@ for (const [name, scenario] of Object.entries(scenarios)) {
   const { setup, route = [0], frames = FRAMES, dt = 1 / 60 } = typeof scenario === 'function' ? { setup: scenario } : scenario;
   rng = 7;
   const g = Object.create(Game.prototype);
-  Object.assign(g, { events: new EventBus(), hash: new SpatialHash(64), _near: [], w: 1000, h: 800, clock: 0 });
+  Object.assign(g, { events: new EventBus(), hash: createSpatialIndex(), _near: [], w: 1000, h: 800, clock: 0 });
   g.start(route);
   for (const m of ['addText', 'burst', 'circleFx', 'addFx', 'shake', 'showBanner', 'markTargets']) g[m] = () => {};
   g.openLevelUp = () => { g.pendingLevelUps = 0; };

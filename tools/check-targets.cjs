@@ -228,7 +228,7 @@ get(`
   globalThis.UI = { hideOverlay() {}, showHud() {}, showLevelUp() {} };
   const simulation = Object.create(Game.prototype);
   simulation.events = new EventBus();
-  simulation.hash = new SpatialHash(64);
+  simulation.hash = createSpatialIndex();
   simulation._near = [];
   simulation.w = 800; simulation.h = 600; simulation.clock = 0;
   simulation.circleFx = simulation.burst = simulation.addFx = simulation.addText = () => {};
@@ -254,7 +254,7 @@ get(`
   const structures = Object.create(Game.prototype);
   structures.player = { x: 1000, y: 1000, radius: 10, cardMul: 7 };
   structures.addText = structures.burst = () => {};
-  structures.hash = new SpatialHash(64);
+  structures.hash = createSpatialIndex();
   structures._near = [];
   const attacker = new Enemy('grunt', 0, 0, 1);
   structures.hash.insert(attacker);
