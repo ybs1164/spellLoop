@@ -2312,6 +2312,8 @@ class EntitySlot {
     const valid = current.filter(t => (env.alive(t) || (context.deathEvent && env.at(t) === owner)) && actionApplies(card, t, env) && (!teamRule || !step.direct || entityCanHit(owner, env.at(t), { hitTeamRule: teamRule })));
     if (!ready || !valid.length) return;
     if (step.continuous) enabled.add(id);
+    // 복제 행동이 실행 중인 슬롯을 계승할 때 새 개체도 이번 쿨타임을 받는다.
+    else this.cooldowns.set(index, period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST));
     this.enabled = enabled;
     this.effects = effects;
     const previousRule = game.actionHitTeamRule;
@@ -2325,7 +2327,6 @@ class EntitySlot {
         for (const target of valid) game.directAction(id, target);
       } else card.run(valid, step.continuous ? { ...env, summonMode: step.summonMode, frameDt: dt * (card.effect?.scaleRate === false ? 1 : rate) } : { ...env, summonMode: step.summonMode });
     } finally { game.actionHitTeamRule = previousRule; game.actionActor = previousActor; game.actionCard = previousCard; }
-    if (!step.continuous) this.cooldowns.set(index, period ?? Math.max(SLOT_CD_MIN, card.cost * SLOT_CD_PER_COST));
   }
   tickOwner(dt, game, context, enabled, afterMovement = []) {
     const owner = this.owner;

@@ -89,6 +89,28 @@ vm.runInContext(`
   const cloneX = clone.x; clone.update(0.1, game);
   close(clone.x, cloneX + 34); assert.ok(clone.hp > 1); close(p.hp, 1);
   assert.equal(clone.max, ALLY_LIFE); Input.keys.clear();
+  // 실제 아군 갱신처럼 새로 추가된 분신도 순회해도 복제가 끝나야 한다.
+  game.allies = [];
+  p.deck.slots = [{ cards: ['self', 'split'], cd: 0 }];
+  game.split({ kind: 'self' });
+  const splitParent = game.allies[0];
+  splitParent.update(0.01, game);
+  assert.equal(game.allies.length, 2);
+  const splitChild = game.allies[1];
+  const inheritedCooldown = splitParent.slots[1].cooldowns.get(1);
+  assert.ok(inheritedCooldown > 0);
+  close(splitChild.slots[1].cooldowns.get(1), inheritedCooldown);
+  assert.notEqual(splitChild.slots[1].cooldowns, splitParent.slots[1].cooldowns);
+  let updated = 0;
+  for (const ally of game.allies) {
+    assert.ok(++updated <= 2, 'new clones must not reproduce immediately in the same frame');
+    ally.update(0.01, game);
+  }
+  assert.equal(game.allies.length, 2);
+  close(splitChild.slots[1].cooldowns.get(1), inheritedCooldown - 0.01);
+  splitChild.update(inheritedCooldown, game);
+  assert.equal(game.allies.length, 3, 'inherited split runs again after its cooldown');
+  close(game.allies[2].slots[1].cooldowns.get(1), splitChild.slots[1].cooldowns.get(1));
   const victim = new Enemy('grunt', 800, 0, 100);
   game.enemies = [victim]; game.rebuildHash();
   const attached = game.addZone('poison', victim, { kind: 'enemy', e: victim });
