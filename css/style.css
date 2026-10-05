@@ -63,6 +63,13 @@ canvas { display: block; image-rendering: pixelated; }
   margin-top: 8px; font-weight: 700; font-size: 22px;
   text-shadow: 3px 3px 0 #000; font-variant-numeric: tabular-nums;
 }
+#community {
+  position: fixed; top: 26px; left: 8px; z-index: 5;
+  padding: 3px 8px; font-size: 12px; color: #fff; text-decoration: none;
+  background: var(--ink); border: 2px solid var(--line); opacity: .75;
+}
+#community:hover { opacity: 1; border-color: #5865f2; }
+@media (max-width: 480px) { #community { font-size: 10px; } }
 .hud-stat { display: inline-flex; align-items: center; gap: 6px; }
 .hud-stat .ico { filter: drop-shadow(2px 2px 0 #000); }
 #kills { font-size: 15px; color: var(--muted); text-shadow: var(--tshadow); }
