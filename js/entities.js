@@ -288,7 +288,7 @@ class Enemy {
     this.hp = this.maxHp;
     this.speed = Math.round(def.speed * rand(0.9, 1.1));
     this.damage = Math.max(0, Math.round(def.damage * dmgMul));
-    if (def.shoot) this.shotPower = Math.max(0, Math.round(def.shoot.damage * dmgMul));
+    this.shotPower = def.shoot ? Math.max(0, Math.round(def.shoot.damage * dmgMul)) : undefined;
     this.xp = def.xp;
     this.color = def.color;
     this.boss = !!def.boss;
@@ -324,6 +324,14 @@ class Enemy {
     this.ang = 0;
     this.wobble = Math.random() * TAU;
     this.dead = false;
+    // 전투 중 나중에 붙는 상태 필드를 미리 둔다. 적마다 속성이 붙는 순서가 달라 객체 형태가
+    // 수십 가지로 갈리면 속성 읽기가 느려지므로, 형태를 하나로 맞춘다 (값은 모두 '없음'과 같다).
+    this.directFrozen = undefined; this.directMove = undefined; this.directStates = undefined;
+    this.directBurnStacks = undefined; this.directBurnPending = undefined; this.directBurnTick = undefined;
+    this.burnStacks = undefined; this.burnPending = undefined; this.markStacks = undefined;
+    this.attackPeriod = undefined; this.summonPeriod = undefined; this.supportPeriod = undefined; this.reach = undefined; this.gimmick = undefined;
+    this.cardBuffs = undefined; this.cardScales = undefined; this.cardMove = undefined; this.cardPower = undefined;
+    this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
     entitySlot(this, "enemy");
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);
   }
