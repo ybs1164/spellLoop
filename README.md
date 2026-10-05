@@ -6,7 +6,7 @@
 
 [▶ 지금 플레이](https://ybs1164.github.io/spellLoop/) · [상세 규칙](docs/MECHANICS.md)
 
-![title](docs/title.jpg)
+![title](docs/title.png)
 
 ![gameplay](docs/gameplay.gif)
 
@@ -32,7 +32,7 @@
 
 ### 🃏 카드로 주문 만들기
 
-![editor](docs/editor.jpg)
+![editor](docs/editor.png)
 
 모든 슬롯은 **조건 → 대상 → 행동** 세 칸으로 나뉘며 이 순서로 실행됩니다.
 
@@ -51,7 +51,7 @@
 
 ### ⬆️ 성장
 
-![levelup](docs/levelup.jpg)
+![levelup](docs/levelup.png)
 
 - 레벨업마다 **카드 3~5장 중 하나**를 고르고 코스트 포인트 +1을 얻습니다.
 - 코스트 포인트 3으로 **슬롯을 확장**합니다(최대 6개).
