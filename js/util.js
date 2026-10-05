@@ -83,6 +83,33 @@ class SpatialHash {
     }
     return out;
   }
+  /**
+   * (x, y) 에서 range 안의 가장 가까운 항목 (현재 좌표 기준, skip 이 참인 항목 제외). 가운데 칸부터 고리 모양으로 넓혀 간다.
+   * 넣은 뒤 pad 까지 움직였을 수 있다고 보고 경계를 넉넉히 잡는다. 칸을 maxCells 개 넘게 보면 포기하고 undefined 를 돌려준다.
+   */
+  nearest(x, y, range, pad, skip, maxCells) {
+    const cs = this.cs, cx = Math.floor(x / cs), cy = Math.floor(y / cs), r2 = range * range, found = this._found ||= { e: null, d: Infinity };
+    found.e = null; found.d = Infinity;
+    for (let k = 0, cells = 0; ; k++) {
+      // k 번째 고리에 넣어 둔 점은 지금 위치에서 적어도 (k - 1)·cs - pad 떨어져 있다.
+      const low = (k - 1) * cs - pad;
+      if (low > range || (found.e && low > 0 && low * low > found.d)) return found.e;
+      if ((cells += k ? 8 * k : 1) > maxCells) return undefined;
+      if (!k) { this.nearestIn(cx, cy, x, y, r2, skip, found); continue; }
+      for (let d = -k; d <= k; d++) { this.nearestIn(cx + d, cy - k, x, y, r2, skip, found); this.nearestIn(cx + d, cy + k, x, y, r2, skip, found); }
+      for (let d = 1 - k; d < k; d++) { this.nearestIn(cx - k, cy + d, x, y, r2, skip, found); this.nearestIn(cx + k, cy + d, x, y, r2, skip, found); }
+    }
+  }
+  nearestIn(kx, ky, x, y, r2, skip, found) {
+    const cell = this.cells.get(this.key(kx, ky));
+    if (!cell || cell.stamp !== this.stamp) return;
+    for (let i = 0; i < cell.length; i++) {
+      const e = cell[i];
+      if (skip(e)) continue;
+      const d = (e.x - x) * (e.x - x) + (e.y - y) * (e.y - y);
+      if (d <= r2 && d < found.d) { found.e = e; found.d = d; }
+    }
+  }
 }
 
 /**
@@ -217,8 +244,21 @@ class QuadTree {
   }
 }
 
+/** SpatialHash.nearest 와 같은 계약: 질의한 정사각형 안을 훑는다. */
+QuadTree.prototype.nearest = function (x, y, range, pad, skip) {
+  const near = this.query(x, y, range + pad, this._nearestOut ||= []), r2 = range * range;
+  let best = null, bestD = Infinity;
+  for (let i = 0; i < near.length; i++) {
+    const e = near[i];
+    if (skip(e)) continue;
+    const d = (e.x - x) * (e.x - x) + (e.y - y) * (e.y - y);
+    if (d <= r2 && d < bestD) { best = e; bestD = d; }
+  }
+  return best;
+};
+
 /** 게임이 쓰는 공간 인덱스 종류 ('quad' 쿼드트리 · 'hash' 64px 격자 공간 해시) */
-let SPATIAL_INDEX_KIND = 'quad';
+let SPATIAL_INDEX_KIND = 'hash';
 const createSpatialIndex = (kind = SPATIAL_INDEX_KIND) => kind === 'hash' ? new SpatialHash(64) : new QuadTree();
 
 /** 두 각도의 부호 있는 차이 (-π ~ π) */

@@ -38,7 +38,7 @@
 
 ## 성능
 
-게임 중 **F3**으로 업데이트·렌더 시간과 개체 수를 표시합니다. 측정: `node tools/bench-frame.cjs` (단계별 `stage0`~`stage7`), 렌더 `NODE_PATH=$(npm root -g) node tools/bench-render.cjs`, 브라우저 스트레스 `NODE_PATH=$(npm root -g) node tools/stress-browser.cjs`. 결과: [인게임 최적화](reports/ingame-optimization-plan.md). 공간 인덱스는 쿼드트리 기본(`SPATIAL_INDEX_KIND`로 `'hash'` 선택), 비교 `node tools/bench-spatial.cjs`: [쿼드트리 vs 공간 해시](reports/quadtree-vs-spatial-hash.md).
+게임 중 **F3**으로 업데이트·렌더 시간과 개체 수를 표시합니다. 측정: `node tools/bench-frame.cjs` (단계별 `stage0`~`stage7`), 렌더 `NODE_PATH=$(npm root -g) node tools/bench-render.cjs`, 브라우저 스트레스 `NODE_PATH=$(npm root -g) node tools/stress-browser.cjs`. 결과: [인게임 최적화](reports/ingame-optimization-plan.md). 공간 인덱스는 해시 기본(`SPATIAL_INDEX_KIND`로 `'quad'` 선택), 비교 `node tools/bench-spatial.cjs`: [쿼드트리 vs 공간 해시](reports/quadtree-vs-spatial-hash.md).
 
 ## 리소스 출처
 

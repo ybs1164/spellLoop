@@ -61,6 +61,8 @@ function createZone(kind, source, o, t, s) {
 // 도감에 보여 줄 장판 종류
 const ZONE_KINDS = ['poison', 'vortex', 'blades', 'slime', 'ward', 'meteor', 'abyss', 'healingField', 'shieldField', 'burningField'];
 
+const isDeadEnemy = e => e.dead;
+
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -296,6 +298,7 @@ class Game {
 
     this.resolveEntityDeaths();
     compact(this.enemies);
+    if (this._indexed === this.enemies) { this._indexedLen = this.enemies.length; compact(this._unindexed); }
     compact(this.projectiles);
     compact(this.hazards);
     compact(this.allies);
@@ -338,6 +341,7 @@ class Game {
   spawnEnemy(type, pos = this.spawnPoint()) {
     const e = new Enemy(type, pos.x, pos.y, this.hpMul(), this.stage.dmgMul);
     this.enemies.push(e);
+    if (this._indexed === this.enemies) { this._indexedLen++; this._unindexed.push(e); }
     return e;
   }
 
@@ -410,6 +414,7 @@ class Game {
         const ang = Math.atan2(p.y - e.y, p.x - e.x) + rand(-0.6, 0.6);
         const pos = this.spawnPoint(ang, 20);
         e.x = pos.x; e.y = pos.y;
+        if (this._indexed === this.enemies) this._unindexed.push(e);   // 인덱스에는 옛 칸에 남아 있다
       }
     }
   }
@@ -420,6 +425,15 @@ class Game {
   rebuildHash() {
     this.hash.clear();
     for (const e of this.enemies) if (!e.dead) this.hash.insert(e);
+    // 대상 선택용: 인덱스가 담은 적 목록과, 지은 뒤 생기거나 순간 이동해 인덱스 칸이 맞지 않는 적
+    this._indexed = this.enemies;
+    this._indexedLen = this.enemies.length;
+    (this._unindexed ||= []).length = 0;
+  }
+
+  /** 적 인덱스가 지금 적 목록을 모두 담고 있는가 (목록을 바꿔 끼웠거나 인덱스 밖에서 넣었으면 거짓) */
+  enemyIndexFresh() {
+    return this._indexed === this.enemies && this._indexedLen === this.enemies.length && typeof this.hash.nearest === 'function';
   }
 
   /**
@@ -1885,7 +1899,46 @@ class Game {
     ctx.globalAlpha = 1;
   }
 
+  /**
+   * (x, y) 에서 range 안의 살아 있는 적을 가까운 순으로 n 개.
+   * 적 인덱스로 후보를 찾는다. 인덱스를 지은 뒤 적이 밀려났을 수 있어 MAX_ENEMY_RADIUS 만큼 넉넉히 찾고,
+   * 그 뒤에 생기거나 순간 이동한 적은 따로 훑는다. 범위가 무한하거나 인덱스가 목록과 맞지 않으면 전체를 훑는다.
+   */
   nearestEnemies(x, y, n, range) {
+    if (!Number.isFinite(range) || !this.enemyIndexFresh()) return this.nearestEnemiesLinear(x, y, n, range);
+    const r2 = range * range, extra = this._unindexed, pad = MAX_ENEMY_RADIUS;
+    if (n === 1) {
+      // 칸 조회는 적 하나 거리 계산보다 몇 배 비싸므로 적 수의 1/4 칸을 넘게 봐야 하면 전체를 훑는다.
+      let best = this.hash.nearest(x, y, range, pad, isDeadEnemy, this.enemies.length / 4);
+      if (best === undefined) return this.nearestEnemiesLinear(x, y, n, range);
+      let bestD = best ? dist2(x, y, best.x, best.y) : Infinity;
+      for (let i = 0; i < extra.length; i++) {
+        const e = extra[i];
+        if (e.dead) continue;
+        const d = dist2(x, y, e.x, e.y);
+        if (d <= r2 && d < bestD) { best = e; bestD = d; }
+      }
+      return best ? [best] : [];
+    }
+    // 질의 칸이 적 수보다 많으면 전체를 훑는 편이 싸다.
+    const reach = range + pad, cs = this.hash.cs;
+    if (cs && (2 * reach / cs + 2) ** 2 > this.enemies.length) return this.nearestEnemiesLinear(x, y, n, range);
+    const near = this.hash.query(x, y, reach, this._nearestBuf ||= []), list = [];
+    const seen = extra.length ? new Set() : null;
+    for (const group of [near, extra]) {
+      for (let i = 0; i < group.length; i++) {
+        const e = group[i];
+        if (e.dead || seen && (seen.has(e) || !seen.add(e))) continue;
+        const d = dist2(x, y, e.x, e.y);
+        if (d <= r2) list.push([d, e]);
+      }
+    }
+    near.length = 0;
+    list.sort((a, b) => a[0] - b[0]);
+    return list.slice(0, n).map((v) => v[1]);
+  }
+
+  nearestEnemiesLinear(x, y, n, range) {
     const r2 = range * range;
     if (n === 1) {
       // 가장 가까운 하나: 정렬 없이 훑는다 (같은 거리면 앞선 적, 안정 정렬과 같은 결과)
