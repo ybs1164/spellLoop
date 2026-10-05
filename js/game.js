@@ -691,7 +691,7 @@ class Game {
     if (o.dead) return;
     const actor = this.actionActor || p, settings = entityActionConfig(actor, id, this.actionCard);
     if (id === 'snipe' && settings) {
-      if (settings.melee) actor.swing = 0.15;
+      if ('swing' in actor) actor.swing = 0.15;   // 휘두르는 모션이 있는 개체만 모션을 재생한다
       const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1);
       if (actor.dead) return;
       if (t.kind === 'enemy') this.damageEnemy(o, damage, o.x - actor.x || 1, o.y - actor.y, settings.knockback, undefined, settings.elem);
@@ -1093,7 +1093,7 @@ class Game {
   /* ---------------- 3차: 투사체 변주 ---------------- */
   boomerang(t) {
     const p = this.player, a = this.aimAt(t);
-    this.shoot({ vx: Math.cos(a) * this.actionValue('boomerang', 'speed'), vy: Math.sin(a) * this.actionValue('boomerang', 'speed'), radius: 8 * p.stats.area, damage: this.actionDamage('boomerang'), life: 3, pierce: 999, color: '#ffe08a', shape: 'boomerang', boomerang: true, outT: 0.5, knockback: this.actionValue('boomerang', 'knockback') });
+    this.shoot({ vx: Math.cos(a) * this.actionValue('boomerang', 'speed'), vy: Math.sin(a) * this.actionValue('boomerang', 'speed'), radius: 8 * p.stats.area, damage: this.actionDamage('boomerang'), life: 3, pierce: 999, color: '#ffe08a', shape: 'boomerang', boomerang: true, knockback: this.actionValue('boomerang', 'knockback') });
   }
 
   homing(t) {

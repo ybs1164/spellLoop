@@ -450,7 +450,7 @@ const UI = {
     const pyro = new Enemy('pyro', 0, 0, 1), hexer = new Enemy('hexer', 0, 0, 1);
     const hazard = (source, kind) => ({ kind, source, team: entityTeam(source), x: 0, y: 0, vx: source.def.shoot.speed, vy: 0, r: 7, damage: source.def.shoot.damage, life: 3.5, max: 3.5, color: source.color, dead: false });
     add('shot', 'shot', () => new Projectile({ source: player, vx: 420, damage: 10, pierce: 1, life: 1.4 }), { icon: 'bolt' });
-    add('shot', 'shot', () => new Projectile({ source: player, name: '부메랑', vx: 420, boomerang: true, outT: 0.45, shape: 'boomerang' }), { icon: 'boomerang' });
+    add('shot', 'shot', () => new Projectile({ source: player, name: '부메랑', vx: 420, boomerang: true, returnTime: 0.45, shape: 'boomerang' }), { icon: 'boomerang' });
     add('shot', 'shot', () => new Projectile({ source: player, name: '유도탄', vx: 300, homing: true }), { icon: 'homing' });
     add('shot', 'shot', () => new Projectile({ source: player, name: '화약통 탄', vx: 300, blastOnEnd: true, shape: 'barrel' }), { sprite: TD.barrel });
     add('shot', 'shot', () => hazard(pyro), { icon: 'shots', note: '화염 술사 등 적이 쏘는 탄환' });

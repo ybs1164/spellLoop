@@ -43,7 +43,7 @@ vm.runInContext(`
   game.collideStructures(0.1); close(structure.hp, structureHp - contact.damage);
   game.collideStructures(0.5); close(structure.hp, structureHp - 2 * contact.damage);
 
-  const returning = new Projectile({ x: 200, y: 0, vx: 100, vy: 0, life: 3, boomerang: true, outT: 0.05 });
+  const returning = new Projectile({ x: 200, y: 0, vx: 100, vy: 0, life: 3, boomerang: true, returnTime: 0.05 });
   const alreadyHit = {};
   returning.hitSet.add(alreadyHit);
   const countBeforeReturn = game.projectiles.length;

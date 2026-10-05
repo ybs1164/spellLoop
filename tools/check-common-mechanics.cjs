@@ -72,8 +72,7 @@ vm.runInContext(`
   const mine = new Placed('mine', 0, 0, 1);
   let blasts = 0; const originalBlast = game.blast;
   game.blast = (x, y, radius, damage) => { blasts++; assert.equal(radius, 100); assert.equal(damage, 26); assert.equal(x, 0); };
-  mine.update(0.49, game); assert.equal(blasts, 0); assert.equal(mine.dead, false);
-  mine.update(0.01, game); assert.equal(blasts, 1); assert.equal(mine.dead, true);
+  mine.update(0.01, game); assert.equal(blasts, 1, 'mine explodes without an arming delay'); assert.equal(mine.dead, true);
   mine.slot.onDeath(game); assert.equal(blasts, 1, 'mine explosion is not repeated on death');
   game.blast = originalBlast;
 

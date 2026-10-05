@@ -604,7 +604,7 @@ class Placed {
     this.hp = this.maxHp;
     this.life = PLACED_TYPES[kind].life * dur;
     this.max = this.life;
-    this.cd = kind === 'mine' ? 0.5 : 0.2;   // 지뢰는 0.5초 뒤 활성화
+    this.cd = 0.2;
     this.rallyT = 0;         // 격려: 작동 속도 2배
     this.t = Math.random() * TAU;
     this.dead = false;
@@ -682,7 +682,7 @@ class Placed {
 /* ======================================================================
  * Projectile — 마탄·산탄·관통탄·부메랑·유도탄 등이 만드는 투사체
  *  shape: 'dot' | 'lance' | 'boomerang' | 'arrow'
- *  boomerang: outT 초 뒤 플레이어에게 돌아온다 / homing: 쫓아갈 적
+ *  boomerang: 플레이어 쪽 가속도로 멀어졌다 돌아온다 (returnTime: 정점까지 걸리는 시간) / homing: 쫓아갈 적
  * ==================================================================== */
 class Projectile {
   constructor(opts) {
@@ -694,7 +694,7 @@ class Projectile {
     this.knockback = 140;
     this.color = '#8be9ff';
     this.shape = 'dot';
-    this.boomerang = false; this.outT = 0; this.back = false;
+    this.boomerang = false; this.returnTime = 0.5; this.back = false;
     this.homing = null; this.turn = 7;
     this.spin = 0;
     this.blastOnEnd = false;   // 사라질 때 화약통처럼 터진다
@@ -724,17 +724,17 @@ class Projectile {
       this._moveSpeed = move.speed;
     }
     if (returning) {
-      if (this._returnAfter !== returning.after) { this.outT = returning.after; this._returnAfter = returning.after; }
-      this.outT -= dt;
-      if (this.outT <= 0 && !this.back) { this.back = true; this.hitSet.clear(); }
-      if (this.back) {
-        const p = returning.targets?.length ? game.targetObj(returning.targets[0]) : game.chaseTarget(this), sp = Math.hypot(this.vx, this.vy);
-        const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy) || 1;
-        this.vx = (dx / d) * sp; this.vy = (dy / d) * sp;
-        if (d < returning.collectRange) this.dead = true;
-      } else {
-        this.vx *= 1 - dt * returning.deceleration; this.vy *= 1 - dt * returning.deceleration;   // 감속 후 되돌아옴
-      }
+      // 대상 쪽으로 일정한 가속도를 받아, 멀어지던 탄이 자연스럽게 느려졌다가 되돌아온다.
+      const p = returning.targets?.length ? game.targetObj(returning.targets[0]) : game.chaseTarget(this);
+      const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy) || 1;
+      this.vx += (dx / d) * returning.acceleration * dt; this.vy += (dy / d) * returning.acceleration * dt;
+      const sp = Math.hypot(this.vx, this.vy);
+      if (sp > returning.maxSpeed) { this.vx *= returning.maxSpeed / sp; this.vy *= returning.maxSpeed / sp; }
+      // 대상 쪽으로 방향을 틀 때마다 같은 적을 다시 맞힐 수 있다.
+      const back = this.vx * dx + this.vy * dy > 0;
+      if (back && !this.back) this.hitSet.clear();
+      this.back = back;
+      if (back && d < returning.collectRange + (p.radius || p.r || 0)) this.dead = true;
       this.spin += dt * 18;
     }
     const guiding = this.slot.effect('homing');
@@ -807,6 +807,7 @@ class Pickup {
     this.name = kind === 'vitalGem' ? '생명의 보석' : undefined;
     this.radius = kind === 'gem' ? 5 : 9;
     this.t = Math.random() * TAU;
+    this.vx = 0; this.vy = 0;
     this.dead = false;
     entitySlot(this, "pickup");
   }
@@ -818,10 +819,21 @@ class Pickup {
   cardTick(dt, game) {
     this.t += dt * 4;
     const move = this.slot.effect('entityMove'), target = move?.targets?.[0] && game.targetObj(move.targets[0]);
-    if (!target || target === this) return;
+    if (!target || target === this) { this.vx = this.vy = 0; return; }
     const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy);
     if (!d) return;
-    const step = Math.min(d, move.speed * (this.cardMove || 1) * (this.directMove ?? 1) * dt);
+    const rate = (this.cardMove || 1) * (this.directMove ?? 1), maxSpeed = move.speed * rate;
+    if (this.acceleration) {
+      // 보석은 대상 쪽 가속도로 속도를 올린다. 측면 속도도 같은 가속도로 상쇄해 대상 주위를 맴돌지 않는다.
+      const wantX = dx / d * maxSpeed - this.vx, wantY = dy / d * maxSpeed - this.vy, want = Math.hypot(wantX, wantY);
+      const dv = Math.min(want, this.acceleration * rate * dt);
+      if (want) { this.vx += wantX / want * dv; this.vy += wantY / want * dv; }
+      const sp = Math.hypot(this.vx, this.vy);
+      if (sp * dt >= d) { this.x = target.x; this.y = target.y; return; }
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      return;
+    }
+    const step = Math.min(d, maxSpeed * dt);
     this.x += dx / d * step; this.y += dy / d * step;
   }
 
