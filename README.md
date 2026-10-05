@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔁 Spell Loop
+# 🔁 Amagos
 
 **카드를 쌓아 나만의 주문을 조립하고, 몬스터 무리에서 살아남는 로그라이크 서바이벌**
 
