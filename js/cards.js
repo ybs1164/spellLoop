@@ -1701,6 +1701,8 @@ function entitySlot(owner, kind) {
   if (kind === 'object' && owner.kind === 'orb') owner.knockback ??= 40;
   // 아이템의 이동 속도와 끌려오기 시작하는 사거리. 경험치 보석은 일반 아이템의 20배 거리에서 다가온다.
   if (kind === 'pickup') { owner.baseSpeed ??= 1100; owner.reach ??= owner.kind === 'gem' ? 90 * 20 : 90; }
+  // 보석은 정지 상태에서 0.3초에 걸쳐 이동 속도까지 가속한다.
+  if (kind === 'pickup' && (owner.kind === 'gem' || owner.kind === 'vitalGem')) owner.acceleration ??= owner.baseSpeed / 0.3;
   if (kind === 'shot') owner.pierceLimit ??= owner.cardTick && Number.isFinite(owner.pierce) ? owner.pierce : owner.cardTick ? Infinity : 0;
   owner.knockback ??= kind === 'shot' && !owner.cardTick ? 0 : 100;
   entityStats(owner);

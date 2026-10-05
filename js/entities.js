@@ -807,6 +807,7 @@ class Pickup {
     this.name = kind === 'vitalGem' ? '생명의 보석' : undefined;
     this.radius = kind === 'gem' ? 5 : 9;
     this.t = Math.random() * TAU;
+    this.vx = 0; this.vy = 0;
     this.dead = false;
     entitySlot(this, "pickup");
   }
@@ -818,10 +819,21 @@ class Pickup {
   cardTick(dt, game) {
     this.t += dt * 4;
     const move = this.slot.effect('entityMove'), target = move?.targets?.[0] && game.targetObj(move.targets[0]);
-    if (!target || target === this) return;
+    if (!target || target === this) { this.vx = this.vy = 0; return; }
     const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy);
     if (!d) return;
-    const step = Math.min(d, move.speed * (this.cardMove || 1) * (this.directMove ?? 1) * dt);
+    const rate = (this.cardMove || 1) * (this.directMove ?? 1), maxSpeed = move.speed * rate;
+    if (this.acceleration) {
+      // 보석은 대상 쪽 가속도로 속도를 올린다. 측면 속도도 같은 가속도로 상쇄해 대상 주위를 맴돌지 않는다.
+      const wantX = dx / d * maxSpeed - this.vx, wantY = dy / d * maxSpeed - this.vy, want = Math.hypot(wantX, wantY);
+      const dv = Math.min(want, this.acceleration * rate * dt);
+      if (want) { this.vx += wantX / want * dv; this.vy += wantY / want * dv; }
+      const sp = Math.hypot(this.vx, this.vy);
+      if (sp * dt >= d) { this.x = target.x; this.y = target.y; return; }
+      this.x += this.vx * dt; this.y += this.vy * dt;
+      return;
+    }
+    const step = Math.min(d, maxSpeed * dt);
     this.x += dx / d * step; this.y += dy / d * step;
   }
 
