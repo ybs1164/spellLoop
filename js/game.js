@@ -708,7 +708,7 @@ class Game {
   }
 
   // 제어는 지속시간을 합산하고 표식·화상은 중첩마다 수명을 유지한다.
-  addDebuff(o, key, duration, dps = 0, direct = false) {
+  addDebuff(o, key, duration, dps = 0, direct = false, count = 1) {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
@@ -722,10 +722,14 @@ class Game {
         const previous = key === 'mark' ? Math.max(o.markT || 0, o.directStates?.mark || 0) : timers[timer] || 0;
         if (previous > 0) o[stackKey].push({ time: previous, dps: key === 'burn' ? (direct ? 9 : o.burnDps || 0) : 0 });
       }
-      o[stackKey].push({ time: duration, dps });
+      // 남은 시간이 같은 스택은 하나로 합친다 (화상은 초당 피해 합, 표식은 중첩 수 count).
+      // 전염이 스택을 서로 복사하며 개수가 기하급수로 늘어나 프레임이 멈추는 것을 막는다.
+      const same = o[stackKey].find(stack => stack.time === duration);
+      if (same) { same.dps += dps; same.count = (same.count ?? 1) + count; }
+      else o[stackKey].push({ time: duration, dps, count });
       timers[timer] = Math.max(timers[timer] || 0, duration);
       if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
-      // burnDps 는 항상 직전 스택 합계이므로 새 스택만 더한다 (앞에서부터 더한 합과 같은 값).
+      // burnDps 는 항상 직전 스택 합계이므로 새로 더해진 초당 피해만 더한다.
       if (key === 'burn' && !direct) o.burnDps = fresh ? o.burnStacks.reduce((sum, s) => sum + s.dps, 0) : o.burnDps + dps;
     } else timers[timer] = Math.max(0, timers[timer] || 0) + duration;
   }
@@ -1356,15 +1360,15 @@ class Game {
         const legacy = src[k] || 0, direct = src.directStates?.[state] || 0;
         if (state === 'fear' && e.boss) continue;
         if (state === 'mark' && src.markStacks) {
-          for (const stack of src.markStacks) this.addDebuff(e, state, stack.time);
+          for (const stack of src.markStacks) this.addDebuff(e, state, stack.time, 0, false, stack.count ?? 1);
         } else if (state === 'mark') {
           this.addDebuff(e, state, Math.max(legacy, direct));
         } else if (state === 'burn') {
           if (src.burnStacks) {
-            for (const stack of src.burnStacks) this.addDebuff(e, state, stack.time, stack.dps);
+            for (const stack of src.burnStacks) this.addDebuff(e, state, stack.time, stack.dps, false, stack.count ?? 1);
           } else if (legacy > 0) this.addDebuff(e, state, legacy, src.burnDps || 0);
           if (src.directBurnStacks) {
-            for (const stack of src.directBurnStacks) this.addDebuff(e, state, stack.time, stack.dps, true);
+            for (const stack of src.directBurnStacks) this.addDebuff(e, state, stack.time, stack.dps, true, stack.count ?? 1);
           } else if (direct > 0) this.addDebuff(e, state, direct, 9, true);
         } else {
           if (legacy > 0) this.addDebuff(e, state, legacy);

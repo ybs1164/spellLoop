@@ -26,7 +26,7 @@ const STATUS = {
   burn:   { name: '화상', color: '#ff7b2e', desc: '중첩별 초당 피해 합산 · 각각 만료' },
 };
 function markMultiplier(o) {
-  const count = o.markStacks ? o.markStacks.filter(s => s.time > 0).length : (o.markT > 0 || o.directStates?.mark > 0 ? 1 : 0);
+  const count = o.markStacks ? o.markStacks.reduce((n, s) => n + (s.time > 0 ? s.count ?? 1 : 0), 0) : (o.markT > 0 || o.directStates?.mark > 0 ? 1 : 0);
   return 1 + 0.9 * count;
 }
 
