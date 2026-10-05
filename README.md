@@ -36,6 +36,10 @@
 
 검증: `node tools/check-controls.cjs`, `node tools/check-card-costs.cjs`, `node tools/check-targets.cjs`, `node tools/check-batches.cjs`, `node tools/check-slots.cjs`, `node tools/check-enemy-damage.cjs`.
 
+## 성능
+
+게임 중 **F3**으로 업데이트·렌더 시간과 개체 수를 표시합니다. 측정: `node tools/bench-frame.cjs` (단계별 `stage0`~`stage7`), 렌더 `NODE_PATH=$(npm root -g) node tools/bench-render.cjs`. 결과: [인게임 최적화](reports/ingame-optimization-plan.md).
+
 ## 리소스 출처
 
 [assets/CREDITS.md](assets/CREDITS.md)를 참고하세요.

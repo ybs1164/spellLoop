@@ -6,6 +6,12 @@ const SWARM_INTERVAL = 60;
 const MAX_HAZARDS = 200;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
+// allTargets·decoyCandidates 목록 순서별 대상 래퍼
+const TARGET_LIST_WRAP = [
+  e => ({ kind: 'enemy', e }), o => ({ kind: 'object', o }), a => ({ kind: 'ally', a }), z => ({ kind: 'zone', z }),
+  s => ({ kind: 'shot', s }), s => ({ kind: 'shot', s }), g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g }),
+];
+
 const CARD_EFFECTS = [
   'directAction',
   'bolt', 'slash', 'explode', 'frost', 'shockwave', 'poison', 'vortex', 'summonKnight',
@@ -287,6 +293,7 @@ class Game {
     compact(this.objects);
     compact(this.zones);
     compact(this.pickups);
+    this._decoyScan = null;
 
     const k = Math.min(1, dt * 10);
     this.cam.x += (p.x - this.cam.x) * k;
@@ -425,6 +432,14 @@ class Game {
     }
   }
 
+  /** (x, y) 반경 r 안의 살아 있는 적 수 (공간 해시 기준, skip 제외) */
+  countNearEnemies(x, y, r, skip) {
+    const near = this.hash.query(x, y, r, this._count ||= []), r2 = r * r;
+    let n = 0;
+    for (const o of near) if (o !== skip && !o.dead && dist2(o.x, o.y, x, y) <= r2) n++;
+    return n;
+  }
+
   collideProjectiles() {
     for (const pr of this.projectiles) this.collideShot(pr);
   }
@@ -457,7 +472,10 @@ class Game {
     const consume = target => { s.hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
     this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
     if (s.dead) return;
-    for (const o of [...this.objects, ...(this.allies || [])]) {
+    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외)
+    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
+    for (let i = 0; i < total; i++) {
+      const o = i < nObjects ? objects[i] : allies[i - nObjects];
       if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
       if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
       this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
@@ -471,7 +489,9 @@ class Game {
   }
 
   collideStructures(dt) {
-    for (const o of [...this.objects, ...(this.allies || [])]) {
+    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
+    for (let i = 0; i < total; i++) {
+      const o = i < nObjects ? objects[i] : allies[i - nObjects];
       if (o.dead) continue;
       o.contactCd = Math.max(0, (o.contactCd || 0) - dt);
       if (o.contactCd > 0) continue;
@@ -512,6 +532,16 @@ class Game {
    * 위치 효과는 at(t) 가 돌려주는 객체(x, y 를 가진 살아 있는 개체)를 받는다.
    */
   cardEnv(owner = this.player) {
+    // 환경은 개체마다 한 번만 만든다. 호출부는 항상 전개 복사한 뒤 필드를 덧붙인다.
+    const cache = this._cardEnvs ||= new WeakMap();
+    const hit = cache.get(owner);
+    if (hit && hit.player === this.player) return hit.env;
+    const env = this.buildCardEnv(owner);
+    cache.set(owner, { player: this.player, env });
+    return env;
+  }
+
+  buildCardEnv(owner) {
     const g = this, p = this.player;
     const obj = (t) => g.targetObj(t);
     const d2 = (t) => { const o = obj(t); return dist2(o.x, o.y, owner.x, owner.y); };
@@ -538,7 +568,7 @@ class Game {
       clusterPoint: (r, near) => {
         let best = null, bestN = -1;
         for (const e of g.nearestEnemies(p.x, p.y, 40, r)) {
-          const n = g.hash.query(e.x, e.y, near, []).filter((o) => !o.dead && dist2(o.x, o.y, e.x, e.y) <= near * near).length;
+          const n = g.countNearEnemies(e.x, e.y, near, null);
           if (n > bestN) { best = e; bestN = n; }
         }
         return best ? [{ kind: 'point', x: best.x, y: best.y }] : [];
@@ -564,12 +594,16 @@ class Game {
       /** e 주변 r 안의 다른 적 수 */
       /** e 가 나에게 등을 보이고 있는가 (바라보는 방향이 나와 90° 넘게 벌어짐) */
       facingAway: (e) => Math.cos(angDiff(Math.atan2(p.y - e.y, p.x - e.x), e.ang)) < 0,
-      crowd: (e, r) => g.hash.query(e.x, e.y, r, []).filter((o) => o !== e && !o.dead && dist2(o.x, o.y, e.x, e.y) <= r * r).length,
-      enemyNear: (t, r) => { const o = obj(t); return g.nearestEnemies(o.x, o.y, Infinity, r).some(e => e !== o); },
+      crowd: (e, r) => g.countNearEnemies(e.x, e.y, r, e),
+      enemyNear: (t, r) => {
+        const o = obj(t), r2 = r * r;
+        for (const e of g.enemies) if (!e.dead && e !== o && dist2(o.x, o.y, e.x, e.y) <= r2) return true;
+        return false;
+      },
       lifeRatio: (t) => { const o = obj(t); return o.max ? o.life / o.max : 1; },
       hpRatio: () => p.hp / p.stats.maxHp,
       recentlyHurt: () => p.hurtT > 0,
-      enemiesAround: (r) => g.hash.query(p.x, p.y, r, []).filter((e) => !e.dead && dist2(e.x, e.y, p.x, p.y) <= r * r).length,
+      enemiesAround: (r) => g.countNearEnemies(p.x, p.y, r, null),
       bossAlive: () => g.enemies.some((e) => e.boss && !e.dead),
 
       flag: (ts, id) => g.markTargets(ts, id),
@@ -593,13 +627,21 @@ class Game {
   }
 
   allTargets() {
-    const wrap = (list, kind, key) => (list || []).filter(o => !o.dead).map(o => ({ kind, [key]: o }));
-    return [
-      { kind: 'self' }, ...wrap(this.enemies, 'enemy', 'e'),
-      ...wrap(this.objects, 'object', 'o'), ...wrap(this.allies, 'ally', 'a'),
-      ...wrap(this.zones, 'zone', 'z'), ...wrap([...(this.projectiles || []), ...(this.hazards || [])], 'shot', 's'),
-      ...(this.pickups || []).filter(o => !o.dead).map(g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g })),
-    ];
+    // 대상 래퍼는 읽기 전용이므로 개체마다 한 번 만들어 재사용한다.
+    const wraps = this._targetWraps ||= new WeakMap();
+    const out = [{ kind: 'self' }];
+    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
+      if (!list) continue;
+      for (const o of list) {
+        if (o.dead) continue;
+        let w = wraps.get(o);
+        if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
+        out.push(w);
+      }
+    }
+    return out;
   }
 
   actionValue(id, field, owner = this.actionActor || this.player) {
@@ -666,7 +708,7 @@ class Game {
   }
 
   // 제어는 지속시간을 합산하고 표식·화상은 중첩마다 수명을 유지한다.
-  addDebuff(o, key, duration, dps = 0, direct = false) {
+  addDebuff(o, key, duration, dps = 0, direct = false, count = 1) {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
@@ -674,15 +716,21 @@ class Game {
     const timer = direct ? key : key + 'T';
     if (key === 'mark' || key === 'burn') {
       const stackKey = key === 'mark' ? 'markStacks' : direct ? 'directBurnStacks' : 'burnStacks';
-      if (!o[stackKey]) {
+      const fresh = !o[stackKey];
+      if (fresh) {
         o[stackKey] = [];
         const previous = key === 'mark' ? Math.max(o.markT || 0, o.directStates?.mark || 0) : timers[timer] || 0;
         if (previous > 0) o[stackKey].push({ time: previous, dps: key === 'burn' ? (direct ? 9 : o.burnDps || 0) : 0 });
       }
-      o[stackKey].push({ time: duration, dps });
+      // 남은 시간이 같은 스택은 하나로 합친다 (화상은 초당 피해 합, 표식은 중첩 수 count).
+      // 전염이 스택을 서로 복사하며 개수가 기하급수로 늘어나 프레임이 멈추는 것을 막는다.
+      const same = o[stackKey].find(stack => stack.time === duration);
+      if (same) { same.dps += dps; same.count = (same.count ?? 1) + count; }
+      else o[stackKey].push({ time: duration, dps, count });
       timers[timer] = Math.max(timers[timer] || 0, duration);
       if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
-      if (key === 'burn' && !direct) o.burnDps = o.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+      // burnDps 는 항상 직전 스택 합계이므로 새로 더해진 초당 피해만 더한다.
+      if (key === 'burn' && !direct) o.burnDps = fresh ? o.burnStacks.reduce((sum, s) => sum + s.dps, 0) : o.burnDps + dps;
     } else timers[timer] = Math.max(0, timers[timer] || 0) + duration;
   }
 
@@ -1068,20 +1116,40 @@ class Game {
   }
 
   /** 미끼가 있으면 적이 대신 쫓는다. */
+  /**
+   * 유인 카드를 가질 수 있는 개체 목록 (allTargets 순서).
+   * 목록이 같은 프레임에 늘어난 부분만 이어서 훑고, 정리(compact)·유인 슬롯 변경 시 다시 만든다.
+   */
+  decoyCandidates() {
+    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    let scan = this._decoyScan;
+    if (!scan || scan.epoch !== entityDecoyEpoch) scan = this._decoyScan = { epoch: entityDecoyEpoch, lists: [] };
+    for (let i = 0; i < lists.length; i++) {
+      const arr = lists[i] || [];
+      let entry = scan.lists[i];
+      if (!entry || entry.arr !== arr || entry.n > arr.length) entry = scan.lists[i] = { arr, n: 0, found: [] };
+      for (; entry.n < arr.length; entry.n++) if (slotMayHaveDecoy(arr[entry.n])) entry.found.push(arr[entry.n]);
+    }
+    return scan.lists;
+  }
+
   redirectedPlayerTarget(unit) {
     let best = { kind: 'self' }, distance = Infinity;
     if (unit === this.player) return best;
-    for (const source of this.allTargets()) {
-      const owner = this.targetObj(source);
-      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) continue;
+    const visit = (owner, wrap) => {
+      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) return;
       const effect = owner.slot.effect('entityDecoy');
-      if (!effect) continue;
-      for (const target of effect.targets || [source]) {
+      if (!effect) return;
+      for (const target of effect.targets || [wrap(owner)]) {
         const center = this.targetObj(target);
         if (center.dead || center === unit) continue;
         const d = dist2(center.x, center.y, unit.x, unit.y);
         if (d < effect.range ** 2 && d < distance) { best = target; distance = d; }
       }
+    };
+    visit(this.player, () => ({ kind: 'self' }));
+    for (const [i, entry] of this.decoyCandidates().entries()) {
+      for (const o of entry.found) visit(o, TARGET_LIST_WRAP[i]);
     }
     return best;
   }
@@ -1292,15 +1360,15 @@ class Game {
         const legacy = src[k] || 0, direct = src.directStates?.[state] || 0;
         if (state === 'fear' && e.boss) continue;
         if (state === 'mark' && src.markStacks) {
-          for (const stack of src.markStacks) this.addDebuff(e, state, stack.time);
+          for (const stack of src.markStacks) this.addDebuff(e, state, stack.time, 0, false, stack.count ?? 1);
         } else if (state === 'mark') {
           this.addDebuff(e, state, Math.max(legacy, direct));
         } else if (state === 'burn') {
           if (src.burnStacks) {
-            for (const stack of src.burnStacks) this.addDebuff(e, state, stack.time, stack.dps);
+            for (const stack of src.burnStacks) this.addDebuff(e, state, stack.time, stack.dps, false, stack.count ?? 1);
           } else if (legacy > 0) this.addDebuff(e, state, legacy, src.burnDps || 0);
           if (src.directBurnStacks) {
-            for (const stack of src.directBurnStacks) this.addDebuff(e, state, stack.time, stack.dps, true);
+            for (const stack of src.directBurnStacks) this.addDebuff(e, state, stack.time, stack.dps, true, stack.count ?? 1);
           } else if (direct > 0) this.addDebuff(e, state, direct, 9, true);
         } else {
           if (legacy > 0) this.addDebuff(e, state, legacy);
@@ -1651,6 +1719,7 @@ class Game {
 
   drawFx(ctx) {
     for (const f of this.fx) {
+      if (!this.fxInView(f)) continue;
       const t = 1 - f.life / f.max;   // 0 → 1
       ctx.globalAlpha = Math.max(0, 1 - t * t);
       switch (f.kind) {
@@ -1693,6 +1762,16 @@ class Game {
 
   nearestEnemies(x, y, n, range) {
     const r2 = range * range;
+    if (n === 1) {
+      // 가장 가까운 하나: 정렬 없이 훑는다 (같은 거리면 앞선 적, 안정 정렬과 같은 결과)
+      let best = null, bestD = Infinity;
+      for (const e of this.enemies) {
+        if (e.dead) continue;
+        const d = dist2(x, y, e.x, e.y);
+        if (d <= r2 && (best === null || d < bestD)) { best = e; bestD = d; }
+      }
+      return best ? [best] : [];
+    }
     const list = [];
     for (const e of this.enemies) {
       if (e.dead) continue;
@@ -1893,6 +1972,18 @@ class Game {
     return Math.abs(x - this.cam.x) < this.w / 2 + r && Math.abs(y - this.cam.y) < this.h / 2 + r;
   }
 
+  /** 이펙트가 그리는 범위가 화면(흔들림 포함)에 걸치는가. 여유를 넉넉히 둬 결과 화면은 같다. */
+  fxInView(f) {
+    const margin = this.shakeMag + 32;
+    if (f.kind === 'beam' || f.kind === 'zap') {
+      const pad = (f.w || 0) + 24 + margin;
+      const x0 = Math.min(f.x, f.x1), x1 = Math.max(f.x, f.x1), y0 = Math.min(f.y, f.y1), y1 = Math.max(f.y, f.y1);
+      return x1 > this.cam.x - this.w / 2 - pad && x0 < this.cam.x + this.w / 2 + pad && y1 > this.cam.y - this.h / 2 - pad && y0 < this.cam.y + this.h / 2 + pad;
+    }
+    if (f.kind === 'icon') return this.inView(f.x, f.y, (f.off || 0) + 48 + margin);
+    return this.inView(f.x, f.y, (f.r || 0) * 1.3 + 16 + margin);
+  }
+
   render() {
     const ctx = this.ctx;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -1913,13 +2004,14 @@ class Game {
       for (const o of this.objects) if (this.inView(o.x, o.y, 30)) o.draw(ctx);
       for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(ctx);
       for (const e of this.enemies) if (this.inView(e.x, e.y, e.radius + 60)) e.draw(ctx, this.clock, this);
-      for (const a of this.allies) a.draw(ctx);
+      for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(ctx);
       if (this.state !== 'gameover') this.player.draw(ctx, this.clock);
       for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(ctx);
       this.drawHazards(ctx);
       this.drawFx(ctx);
 
       for (const pt of this.particles) {
+        if (!this.inView(pt.x, pt.y, 16 + this.shakeMag)) continue;
         ctx.globalAlpha = Math.max(0, pt.life / pt.max);
         ctx.fillStyle = pt.color;
         const s = pt.size > 3.2 ? Px.G * 2 : Px.G;
@@ -1930,6 +2022,7 @@ class Game {
       ctx.font = `bold 13px ${FONT}`;
       ctx.textAlign = 'center';
       for (const t of this.texts) {
+        if (!this.inView(t.x, t.y, 200 + this.shakeMag)) continue;
         // 도트 폰트 + 딱딱한 그림자 (벡터 외곽선 대신)
         const x = Math.round(t.x), y = Math.round(t.y);
         ctx.globalAlpha = Math.min(1, t.life / 0.3);

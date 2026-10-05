@@ -56,7 +56,10 @@ vm.runInContext(`
   close(object.directStates.root, 3.2);
   close(object.directStates.fear, 3.6);
   close(markMultiplier(object), 2.8);
-  close(object.directBurnStacks.length, 2);
+  // 남은 시간이 같은 화상은 한 스택으로 합쳐지고 중첩 수(count)와 초당 피해 합을 유지한다.
+  close(object.directBurnStacks.length, 1);
+  close(object.directBurnStacks[0].count, 2);
+  close(object.directBurnStacks[0].dps, 18);
   object.markStacks = []; object.markT = 0; object.directStates.mark = 0;
   const before = object.hp;
   game.updateTargetBuffs(0.5);
@@ -89,6 +92,14 @@ vm.runInContext(`
   close(ally.markStacks.length, 0);
   game.spreadFrom(ally);
   close(enemy.burnStacks.length, 1);
+
+  // 전염이 스택을 서로 복사해도 같은 시간 스택은 합쳐져 개수가 늘지 않고, 표식 중첩 수는 보존된다.
+  const a = new Enemy('brute', 0, 0, 1), b = new Enemy('brute', 0, 0, 1);
+  game.enemies = [a, b];
+  game.addDebuff(a, 'mark', 4); game.addDebuff(a, 'burn', 4, 9);
+  for (let i = 0; i < 20; i++) { game.spreadFrom(a); game.spreadFrom(b); }
+  assert.ok(a.markStacks.length <= 2 && b.burnStacks.length <= 2, 'spread keeps stack arrays bounded');
+  assert.ok(markMultiplier(b) > 1 + 0.9 * 20, 'merged mark stacks keep their count');
 
 `, context);
 console.log('Debuff stacking, independent expiry, spread, and boss resistance checks passed.');

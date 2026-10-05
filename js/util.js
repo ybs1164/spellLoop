@@ -55,13 +55,19 @@ class SpatialHash {
   constructor(cellSize) {
     this.cs = cellSize;
     this.cells = new Map();
+    this.stamp = 0;
   }
-  clear() { this.cells.clear(); }
+  /** 셀 배열은 버리지 않고 표식만 바꿔 재사용한다. 오래된 셀이 쌓이면 정리한다. */
+  clear() {
+    this.stamp++;
+    if (this.cells.size > 4096) for (const [k, cell] of this.cells) if (cell.stamp !== this.stamp - 1) this.cells.delete(k);
+  }
   key(cx, cy) { return (cx + 50000) * 100000 + (cy + 50000); }
   insert(e) {
     const k = this.key(Math.floor(e.x / this.cs), Math.floor(e.y / this.cs));
     let cell = this.cells.get(k);
-    if (!cell) { cell = []; this.cells.set(k, cell); }
+    if (!cell) { cell = []; cell.stamp = this.stamp; this.cells.set(k, cell); }
+    else if (cell.stamp !== this.stamp) { cell.length = 0; cell.stamp = this.stamp; }
     cell.push(e);
   }
   query(x, y, r, out) {
@@ -72,7 +78,7 @@ class SpatialHash {
     for (let cx = x0; cx <= x1; cx++) {
       for (let cy = y0; cy <= y1; cy++) {
         const cell = this.cells.get(this.key(cx, cy));
-        if (cell) for (let i = 0; i < cell.length; i++) out.push(cell[i]);
+        if (cell && cell.stamp === this.stamp) for (let i = 0; i < cell.length; i++) out.push(cell[i]);
       }
     }
     return out;
