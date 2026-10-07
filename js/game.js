@@ -361,7 +361,8 @@ class Game {
   /* ------------------------------------------------------------------ */
   spawnRing() { return Math.hypot(this.w, this.h) / 2 + 60; }
 
-  hpMul() { return (this.stage.hp + (this.stageTime() / 60) * 0.2) * (this.stage.hpScale ?? 1); }
+  /** 단계 배수 hpScale 은 보물 상자(loot)에는 적용하지 않는다 */
+  hpMul(type) { return (this.stage.hp + (this.stageTime() / 60) * 0.2) * (ENEMY_TYPES[type]?.loot ? 1 : this.stage.hpScale ?? 1); }
 
   spawnPoint(angle = Math.random() * TAU, extra = rand(0, 80)) {
     const r = this.spawnRing() + extra;
@@ -369,7 +370,7 @@ class Game {
   }
 
   spawnEnemy(type, pos = this.spawnPoint()) {
-    const e = new Enemy(type, pos.x, pos.y, this.hpMul(), this.stage.dmgMul);
+    const e = new Enemy(type, pos.x, pos.y, this.hpMul(type), this.stage.dmgMul);
     this.enemies.push(e);
     return e;
   }
