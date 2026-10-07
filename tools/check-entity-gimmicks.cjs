@@ -47,7 +47,7 @@ vm.runInContext(`
   const bolt = game.hazards.find(s => s.kind === 'curseBolt');
   assert.ok(bolt, 'native hexer fires a new projectile type through bolt');
   bolt.x = p.x; bolt.y = p.y;
-  for (const slot of bolt.slots.filter(s => s.cards.includes('entityOtherTeam'))) slot.update(0.01, game, { deferTick: true });
+  for (const slot of bolt.slots) slot.update(0.01, game, { deferTick: true });
   assert.ok(p.directStates.mark > 0 && p.directStates.root > 0);
   assert.ok(!shooter.directStates?.root, 'hostile bolt excludes hostile allies');
   const ember = new Enemy('emberling', 0, 0, 1);

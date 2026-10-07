@@ -84,7 +84,8 @@ vm.runInContext(`
   assert.equal(game.actionCard, undefined, 'card execution context is restored');
   assert.equal(game.actionActor, undefined, 'actor context is restored');
 
-  assert.ok(UI.cardDescription(CARDS[heavy]).includes('2'));
+  assert.ok(UI.cardStatsText(CARDS[heavy]).includes('2'), 'values live in the stats hover');
+  assert.ok(!UI.cardDescription(CARDS[heavy]).includes('2'), 'card body has no stat values');
   for (const entry of UI.codexEntities()) {
     const html = UI.codexEntityHtml(entry);
     assert.ok(!html.includes('cx-settings'), 'codex has basic states and actual cards only');

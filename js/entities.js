@@ -38,22 +38,22 @@ const BOSS_FREEZE = 0.4;   // 보스가 받는 빙결 시간 배율
  * split: 죽으면 작은 적으로 분열 · elite: 체력바 표시 · tint: 스프라이트 색조
  */
 const ENEMY_TYPES = {
-  bloomMatriarch: { name: '재생의 모체', hp: 650, speed: 42, radius: 34, damage: 16, xp: 0, color: '#5be37a', sprites: [TD.slime], scale: 6, boss: true,
+  bloomMatriarch: { name: '재생의 모체', hp: 6500, speed: 42, radius: 34, damage: 16, xp: 0, color: '#5be37a', sprites: [TD.slime], scale: 6, boss: true,
     ai: 'keep', keep: 180, summon: { type: 'grunt', n: 4, cd: 9 },
-    slotRecipes: [{ cards: ['ifHurt', 'entitySelf', 'heal'], period: 12 }],
+    slotRecipes: [{ cards: ['entityHurt', 'entitySelf', 'heal'], period: 12 }],
     bossHint: '12초마다 체력 10% 회복 · 표식과 집중 화력으로 회복 사이에 몰아치거나 화상·독으로 압박하세요.' },
-  warMarshal: { name: '군단의 지휘자', hp: 900, speed: 48, radius: 36, damage: 20, xp: 0, color: '#ffd166', sprites: [TD.darkKnight], scale: 6, boss: true,
+  warMarshal: { name: '군단의 지휘자', hp: 9000, speed: 48, radius: 36, damage: 20, xp: 0, color: '#ffd166', sprites: [TD.darkKnight], scale: 6, boss: true,
     summon: { type: 'runner', n: 4, cd: 10 },
     slotRecipes: [{ cards: ['all', 'rage', 'focus'], team: 'same', range: 160, period: 7 }],
     bossHint: '주변 군단을 격려 · 광역·연쇄로 부하를 정리하거나 속박으로 지휘자와 군단을 분리하세요.' },
-  bastionWarden: { name: '철벽의 수문장', hp: 1500, speed: 44, radius: 38, damage: 24, xp: 0, color: '#c0c8d8', sprites: [TD.darkKnight], scale: 6, boss: true, traits: ['shielded', 'armored'],
+  bastionWarden: { name: '철벽의 수문장', hp: 15000, speed: 44, radius: 38, damage: 24, xp: 0, color: '#c0c8d8', sprites: [TD.darkKnight], scale: 6, boss: true, traits: ['shielded', 'armored'],
     shoot: { cd: 5, n: 8, speed: 150, damage: 10, ring: true },
     bossHint: '정면 방패와 갑주 · 빙결로 방패를 멈추거나 소환수·회전 칼날로 측후면을 공격하세요; 화상도 유효합니다.' },
-  bindingOracle: { name: '속박의 예언자', hp: 1800, speed: 48, radius: 34, damage: 20, xp: 0, color: '#c49bff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
+  bindingOracle: { name: '속박의 예언자', hp: 18000, speed: 48, radius: 34, damage: 20, xp: 0, color: '#c49bff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
     ai: 'keep', keep: 240, shoot: { cd: 4, n: 1, speed: 170, damage: 12 },
     slotRecipes: [{ cards: ['all', 'mark', 'root'], team: 'opposing', range: 170, period: 7 }],
     bossHint: '170 안 표식·속박 · 원거리·설치물로 거리를 유지하거나 보호막·치유를 준비하고 접근하세요.' },
-  cinderTyrant: { name: '잿불의 폭군', hp: 3000, speed: 50, radius: 42, damage: 30, xp: 0, color: '#ff7b2e', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire'],
+  cinderTyrant: { name: '잿불의 폭군', hp: 30000, speed: 50, radius: 42, damage: 30, xp: 0, color: '#ff7b2e', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire'],
     shoot: { cd: 4, n: 12, speed: 160, damage: 12, ring: true }, summon: { type: 'lavaSpider', n: 3, cd: 12 },
     bossHint: '화염 탄막과 거미 군단 · 빙결의 화염 약점, 광역 제어와 이동 빌드를 활용하세요.' },
   shaman: { name: '회복 주술사', hp: 40, speed: 55, radius: 13, damage: 5, xp: 5, color: '#5be37a', sprites: [TD.cultist], scale: 3, ai: 'keep', keep: 140, gimmick: 'medic' },
@@ -66,7 +66,7 @@ const ENEMY_TYPES = {
   runner:    { name: '박쥐',       hp: 6,    speed: 118, radius: 9,  damage: 5,  xp: 1,  color: '#f2a541', sprites: [TD.bat], scale: 2 },
   rat:       { name: '굴쥐',       hp: 4,    speed: 135, radius: 8,  damage: 3,  xp: 1,  color: '#c49a6c', sprites: [TD.rat], scale: 2 },
   brute:     { name: '외눈 거인',  hp: 70,   speed: 40,  radius: 22, damage: 16, xp: 6,  color: '#e9b36b', sprites: [TD.cyclops], scale: 4, elite: true },
-  slimeKing: { name: '슬라임 왕',  hp: 900,  speed: 50,  radius: 40, damage: 22, xp: 0,  color: '#6fd08c', sprites: [TD.slime], scale: 7, boss: true,
+  slimeKing: { name: '슬라임 왕',  hp: 9000,  speed: 50,  radius: 40, damage: 22, xp: 0,  color: '#6fd08c', sprites: [TD.slime], scale: 7, boss: true,
                split: { type: 'grunt', n: 12 },
                bossHint: '쓰러지면 슬라임 12마리로 분열 · 폭발·독 장판 같은 광역 공격을 준비해 두세요.' },
 
@@ -75,7 +75,7 @@ const ENEMY_TYPES = {
   plagueRat: { name: '역병 쥐',    hp: 8,    speed: 140, radius: 8,  damage: 5,  xp: 1,  color: '#9aa4b8', sprites: [TD.rat2], scale: 2, traits: ['undead'] },
   necro:     { name: '사령술사',   hp: 60,   speed: 60,  radius: 13, damage: 10, xp: 8,  color: '#b39dff', sprites: [TD.cultist], scale: 3, traits: ['undead'], elite: true,
                ai: 'keep', keep: 240, summon: { type: 'ghost', n: 3, cd: 6 } },
-  lich:      { name: '망령 군주',  hp: 2200, speed: 46,  radius: 36, damage: 30, xp: 0,  color: '#b39dff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
+  lich:      { name: '망령 군주',  hp: 22000, speed: 46,  radius: 36, damage: 30, xp: 0,  color: '#b39dff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
                summon: { type: 'ghost', n: 6, cd: 5 },
                bossHint: '5초마다 유령 6마리 소환 · 관통·연쇄로 유령을 정리하며 본체에 화력을 모으세요.' },
 
@@ -89,7 +89,7 @@ const ENEMY_TYPES = {
   /* 모든 단계 · 한 번씩 나타나 도망친다. 잡으면 보물 상자. */
   chestling: { name: '달아나는 보물 상자', hp: 90, speed: 150, radius: 14, damage: 0, xp: 0, color: '#ffd166', sprites: [TD.chest], scale: 3, elite: true,
                ai: 'flee', escape: 22, loot: true },
-  overlord:  { name: '심연 군주',  hp: 3600, speed: 52,  radius: 42, damage: 34, xp: 0,  color: '#ff3b6b', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire', 'armored'],
+  overlord:  { name: '심연 군주',  hp: 36000, speed: 52,  radius: 42, damage: 34, xp: 0,  color: '#ff3b6b', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire', 'armored'],
                shoot: { cd: 3, n: 14, speed: 180, damage: 16, ring: true },
                bossHint: '3초마다 14방향 탄막 · 화염과 갑주 — 빙결의 큰 한 방과 탄막 사이 이동이 핵심입니다.' },
 };
@@ -131,7 +131,7 @@ class Player {
     // 능력치는 레벨업으로 오르지 않는다. 버프 카드가 켜져 있는 동안만 바뀐다 (refreshStats).
     this.stats = {
       maxHp: 100, magnet: 90,
-      might: 1, cooldown: 1, area: 1, duration: 1, moveSpeed: 1, armor: 0, xpGain: 1,
+      might: 1, heatRecovery: 1, area: 1, duration: 1, moveSpeed: 1, armor: 0, xpGain: 1,
     };
     this.hp = this.stats.maxHp;
     entityStats(this);
@@ -157,7 +157,7 @@ class Player {
   refreshStats() {
     const s = this.stats;
     s.might = this.has('rage') ? 1.5 : 1;
-    s.cooldown = this.has('focus') ? 0.65 : 1;
+    s.heatRecovery = this.has('focus') ? 1 / 0.65 : 1;
     s.area = this.has('amplify') ? 1.4 : 1;
     s.duration = this.has('prolong') ? 1.5 : 1;
     s.moveSpeed = this.has('haste') ? 1.4 : 1;
@@ -198,6 +198,7 @@ class Player {
       if (dmg <= 0) { this.invuln = 0.3; return; }
     }
     this.hp -= dmg;
+    reportSlotHit(game, game._collisionSource || game.actionActor, this, dmg);
     this.invuln = 0.5;
     this.hurtT = 2;
     game.shake(6);
@@ -866,6 +867,9 @@ class Pickup {
   }
 
   collect(game) {
+    if (this.collectionDone) return;
+    this.collectionDone = true;
+    emitSlotEvent(game, this, 'collect', { subject: game.player });
     const p = game.player;
     switch (this.kind) {
       case 'vitalGem': p.gainXp(this.value, game); break;

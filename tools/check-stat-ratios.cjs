@@ -6,6 +6,7 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 vm.runInContext(`
+  const slotInterval = (owner, base) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)).cards.map(id => CARDS[id]).find(c => c.eventKind === 'interval')?.interval;
   const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, actual + ' != ' + expected);
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
@@ -96,7 +97,7 @@ vm.runInContext(`
 
   const barrel = new Placed('barrel', 500, 0, 1);
   barrel.combatStats.attackPower = 20;
-  assert.equal(barrel.slots.map(s => s.cards.map(cardBaseId).join('>')).join('|'), 'ifExpiring>entitySelf>explode', 'barrels explode on death');
+  assert.equal(barrel.slots.map(s => s.cards.map(cardBaseId).join('>')).join('|'), 'on_death>entitySelf>explode', 'barrels explode on death');
   game.zones = [];
   const meteor = game.addZone('meteor', { x: 100, y: 0 });
   game.endZone(meteor); close(hits.at(-1).damage, 52);
@@ -107,7 +108,7 @@ vm.runInContext(`
   pyro.update(0.01, p, game);
   close(game.hazards.at(-1).slot.effect('entityHit').damage, 24);
   close(game.hazards.at(-1).slot.effect('entityMove').speed, 230);
-  close(entityActionConfig(pyro, 'bolt').n, 1); close(pyro.slot.cooldowns.get(pyro.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), 2.4);
+  close(entityActionConfig(pyro, 'bolt').n, 1); close(slotInterval(pyro, 'bolt'), 2.4);
 
   const rageKnight = new Ally('knight', 0, 0);
   game.castBuff('rage', { kind: 'ally', a: rageKnight });

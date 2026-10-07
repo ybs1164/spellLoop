@@ -157,12 +157,12 @@ if(!candidatePhase&&!arenaPhase&&!process.env.BALANCE_SECONDS)for(const scenario
  console.log('30-seed '+scenario.id+': '+rows.length+' rows');
 }
 const combos = [
- ['enemies','ifMarked','snipe'], ['enemies','frost','ifStopped','root'],
+ ['enemies','frost','root'],
  ['ahead','turret','objects','rage'], ['ahead','turret','objects','focus'],
  ['ahead','turret','objects','refresh'], ['ahead','turret','objects','prolong'],
  ['gems','split'], ['gems','rage','absorb'], ['nearestEnemy','mark','snipe'],
 ];
-for(const a of context.catalog.actions)for(const flow of ['ifLowHp','ifNear','ifEnemyNear','ifSingle']){
+for(const a of context.catalog.actions)for(const flow of ['on_hurt','on_hit','on_kill','interval']){
  const t=cases.find(c=>c.action===a.id&&c.target==='nearestEnemy')?.target || cases.find(c=>c.action===a.id)?.target;
  if(t)combos.push([t,flow,a.id]);
 }
@@ -185,7 +185,7 @@ if(arenaPhase||fullPipeline){
  arenas=[];
  const tunings=JSON.parse(fs.readFileSync(path.join(root,'reports','balance-proposals.json'),'utf8')).proposals;
  Object.assign(tunings,{orb:{delay:0.2,cd:1.4,per:0.6},mine:{delay:0.2,cd:1.4,per:0.6}});
- const tiers=[{id:'early',budget:4,wave:3,types:['grunt','runner'],slots:[['nearestEnemy','bolt'],['ahead','orb']]},{id:'middle',budget:8,wave:5,types:['imp','mimic','darkKnight'],slots:[['nearestEnemy','snipe'],['enemies','bolt']]},{id:'late',budget:15,wave:8,types:['brute','pyro','darkKnight'],slots:[['enemies','ifMany','scatter'],['self','shield','regen','heal'],['ahead','turret','objects','refresh']]}];
+ const tiers=[{id:'early',budget:4,wave:3,types:['grunt','runner'],slots:[['nearestEnemy','bolt'],['ahead','orb']]},{id:'middle',budget:8,wave:5,types:['imp','mimic','darkKnight'],slots:[['nearestEnemy','snipe'],['enemies','bolt']]},{id:'late',budget:15,wave:8,types:['brute','pyro','darkKnight'],slots:[['enemies','scatter'],['self','shield','regen','heal'],['ahead','turret','objects','refresh']]}];
  for(const tier of tiers)for(const variant of ['control','candidate']){const samples=[];for(let seed=1;seed<=30;seed++)try{samples.push(context.arena(seed,tier,tier.slots,variant==='candidate'?tunings:null));}catch(e){errors.push({arena:tier.id,variant,error:e.stack});break;}if(samples.length){const row={tier:tier.id,budget:tier.budget,slots:tier.slots,variant,seeds:samples.length};for(const k of Object.keys(samples[0]))row[k]=samples.reduce((sum,x)=>sum+x[k],0)/samples.length;arenas.push(row);console.log('arena '+tier.id+' '+variant+': '+JSON.stringify(row));}}
 }
 const result={generatedAt:new Date().toISOString(),seeds:previous?.seeds??seeds,seconds:previous?.seconds??seconds,dt:1/30,scenarios,catalog:context.catalog,compatibility:context.compatibility,rows,arenas,errors};

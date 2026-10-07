@@ -25,7 +25,7 @@ vm.runInContext(`
   const enemyShot = game.hazards.at(-1);
   assert.equal(enemyShot.team, 'hostile');
   assert.equal(enemyShot.source, enemy);
-  assert.ok(enemyShot.slot.defaults.includes('entityHitTeam_opposing'));
+  assert.ok(enemyShot.slot.defaults.some(id => CARDS[id].hitTeamRule === 'opposing'));
   assert.ok(!enemyShot.slot.effect('entityHit').playerTargeted);
   assert.ok(!('side' in enemyShot.slot.effect('entityHit')));
   const opposing = { hitTeamRule: 'opposing' };

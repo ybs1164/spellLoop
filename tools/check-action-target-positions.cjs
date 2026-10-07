@@ -38,16 +38,5 @@ vm.runInContext(`
   game.configuredSummon(target, { type: 'grunt', n: 1 });
   assert.ok(Math.hypot(summoned.x - target.x, summoned.y - target.y) < 100);
   assert.ok(Math.hypot(summoned.x - owner.x, summoned.y - owner.y) > 500);
-  for (const id of ['vortex', 'ward']) {
-    const attached = new Enemy('brute', 100, 0, 1);
-    const selected = new Enemy('brute', 200, 0, 1);
-    owner.directTarget = { kind: 'enemy', e: attached };
-    game.actionCard = { actionId: id, effect: { continuous: true, attached: true, speedRatio: 1 } };
-    game[id](selected, { kind: 'enemy', e: selected }, 0.1);
-    assert.equal(attached.x, 100);
-    assert.notEqual(selected.x, 200);
-    game[id](owner, { kind: 'enemy', e: owner }, 0.1);
-    assert.notEqual(attached.x, 100);
-  }
 `, context);
-console.log('Configured explosions, summons and attached field actions respect selected targets.');
+console.log('Configured explosions and summons respect selected targets.');

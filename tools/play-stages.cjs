@@ -1,7 +1,8 @@
 // Runs the real combat loop with legal rewards, deck edits and steering inputs.
 const fs = require('node:fs');
 const results = [];
-const sources = ['util', 'input', 'cards', 'entities', 'stages', 'upgrades', 'icons', 'ui', 'game'].map(name => fs.readFileSync(`js/${name}.js`, 'utf8')).join('\n');
+const sources = ['util', 'input', 'cards', 'entities', 'stages', 'upgrades', 'icons', 'ui', 'game'].map(name => fs.readFileSync(`js/${name}.js`, 'utf8')).join('\n')
+  .replace('const SLOT_HEAT_UNIT = 1;', 'const SLOT_HEAT_UNIT = ' + (process.env.PLAY_HEAT_UNIT || 1) + ';');
 new Function('console', 'TD', 'results', 'Math', sources + `
 UI.hideOverlay = UI.showHud = UI.showEnd = () => {};
 const testStage = ${process.env.PLAY_STAGE === undefined ? 'undefined' : Number(process.env.PLAY_STAGE)};

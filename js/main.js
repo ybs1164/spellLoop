@@ -2,6 +2,7 @@
 
 Sprites.init();
 const game = new Game(document.getElementById('game'));
+PlayLog.attach(game);
 Input.init();
 UI.init(game);
 UI.showTitle();

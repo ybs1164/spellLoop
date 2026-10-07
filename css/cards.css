@@ -9,10 +9,10 @@
 }
 .t-target { --c: var(--target); }
 .t-action { --c: var(--action); }
-.t-filter { --c: var(--filter); }
+.t-event { --c: var(--filter); }
 b.c-target { color: var(--target); }
 b.c-action { color: var(--action); }
-b.c-filter { color: var(--filter); }
+b.c-event { color: var(--filter); }
 
 /* ---------- 작은 카드 (HUD / 목록) ---------- */
 .mini {
@@ -43,12 +43,12 @@ b.c-filter { color: var(--filter); }
   font-size: 10px; font-weight: 700; line-height: 15px;
   background: var(--ink); border: 2px solid var(--line);
 }
-/* 쿨타임: 슬롯 아래쪽 막대가 남은 비율만큼 (--cd 0~1) */
-.dslot .cdbar {
+/* 슬롯 게이지: 슬롯 아래쪽 막대가 남은 비율만큼 (--heat 0~1) */
+.dslot .heatbar {
   position: absolute; left: 0; bottom: -2px; height: 3px;
-  width: calc(var(--cd, 0) * 100%); background: var(--muted);
+  width: calc(var(--heat, 0) * 100%); background: var(--muted);
 }
-.dslot.cooling .mini { filter: brightness(.6); }
+.dslot.overheated .mini { filter: brightness(.6); }
 .dslot .dcost { margin-left: 3px; font-size: 10px; color: var(--muted); }
 .dslot .dcost.over { color: #ff6b6b; font-weight: 700; }
 .dhint {
@@ -87,7 +87,10 @@ b.c-filter { color: var(--filter); }
     calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px);
 }
 .pcard.dragging { opacity: .35; }
-
+.pcard:has(.card-bar) { height: auto; min-height: 100px; }
+.pcard .card-bar { display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-weight: 400; color: var(--muted); cursor: text; }
+.pcard .card-bar input { width: 44px; padding: 1px 2px; font: inherit; font-size: 11px; font-weight: 700; text-align: center; color: var(--text); background: #0b0e15; border: 1px solid var(--c); }
+.bigcard .card-bar-note { margin-top: 6px; font-size: 11px; color: var(--c); }
 /* ---------- 큰 카드 (도감 / 레벨업) ---------- */
 .bigcards { display: grid; gap: 20px 18px; margin-top: 16px; padding: 0 4px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .bigcard {
@@ -398,12 +401,14 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .cx-settings b { color: #e6e9f2; }
 
 /* ---------- 조건 · 대상 · 행동 카드 슬롯 ---------- */
-.slot-sections { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 8px; min-width: 0; }
+/* 이벤트 · 대상 칸은 들어 있는 카드 수만큼만 넓어지고, 남는 폭은 행동 칸이 쓴다. */
+.slot-sections { display: grid; grid-template-columns: fit-content(30%) fit-content(35%) minmax(0, 1fr); gap: 8px; min-width: 0; }
 .slot-section { min-width: 0; padding: 6px 6px 2px; background: rgba(0, 0, 0, .18); border: 2px solid var(--line); }
-.slot-section-h { font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.slot-section-h { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
 .slot-section .slot-cards { min-height: 0; padding: 6px 2px 4px; gap: 8px; }
 .slot-section .slot-cards.dropzone { min-height: 104px; }
 .slot-section .slot-cards .cell { flex: 1 0 60px; width: auto; }
+.slot-section.sec-event .slot-cards .cell, .slot-section.sec-target .slot-cards .cell { flex: 0 0 74px; }
 .entity-slot .slot-section .slot-cards { margin: 0; }
 .fixed-slot { display: block; cursor: default; }
 @media (max-width: 720px) {
@@ -415,6 +420,11 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .dsep { display: inline-block; width: 2px; height: 14px; margin: 0 3px; background: var(--line); vertical-align: middle; }
 .cx-sec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 .cx-sec-label { font-style: normal; font-size: 10px; color: var(--muted); margin-right: 2px; }
-.cx-sec-condition .cx-sec-label { color: #8fb8ff; }
+.cx-sec-event .cx-sec-label { color: #8fb8ff; }
 .cx-sec-target .cx-sec-label { color: #ffd166; }
 .cx-sec-action .cx-sec-label { color: #ff7a8a; }
+
+.dslot.overheated .heatbar { background: #ff6b6b; }
+.slot-heat { position: relative; grid-column: 1 / -1; height: 22px; background: #141d2b; overflow: hidden; border: 1px solid var(--line); }
+.slot-heat > i { position: absolute; inset: 0 auto 0 0; background: #a6572d; }
+.slot-heat > span { position: relative; padding: 0 8px; font-size: 11px; }

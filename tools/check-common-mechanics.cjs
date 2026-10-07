@@ -13,21 +13,7 @@ vm.runInContext(`
   game.player.deck.slots = []; game.player.invuln = 10000;
   game.burst = game.addText = game.addFx = game.circleFx = game.shake = () => {};
   for (const id of ['entityOrb', 'entitySlime', 'entityMine', 'entityDeathBlast', 'entityCollect', 'entityOnDeath']) assert.equal(CARDS[id], undefined, id);
-  for (const state of ['mark', 'freeze', 'root', 'burn']) {
-    const id = { mark: 'ifMarked', freeze: 'ifStopped', root: 'ifStopped', burn: 'ifBurning' }[state];
-    assert.equal(CARDS[id].test({ kind: 'enemy', e: { directStates: { [state]: 1 } } }, game.cardEnv()), true);
-  }
-  assert.equal(CARDS.ifBurning.test({ kind: 'object', o: { fuse: 0.1 } }, game.cardEnv()), false);
-  assert.equal(CARDS.ifBurning.test({ kind: 'enemy', e: { traits: ['fire'] } }, game.cardEnv()), true);
-  const owner = new Enemy('grunt', 1000, 0, 1), nearby = new Enemy('grunt', 1100, 0, 10);
-  owner.ang = 0; game.enemies = [owner, nearby];
-  const env = game.cardEnv(owner), near = { kind: 'enemy', e: nearby };
-  assert.equal(CARDS.ifNear.test(near, env), true);
-  assert.equal(CARDS.ifFar.test({ kind: 'self' }, env), true);
-  assert.equal(CARDS.ifFront.test(near, env), true);
-  owner.ang = Math.PI; assert.equal(CARDS.ifFront.test(near, env), false);
-  game.enemies = [owner];
-  assert.equal(CARDS.ifEnemyNear.test({ kind: 'enemy', e: owner }, env), false, 'an enemy does not count itself');
+  for (const id of ['ifHurt', 'ifExpiring', 'ifLifetimeEnded']) assert.equal(CARDS[id], undefined, id);
 
   assert.equal(entityConfiguredCard('explode', { damageRatio: 7, radius: 150 }), 'explode');
   for (const kind of ['meteor', 'slime', 'abyss']) {
@@ -51,22 +37,15 @@ vm.runInContext(`
   orb.update(0.2, game); assert.equal(a.hp, hp - 6);
   orb.update(0.2, game); assert.equal(a.hp, hp - 12);
   const slime = game.addZone('slime', { x: 0, y: 0 });
-  slime.slot.cards = slime.slot.cards.filter(id => id !== 'ifExpiring' && cardBaseId(id) !== 'explode'); slime.slot.changed();
+  slime.slot.cards = slime.slot.cards.filter(id => id !== 'on_death' && cardBaseId(id) !== 'explode'); slime.slot.changed();
   const before = a.hp;
   slime.slot.update(0.01, game); assert.equal(a.hp, before - 5);
   const attached = game.addZone('slime', a, { kind: 'enemy', e: a });
-  attached.slot.cards = attached.slot.cards.filter(id => id !== 'ifExpiring' && cardBaseId(id) !== 'explode'); attached.slot.changed();
-  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityAttached'));
-  assert.ok(!attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea'));
-  const attachedEnv = { ...game.cardEnv(attached), owner: attached, game };
-  assert.equal(CARDS.entityAttached.resolve(attachedEnv)[0].e, a);
-  assert.equal(CARDS.entityArea.resolve(attachedEnv).length, 2, 'area selection ignores attachment');
-  assert.equal(CARDS.entityAttached.resolve({ ...attachedEnv, owner: orb }).length, 0, 'unattached owner selects nothing');
-  const oldDead = a.dead; a.dead = true;
-  assert.equal(CARDS.entityAttached.resolve(attachedEnv).length, 0, 'dead attachment selects nothing');
-  a.dead = oldDead;
+  attached.slot.cards = attached.slot.cards.filter(id => id !== 'on_death' && cardBaseId(id) !== 'explode'); attached.slot.changed();
+  assert.equal(attached.follow, a, 'zone cast on an entity follows it');
+  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea'), 'followed zone still hits its whole area');
   const beforeA = a.hp, beforeB = b.hp;
-  attached.slot.update(0.01, game); assert.equal(a.hp, beforeA - 5); assert.equal(b.hp, beforeB);
+  attached.slot.update(0.01, game); assert.equal(a.hp, beforeA - 5); assert.equal(b.hp, beforeB - 5);
 
   game.objects = []; game.zones = [];
   const mine = new Placed('mine', 0, 0, 1);
@@ -95,14 +74,14 @@ vm.runInContext(`
   const dying = new Placed('barrel', 0, 0, 1);
   let events = 0;
   CARDS.testDeathPosition = { type: 'action', cost: 1, delay: 0, accepts: ALL_KINDS, requires: ['position'], run: ts => { events++; assert.equal(game.targetObj(ts[0]), dying); } };
-  dying.slot.cards = ['ifExpiring', 'entitySelf', 'testDeathPosition']; dying.slot.changed();
+  dying.slot.cards = ['on_death', 'entitySelf', 'testDeathPosition']; dying.slot.changed();
   dying.life = 0.1; dying.slot.update(0.01, game); assert.equal(events, 0, 'low remaining lifetime is not a death event');
-  dying.directFrozen = true; dying.slot.cooldowns.set(2, 999); dying.dead = true;
+  dying.directFrozen = true; dying.slot.heat = 100; dying.slot.overheated = true; dying.dead = true;
   dying.slot.onDeath(game); dying.slot.onDeath(game); assert.equal(events, 1, 'death ignores frozen state/cooldown and runs once');
   const emptyOwner = new Enemy('grunt', 100, 0, 1);
   CARDS.testDeadSelection = { type: 'target', kind: 'enemy', cost: 1, resolve: () => [{ kind: 'enemy', e: { dead: true, x: 0, y: 0 } }] };
-  emptyOwner.slot.cards = ['ifSingle', 'testDeadSelection', 'testDeathPosition']; emptyOwner.slot.changed();
-  emptyOwner.slot.update(0.01, game); assert.equal(events, 1, 'dead targets are excluded before count gates');
+  emptyOwner.slot.cards = ['testDeadSelection', 'testDeathPosition']; emptyOwner.slot.changed();
+  emptyOwner.slot.update(0.01, game); assert.equal(events, 1, 'dead targets are excluded');
 
   const teamOwner = new Enemy('grunt', 0, 0, 1), teamVictim = new Enemy('grunt', 10, 0, 100), teamHp = teamVictim.hp;
   game.enemies = [teamVictim];
@@ -118,15 +97,15 @@ vm.runInContext(`
   aoeOwner.update(0.01, game.player, game); assert.ok(teamVictim.hp < aoeHp);
   aoeOwner.slot.cards = ['nearestEnemy', 'entityHitTeam_same', 'bolt']; aoeOwner.slot.changed();
   game.projectiles = []; aoeOwner.update(0.01, game.player, game);
-  assert.ok(game.projectiles[0].slot.cards.some(cardId => cardBaseId(cardId) === 'entityHitTeam_same'), 'projectiles retain the selected team rule');
+  assert.equal(game.projectiles[0].slot.effect('entityHit')?.hitTeamRule, 'same', 'projectiles retain the selected team rule');
 
   const p = game.player; let playerDeath = 0, ordinary = 0, ended = 0;
   CARDS.testPlayerDeath = { type: 'action', cost: 1, requires: ['position'], accepts: ALL_KINDS, run: ts => { playerDeath++; assert.equal(game.targetObj(ts[0]), p); assert.equal(p.dead, true); } };
   CARDS.testOrdinaryDeath = { ...CARDS.testPlayerDeath, run: () => ordinary++ };
-  p.deck.slots = [{ cards: ['ifExpiring', 'self', 'testPlayerDeath'], limit: 30, cd: 999 }, { cards: ['self', 'testOrdinaryDeath'], limit: 30 }];
+  p.deck.slots = [{ cards: ['on_death', 'self', 'testPlayerDeath'], limit: 30, cd: 999 }, { cards: ['self', 'testOrdinaryDeath'], limit: 30 }];
   p.hp = 1; p.invuln = 0; p.directFrozen = true; game.state = 'playing';
   game.endRun = () => ended++;
   p.takeDamage(10, game); p.deck.onDeath(game, p);
   assert.equal(playerDeath, 1); assert.equal(ordinary, 0); assert.equal(ended, 1);
 `, context);
-console.log('Common mechanics: area/attached damage, intervals, mine arming, death events, player death, owner conditions, direct states, live counts and team rules passed.');
+console.log('Common mechanics: area/followed damage, intervals, mine arming, death events, player death, owner conditions, direct states, live counts and team rules passed.');

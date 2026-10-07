@@ -5,6 +5,7 @@
  * 단계마다 그 tier 의 스테이지 중 하나를 무작위로 고른다. 보스를 쓰러뜨리면 다음 단계, 3단계 보스를 쓰러뜨리면 승리.
  *  - tier    : 등장 단계 (1~3)
  *  - hp      : 단계 시작 체력 배율 (단계 안에서 시간이 흐를수록 Game.hpMul 이 더 올린다)
+ *  - hpScale : 단계 전체 체력 배수 (hpMul 전체에 곱한다)
  *  - rate    : 단계 시작 → STAGE_LEN 시점의 초당 스폰 수 (선형 증가, 이후 유지)
  *  - dmgMul  : 이 스테이지 적의 접촉 피해 배율
  *  - pool    : [종류, 가중치, 단계 시작 후 등장 시각(초), 한 번에 나오는 무리 수]
@@ -60,7 +61,7 @@ const STAGES = [
   {
     id: 'graveyard', tier: 2, name: '망자의 묘역', color: '#b39dff',
     hint: '끝없이 일어나는 유령 — 사령술사를 먼저 처치하라',
-    hp: 1.6, rate: [3, 9], dmgMul: 1.3,
+    hp: 1.6, hpScale: 10, rate: [3, 9], dmgMul: 1.3,
     pool: [
       ['ghost', 6, 0, 1],
       ['plagueRat', 3, 20, 4],
@@ -74,7 +75,7 @@ const STAGES = [
   {
     id: 'sealedSanctum', tier: 2, name: '봉인된 성소', color: '#c49bff',
     hint: '속박과 저주탄 — 멈춰 서면 끝장이다',
-    hp: 1.7, rate: [3, 9], dmgMul: 1.3,
+    hp: 1.7, hpScale: 10, rate: [3, 9], dmgMul: 1.3,
     pool: [
       ['ghost', 5, 0, 1],
       ['hexer', 1.2, 20, 1],
@@ -88,7 +89,7 @@ const STAGES = [
   {
     id: 'ironBastion', tier: 2, name: '철벽 요새', color: '#c0c8d8',
     hint: '방패와 갑주의 행군 — 등 뒤와 측면을 노려라',
-    hp: 1.9, rate: [3, 8], dmgMul: 1.4,
+    hp: 1.9, hpScale: 10, rate: [3, 8], dmgMul: 1.4,
     pool: [
       ['grunt', 4, 0, 1],
       ['runner', 3, 0, 1],
@@ -103,7 +104,7 @@ const STAGES = [
   {
     id: 'cinderCaldera', tier: 3, name: '잿불 화구', color: '#ff7b2e',
     hint: '화염 탄막과 용암 거미 — 빙결로 불을 꺼라',
-    hp: 2.4, rate: [6, 15], dmgMul: 1.6,
+    hp: 2.4, hpScale: 100, rate: [6, 15], dmgMul: 1.6,
     pool: [
       ['imp', 6, 0, 1],
       ['lavaSpider', 4, 0, 3],
@@ -117,7 +118,7 @@ const STAGES = [
   {
     id: 'abyssThrone', tier: 3, name: '심연의 옥좌', color: '#ff3b6b',
     hint: '모든 위협이 모이는 곳 — 갑주 군주의 탄막을 버텨라',
-    hp: 2.8, rate: [8, 18], dmgMul: 1.7,
+    hp: 2.8, hpScale: 100, rate: [8, 18], dmgMul: 1.7,
     pool: [
       ['imp', 5, 0, 1],
       ['lavaSpider', 3, 0, 3],

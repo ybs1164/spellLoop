@@ -80,8 +80,8 @@ vm.runInContext(`
   poison.dead = true;
   const attached = game.addZone('poison', poisoned, { kind: 'enemy', e: poisoned });
   const attachedHp = poisoned.hp, otherAttachedHp = poisonedOther.hp;
-  attached.slot.update(0.01, game); close(poisoned.hp, attachedHp - 6); close(poisonedOther.hp, otherAttachedHp);
-  poisoned.dead = true; attached.slot.update(0.01, game); assert.ok(attached.dead);
+  attached.slot.update(0.01, game); close(poisoned.hp, attachedHp - 6); close(poisonedOther.hp, otherAttachedHp - 6);
+  poisoned.dead = true; attached.slot.update(0.01, game); assert.ok(!attached.dead, 'followed poison outlives its host');
 
   game.pickups = [];
   const dropper = new Enemy('brute', 123, 456, 1);

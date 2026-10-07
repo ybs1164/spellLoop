@@ -6,6 +6,7 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 vm.runInContext(`
+  const slotInterval = (owner, base) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)).cards.map(id => CARDS[id]).find(c => c.eventKind === 'interval')?.interval;
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
   game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
@@ -40,7 +41,7 @@ vm.runInContext(`
   game.enemies = [necro]; necro.summonCd = 0;
   necro.update(0.01, game.player, game);
   assert.equal(game.enemies.length, 4, 'summon reads the card, not the owner definition');
-  assert.equal(necro.slot.cooldowns.get(necro.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'summon')), 6);
+  assert.equal(slotInterval(necro, 'summon'), 6);
   assert.ok(game.enemies.slice(1).every(e => e.type === 'ghost' && entityStats(e).xpReward === 0));
   const grunt = new Enemy('grunt', 100, 0, 1);
   const transferredSummon = entityConfiguredCard(lich.slot.cards.find(id => cardBaseId(id) === 'summon'), { n: 3 });
@@ -54,7 +55,7 @@ vm.runInContext(`
   assert.equal(game.hazards.length, 1);
   assert.equal(game.hazards[0].slot.effect('entityHit').damage, 12);
   assert.equal(game.hazards[0].slot.effect('entityMove').speed, 230);
-  assert.equal(pyro.slot.cooldowns.get(pyro.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), 2.4);
+  assert.equal(slotInterval(pyro, 'bolt'), 2.4);
   const overlord = new Enemy('overlord', 100, 0, 1);
   game.hazards = []; overlord.shootCd = 0; overlord.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 14);
@@ -64,7 +65,7 @@ vm.runInContext(`
   const archer = new Ally('archer', 0, 0);
   archer.kind = 'knight'; archer.def = { ...archer.def, damage: 999, attackCd: 999 };
   const target = new Enemy('brute', 30, 0, 1);
-  game.enemies = [target]; game.projectiles = []; archer.slot.cooldowns.clear();
+  game.enemies = [target]; game.projectiles = []; archer.slots.forEach(s => { s.heat = 0; s.eventClock = null; });
   archer.update(0.01, game);
   assert.equal(game.projectiles.length, 1, 'attack mode comes from the card, not the ally kind');
   assert.equal(game.projectiles[0].slot.effect('entityHit').damage, 10);
@@ -85,7 +86,7 @@ vm.runInContext(`
   const meteor = game.addZone('meteor', { x: 100, y: 100 });
   const slime = game.addZone('slime', { x: 100, y: 100 });
   const slimeBlast = entityConfiguredCard(slime.slot.cards.find(id => cardBaseId(id) === 'explode'), { elem: 'fire' });
-  slime.slot.cards = ['ifExpiring', 'entitySelf', slimeBlast]; slime.slot.changed();
+  slime.slot.cards = ['on_death', 'entitySelf', slimeBlast]; slime.slot.changed();
   const originalBlast = game.blast;
   let blastResult;
   game.blast = (x, y, radius, damage, color, elem) => blastResult = { radius, damage, elem };
@@ -107,7 +108,7 @@ vm.runInContext(`
   game.collideShot(hostile);
   assert.equal(victim.hp, victim.maxHp - 26, 'the team condition can explicitly enable same-team damage');
   const harmlessToPlayer = game.spawnProjectile({ x: 0, y: 0, vx: 0, vy: 0, damage: 1, life: 0 });
-  harmlessToPlayer.slot.cards = ['ifExpiring', 'entitySelf', 'explode'];
+  harmlessToPlayer.slot.cards = ['on_death', 'entitySelf', 'explode'];
   harmlessToPlayer.slot.changed(); setEntityActionConfig(harmlessToPlayer, 'explode', entityActionConfig(meteor, 'explode')); 
   harmlessToPlayer.slot.changed(); harmlessToPlayer.dead = true;
   game.player.hp = 50; game.player.invuln = 0;
@@ -126,9 +127,9 @@ vm.runInContext(`
   assert.equal(game.enemies.length, 13);
   assert.ok(game.enemies.slice(1).every(e => e.type === 'grunt'));
   const attached = game.addZone('poison', victim, { kind: 'enemy', e: victim });
-  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityAttached'));
+  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea'));
   assert.equal(entityActionConfig(attached, 'snipe').elem, 'poison');
-  assert.equal(entityActionConfig(attached, 'snipe').playerPower, false);
+  assert.equal(entityActionConfig(attached, 'snipe').playerPower, true);
   for (const type of Object.keys(ENEMY_TYPES)) {
     const e = new Enemy(type, 100, 0, 1);
     for (const id of e.slot.cards) {

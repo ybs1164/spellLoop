@@ -72,7 +72,7 @@ vm.runInContext(`
   const slime = new Enemy('grunt', 200, 200, 1.23, 1.17);
   assert.equal(slime.slots.length, 3);
   const orbSlot = slime.slots.find(slot => slot.cards.some(cardId => cardBaseId(cardId) === 'spawnOrb'));
-  assert.deepEqual(Array.from(orbSlot.cards, cardBaseId), ['ifExpiring', 'entitySelf', 'spawnOrb']);
+  assert.deepEqual(Array.from(orbSlot.cards, cardBaseId), ['on_death', 'entitySelf', 'spawnOrb']);
   assert.ok(!slime.slot.cards.some(cardId => cardBaseId(cardId) === 'summon'));
   assert.equal(CARDS.spawnOrb.name, '\uC624\uBE0C \uC2A4\uD3F0');
   for (const key of ['range', 'moveSpeed', 'attackPower', 'knockback', 'maxHp']) assert.ok(Number.isInteger(entityStats(slime)[key]));
@@ -192,8 +192,8 @@ vm.runInContext(`
   assert.equal(enemy.hp, 1 + enemy.maxHp * 0.1, 'heal action restores 10% of owner max HP');
   assert.equal(game.player.hp, playerHp);
   enemy.hp = 1; enemy.update(0.01, game.player, game);
-  assert.equal(enemy.hp, 1, 'existing cards respect cooldown');
-  game.player.hp = 50;
+  assert.ok(enemy.hp > 1, 'without an event card the action runs every frame while the gauge allows');
+  game.player.hp = 50; enemy.hp = 1;
   enemy.slot.cards = ['self', 'heal']; enemy.slot.changed();
   enemy.update(0.01, game.player, game);
   assert.equal(game.player.hp, 60, 'self always selects the player in entity slots');
@@ -214,22 +214,21 @@ vm.runInContext(`
   shooter.slot.cards = [entityChainCard('range', 50), 'self', entityChainCard('interval', 7), shotAction];
   shooter.slot.changed(); shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 0, 'distance condition gates selected targets');
-  shooter.slot.cards[0] = entityChainCard('range', 200); shooter.slot.changed();
+  shooter.slot.cards = [entityChainCard('range', 200), 'self', entityChainCard('interval', 7), shotAction]; shooter.slot.changed();
   shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 1);
-  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), 3.5, 'interval comes from the separate card');
-  shooter.slot.cards = ['ifHurt', 'self', shotAction]; shooter.slot.changed(); shooter.shootCd = 0;
+  assert.equal(CARDS[shooter.slot.cards.find(id => CARDS[id].eventKind === 'interval')].interval, 7, 'interval comes from the separate event card');
+  shooter.slot.cards = ['on_hurt', 'self', shotAction]; shooter.slot.changed(); shooter.shootCd = 0;
   game.player.hp = game.player.stats.maxHp;
   shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 1, 'existing filters also run in entity slots');
-  game.player.hp -= 1;
-  shooter.update(0.01, game.player, game);
-  assert.equal(game.hazards.length, 2);
-  assert.equal(shooter.slot.cooldowns.get(shooter.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt')), entityStats(shooter).attackPeriod * 0.5, 'removing the interval card falls back to the attack period state');
+  emitSlotEvent(game, shooter, 'hurt', { subject: game.player, x: shooter.x, y: shooter.y, damage: 1 }); flushSlotEvents(game);
+  assert.equal(game.hazards.length, 2, 'hurt event card fires when the owner is hurt');
+  assert.ok(!shooter.slot.cards.some(id => CARDS[id].eventKind === 'interval'), 'removing the interval card leaves only the hurt event');
   const redirected = new Placed('turret', 0, 0, 1);
-  assert.ok(redirected.slot.defaults.includes('nearestEnemy'));
-  assert.ok(summoner.slot.defaults.includes('self'));
-  assert.ok(shooter.slot.defaults.includes('self'));
+  assert.ok(redirected.slot.defaults.some(id => id === 'nearestEnemy'));
+  assert.ok(summoner.slot.defaults.some(id => id === 'self'));
+  assert.ok(shooter.slot.defaults.some(id => id === 'self'));
   const nearbyPlayer = new Enemy('grunt', 10, 0, 1);
   const nearbyTurret = new Enemy('grunt', 490, 0, 1);
   const previousEnemies = game.enemies;
@@ -250,7 +249,7 @@ vm.runInContext(`
   redirected.update(0.01, game);
   assert.equal(game.projectiles.length, 1);
   assert.ok(game.projectiles[0].vy > 0 && Math.abs(game.projectiles[0].vx) < 0.001, 'target card controls the shot direction');
-  assert.equal(redirected.slot.cooldowns.get(2), 1.5);
+  assert.equal(CARDS[redirected.slot.cards.find(id => CARDS[id].eventKind === 'interval')].interval, 3);
   assert.equal(game.projectiles[0].life, 1);
   assert.equal(game.projectiles[0].pierce, Infinity);
   assert.equal(game.projectiles[0].y, -6);
@@ -263,9 +262,9 @@ vm.runInContext(`
   assert.equal(orbVictim.hp, initialHp - 6);
   assert.equal(entityStats(orb).attackPeriod, 0.4, 'continuous mechanics expose their interval as the attack period state');
   const orbAction = orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe');
-  orb.slot.cards.splice(orbAction, 0, entityChainCard('interval', 2)); orb.slot.changed(); orb.cd = 0;
+  orb.slot.cards = [entityChainCard('interval', 2), ...orb.slot.cards.filter(id => CARDS[id].type !== 'event')]; orb.slot.changed(); orb.cd = 0;
   orb.update(0.01, game);
-  assert.equal(orb.slot.cooldowns.get(orb.slot.cards.findIndex(cardId => cardBaseId(cardId) === 'snipe')), 1);
+  assert.equal(CARDS[orb.slot.cards.find(id => CARDS[id].eventKind === 'interval')].interval, 2);
   assert.equal(orbVictim.hp, initialHp - 12);
   orb.slot.cards = []; orb.slot.changed(); orb.cd = 0;
   const beforeLife = orb.life;
@@ -282,7 +281,7 @@ vm.runInContext(`
   assert.ok(shot.x > 0); assert.equal(copy.x, 0);
   const loot = new Pickup('gem', 0, 0, 1);
   assert.equal(CARDS.entityCollect, undefined, 'collect mechanic is removed');
-  assert.equal(CARDS.ifExpiring.name, '사망 시');
+  assert.equal(CARDS.on_death.name, '사망 시');
   assert.ok(loot.slot.defaults.includes('ifPlayerContact'));
   assert.ok(loot.slot.defaults.includes('absorb'));
   assertPlayerChains(loot.slot);
@@ -291,8 +290,8 @@ vm.runInContext(`
   loot.slot.cards = loot.slot.defaults.slice(); loot.slot.changed(); loot.update(0.1, game);
   assert.equal(loot.dead, true);
   const movingLoot = new Pickup('gem', game.player.radius + 30, 0, 2);
-  movingLoot.update(0.1, game);
-  assert.equal(movingLoot.dead, true, 'contact is checked after movement in the same frame');
+  for (let i = 0; i < 4 && !movingLoot.dead; i++) movingLoot.update(0.1, game);
+  assert.equal(movingLoot.dead, true, 'contact event fires on the frame after movement brings the pickup into reach');
   const distantLoot = new Pickup('magnet', 300, 0, 2);
   distantLoot.update(0.01, game);
   assert.equal(distantLoot.dead, false, 'contact condition rejects distant pickups');
@@ -315,7 +314,7 @@ vm.runInContext(`
   zone.slot.cards = []; zone.slot.changed(); zone.life = 0.001;
   const dying = new Enemy('grunt', 123, 456, 1);
   const dropCard = 'spawnOrb';
-  dying.slot.cards = ['ifExpiring', 'entitySelf', dropCard]; dying.slot.changed();
+  dying.slot.cards = ['on_death', 'entitySelf', dropCard]; dying.slot.changed();
   let deathDrops = 0;
   const originalDropGem = game.dropGem;
   game.dropGem = (x, y, value) => { deathDrops++; assert.equal(x, 123); assert.equal(y, 456); assert.ok(value > 0); };
@@ -332,10 +331,10 @@ vm.runInContext(`
   CARDS.testDeathAction = { type: 'action', cost: 1, accepts: ALL_KINDS, run: (targets, env) => {
     assert.equal(targets.length, 1); assert.equal(env.at(targets[0]), custom); deathDrops++;
   } };
-  custom.slot.cards = ['ifExpiring', 'entitySelf', 'testDeathAction']; custom.slot.changed();
-  custom.slot.cooldowns.set(2, 100); custom.dead = true; custom.directFrozen = true;
+  custom.slot.cards = ['on_death', 'entitySelf', 'testDeathAction']; custom.slot.changed();
+  custom.slot.heat = 100; custom.slot.overheated = true; custom.dead = true; custom.directFrozen = true;
   game.objects = [custom]; game.resolveEntityDeaths(); compact(game.objects);
-  assert.equal(deathDrops, 2, 'ordinary death actions ignore cooldown and run before removal');
+  assert.equal(deathDrops, 2, 'ordinary death actions ignore a full gauge and run before removal');
   assert.equal(game.objects.length, 0);
   delete CARDS.testDeathAction; game.dropGem = originalDropGem;
   let blasts = 0; const originalBlast = game.blast; game.blast = () => blasts++;
@@ -350,13 +349,13 @@ vm.runInContext(`
   const hazardCopy = game.splitShot(hazard);
   assert.notEqual(hazardCopy.slot, hazard.slot);
   assert.equal(hazardCopy.slot.owner, hazardCopy);
-  for (let page = 0; page < 7; page++) {
-    UI.editorPage = page; UI.showEditor(game);
-    assert.ok(UI.html.includes('entity-navigation'));
+  for (let page = 1; page < 7; page++) {
+    UI.editorPage = page; UI.showEntityEditor(game);
+    assert.ok(UI.html.includes('entity-navigation'), 'page ' + page);
     for (const hidden of ['entity-slot-info', 'slot-head', 'slot-info', 'entity-card-add', 'entity-slot-reset']) assert.ok(!UI.html.includes(hidden));
   }
   UI.editorPage = 2;
-  UI.showEditor(game);
+  UI.showEntityEditor(game);
   assert.ok(!UI.html.includes('data-act="entity-card-remove"'));
   assert.ok(!UI.html.includes('data-act="entity-card-add"'));
   assert.ok(!UI.html.includes('data-act="entity-slot-reset"'));
@@ -414,7 +413,7 @@ vm.runInContext(`
         const firstAction = slot.cards.findIndex(id => CARDS[id].type === 'action');
         assert.ok(firstAction < 0 || slot.cards.slice(firstAction).every(id => CARDS[id].type === 'action'), 'actions run consecutively within a slot');
       }
-      assert.equal(new Set(owner.slots.map(slot => slot.cooldowns)).size, owner.slots.length, 'independent cooldowns');
+      assert.equal(new Set(owner.slots).size, owner.slots.length, 'independent slots'); assert.ok(owner.slots.every(slot => Number.isFinite(slot.heat)), 'independent gauges');
     }
   };
   checkSeparatedSlots();
@@ -422,10 +421,10 @@ vm.runInContext(`
   const attackSlot = archer.slots.find(slot => slot.cards.some(cardId => cardBaseId(cardId) === 'bolt'));
   const movementSlot = archer.slots.find(slot => slot.cards.some(id => CARDS[id].mechanic === 'entityMove'));
   const attackIndex = attackSlot.cards.findIndex(cardId => cardBaseId(cardId) === 'bolt');
-  assert.equal(attackSlot.cooldowns.get(attackIndex), 0.1, 'split preserves initial attack delay');
-  attackSlot.cooldowns.set(attackIndex, 3);
+  assert.ok(Number.isFinite(attackSlot.heat), 'split slots own a gauge');
+  attackSlot.heat = 37;
   movementSlot.changed(); archer.slot.syncSlots();
-  assert.equal(attackSlot.cooldowns.get(attackIndex), 3, 'editing another slot preserves attack cooldown');
+  assert.equal(attackSlot.heat, 37, 'editing another slot preserves the attack gauge');
   for (let i = 0; i < 600; i++) game.step(1 / 60);
   checkSeparatedSlots();
   for (const t of game.allTargets()) {
@@ -436,4 +435,4 @@ vm.runInContext(`
     }
   }
 `, context);
-console.log('Entity slots: owner targeting, card removal, summon, cooldown, independent copies, pickup, death effects, editor and 10-second gameplay checks passed.');
+console.log('Entity slots: owner targeting, card removal, summon, gauge, independent copies, pickup, death effects, editor and 10-second gameplay checks passed.');

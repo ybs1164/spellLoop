@@ -16,13 +16,13 @@ vm.runInContext(`
   assert.equal(cardOf(new Enemy('hexer', 0, 0, 1), 'entityKeep'), cardOf(new Enemy('shaman', 0, 0, 1), 'entityKeep'));
   assert.equal(cardOf(new Enemy('grunt', 0, 0, 1), 'spawnOrb'), cardOf(new Enemy('brute', 0, 0, 1), 'spawnOrb'), 'gem reward lives in the xp state');
   assert.equal(cardOf(necro, 'spawnOrb'), cardOf(new Enemy('grunt', 0, 0, 1), 'spawnOrb'), 'reward card no longer copies summon settings');
-  assert.ok(cardOf(bastion, 'bolt') && bastion.slots.some(s => s.cards.includes('entityInSight')));
+  assert.ok(cardOf(bastion, 'bolt') && bastion.slots.some(s => s.cards.some(id => CARDS[id].eventKind === 'state') && s.cards.some(id => CARDS[id].type === 'target')));
   assert.equal(entityStats(bastion).sight, 560);
   const knight = new Ally('knight', 0, 0), archer = new Ally('archer', 0, 0), medic = new Ally('medic', 0, 0);
   assert.equal(entityActionConfig(knight, 'snipe').knockback, 120);
   assert.equal(entityActionConfig(archer, 'bolt').knockback, 80); assert.equal(entityActionConfig(archer, 'bolt').speed, 520);
   assert.equal(entityStats(knight).keepDistance, 15.6); assert.equal(entityStats(archer).sight, 360); assert.equal(entityStats(medic).sight, 0);
-  for (const a of [knight, archer, medic]) assert.ok(a.slots[0].cards.includes('entityMovementTarget') && a.slots[0].cards.includes('entityMovementDistance'));
+  for (const a of [knight, archer, medic]) assert.ok(a.slots[0].cards.includes('entityMovementDistance') && a.slots[0].cards.includes('entityMovementTarget'), 'movement distance condition and target stay separate cards');
   const turret = new Placed('turret', 0, 0, 1), orb = new Placed('orb', 0, 0, 1);
   assert.equal(entityActionConfig(turret, 'bolt').speed, 460); assert.equal(entityActionConfig(turret, 'bolt').knockback, 90);
   assert.equal(entityActionConfig(orb, 'snipe').knockback, 40);
@@ -40,7 +40,9 @@ vm.runInContext(`
   assert.equal(entityStats(mother).summonPeriod, 9); assert.equal(entityStats(mother).supportPeriod, 12);
   assert.equal(entityStats(tyrant).attackPeriod, 4); assert.equal(entityStats(tyrant).summonPeriod, 12);
   assert.equal(entityStats(oracle).reach, 170); assert.equal(entityStats(knight).reach, 26); assert.equal(entityStats(turret).reach, 420);
-  for (const o of [mother, tyrant, oracle, knight, archer, turret]) assert.ok(o.slots.every(s => s.cards.every(id => CARDS[id].interval == null)), 'no interval cards remain');
+  const intervals = o => o.slots.flatMap(s => s.cards).map(id => CARDS[id].interval).filter(v => v != null);
+  for (const [o, expected] of [[mother, [9, 12]], [tyrant, [4, 12]]]) for (const v of expected) assert.ok(intervals(o).includes(v), 'periods are interval event cards: ' + v);
+  for (const o of [knight, archer, turret]) assert.ok(o.slots.every(s => s.cards.filter(id => CARDS[id].eventKind === 'interval' || CARDS[id].eventKind === 'enter').length <= 1), 'one event card per slot');
   assert.equal(entityStats(bastion).shotPower, 10); assert.equal(entityActionConfig(bastion, 'bolt').damageStat, 'shotPower');
   assert.equal(cardOf(bastion, 'bolt'), cardOf(oracle, 'bolt'), 'single and ring shots share one card');
   const slime = createZone('slime', player, { x: 0, y: 0 }, null), abyss = createZone('abyss', player, { x: 0, y: 0 }, null);

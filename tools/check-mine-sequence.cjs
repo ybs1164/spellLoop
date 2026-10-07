@@ -21,7 +21,8 @@ vm.runInContext(`
     const liveMine = new Placed('mine', 0, 0, 1);
     liveMine.slot.changed(); // Legacy edits must preserve the action stack too.
     const blastSlot = liveMine.slots.find(slot => slot.cards.includes('explode'));
-    assert.deepEqual(Array.from(blastSlot.cards), ['entityEnemyInReach', 'entitySelf', 'explode', 'disappear']);
+    assert.deepEqual(Array.from(blastSlot.cards), ['entityEnemyInReach', 'entitySelf', 'explode']);
+    assert.ok(liveMine.slots.some(s => s.cards.join(',') === 'on_detonate,entitySelf,disappear'));
     const victim = new Enemy('grunt', 25, 0, 1);
     victim.hp = victim.maxHp = hp;
     game.enemies = [victim]; game.objects = [liveMine]; game.rebuildHash();

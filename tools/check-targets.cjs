@@ -119,15 +119,12 @@ get("game.pickups[0].speed = 100; game.castBuff('haste', { kind: 'gem', g: game.
 assert.equal(get('game.pickups[0].speed'), 100, 'pickup haste uses only the movement multiplier');
 assert.equal(get('game.pickups[0].cardMove'), 1.4);
 get(`
-  const deck = new SkillDeck();
-  const queue = [], ctx = { deck, mul: 1 };
-  deck.runCard('all', ctx, env, 0, queue);
-  deck.runCard('heal', ctx, env, 1, queue);
+  const slot = { cards: ['all', 'heal'], limit: 30, heat: 0, cast: null };
+  const picked = selectSlotTargets(slot, env);
 `);
-assert.equal(get('queue.length'), 1, 'all + heal queues one simultaneous batch');
-assert.equal(get('queue[0].targets.length'), 6, 'the batch includes allies and placed objects as health-bearing targets');
-get("game.enemies[0].targetFeatures = { health: false }; const before = game.enemies[0].hp; deck.runStep(queue[0], { fired: 0, hit: new Set() }, env)");
-assert.equal(get('game.enemies[0].hp === before'), true, 'queued actions recheck feature switches');
+assert.equal(get('picked.filter(t => actionApplies(CARDS.heal, t, env)).length'), 6, 'heal applies to allies and placed objects as health-bearing targets');
+get("game.enemies[0].targetFeatures = { health: false }");
+assert.equal(get("picked.filter(t => actionApplies(CARDS.heal, t, env)).length"), 5, 'actions recheck feature switches');
 get("game.absorb(game.pickups[1], { kind: 'pickup', g: game.pickups[1] })");
 assert.equal(get('game.pickups[1].dead'), true);
 get("game.split({ kind: 'gem', g: game.pickups[0] })");
@@ -153,7 +150,7 @@ for (const id of ['prolong', 'magnet']) {
 }
 assert.equal(get("actionApplies(CARDS.rage, { kind: 'self' }, env)"), true, 'rage applies to the player');
 assert.equal(get("actionApplies(CARDS.focus, { kind: 'self' }, env)"), true, 'focus applies to the player');
-assert.equal(get("new Placed('barrel', 0, 0, 1).slots.map(s => s.cards.map(cardBaseId).join('>')).join('|')"), 'ifExpiring>entitySelf>explode', 'barrel explodes on death');
+assert.equal(get("new Placed('barrel', 0, 0, 1).slots.map(s => s.cards.map(cardBaseId).join('>')).join('|')"), 'on_death>entitySelf>explode', 'barrel explodes on death');
 get(`
   const pulledObj = new Placed('turret', game.player.x + 200, game.player.y);
   game.objects.push(pulledObj);
@@ -193,8 +190,8 @@ get(`
   const z = game.addZone('poison', recipient, { kind: 'enemy', e: recipient });
   game.updateZones(0.1);
 `);
-assert.equal(get('recipient.hp'), get('recipient.maxHp - 6'), 'attached poison ticks on its selected target');
-assert.equal(get('neighbor.hp'), get('neighbor.maxHp'), 'attached poison ignores nearby entities');
+assert.equal(get('recipient.hp'), get('recipient.maxHp - 6'), 'followed poison ticks on its selected target');
+assert.equal(get('neighbor.hp'), get('neighbor.maxHp - 6'), 'followed poison also hits nearby entities');
 get(`
   for (const [kind, key, unit] of [
     ['ally', 'a', new Ally('knight', 300, 300)],
@@ -238,7 +235,7 @@ get(`
   for (let i = 0; i < 600; i++) simulation.step(1 / 60);
   if (simulation.time < 9.9 || !simulation.objects.length) throw new Error('simulation did not progress');
   const e = simulation.spawnEnemy('brute', { x: 150, y: 0 });
-  const allSlot = { limit: 15, cards: ['all', 'heal', 'amplify', 'prolong'], cd: 0, cast: null };
+  const allSlot = { limit: 15, cards: ['all', 'heal', 'amplify', 'prolong'], heat: 0, cast: null };
   simulation.player.deck.slots = [allSlot];
   for (let i = 0; i < 240; i++) simulation.step(1 / 60);
   for (const t of simulation.allTargets()) {
@@ -256,6 +253,7 @@ get(`
   structures.addText = structures.burst = () => {};
   structures.hash = new SpatialHash(64);
   structures._near = [];
+  for (const key of ['projectiles', 'hazards', 'allies', 'objects', 'zones', 'enemies', 'pickups']) structures[key] = [];
   const attacker = new Enemy('grunt', 0, 0, 1);
   structures.hash.insert(attacker);
   for (const kind of Object.keys(PLACED_TYPES)) {

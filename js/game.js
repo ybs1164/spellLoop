@@ -2,8 +2,8 @@
 
 const MAX_ENEMIES = 400;
 const CLEAR_DELAY = 2;   // 마지막 보스가 쓰러지고 클리어 화면까지
-const SWARM_INTERVAL = 60;
 const MAX_HAZARDS = 200;
+const SWARM_INTERVAL = 60;
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
 // 행동 위임 함수: env.bolt(...) 처럼 환경의 메서드로 불리며, 환경의 owner 를 행동 주체로 둔다.
@@ -28,7 +28,7 @@ const CARD_EFFECTS = [
 ];
 for (const name of CARD_EFFECTS) CARD_EFFECT_DELEGATES[name] = function (...args) {
   const g = this.game, previous = g.actionActor;
-  g.actionActor = this.owner;
+  g.actionActor = this.actionExecutor || this.owner;
   try { return g[name](...args); } finally { g.actionActor = previous; }
 };
 const FONT = 'Galmuri11, "Malgun Gothic", sans-serif';
@@ -40,7 +40,7 @@ function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
     healingField: { r: 120 * s.area, life: 24, name: '치유 장판' },
     shieldField: { r: 110 * s.area, life: 20, name: '보호 장판' },
     burningField: { r: 95 * s.area, life: 6, name: '화상 장판' },
-    poison: { r: 60 * s.area, life: 4 * s.duration, tick: 0 },
+    poison: { r: 90 * s.area, life: 4 * s.duration, tick: 0 },
     vortex: { r: 160 * s.area, life: 1.5 * s.duration },
     blades: { r: 55 * s.area, life: 5 * s.duration, spin: Math.random() * TAU, bladeTime: 0, damageMul: 0.8, knockbackMul: 0.9 },
     slime: { r: 90 * s.area, life: 6 * s.duration, tick: 0, damageMul: 0.5 },
@@ -50,11 +50,11 @@ function zoneDefinition(kind, s = { area: 1, duration: 1 }) {
   }[kind];
 }
 
-/** 장판 개체를 만든다. 지점이 아닌 대상(t)이면 그 대상(o)을 따라다닌다. */
+/** 장판 개체를 만든다. 지점이 아닌 대상(t)이면 그 대상(o)을 따라다니며, 항상 범위 전체에 작동한다. */
 function createZone(kind, source, o, t, s) {
   const def = zoneDefinition(kind, s);
   const follow = t && t.kind !== 'point' ? o : null;
-  const z = { kind, source, team: entityTeam(source), x: o.x, y: o.y, follow, directTarget: follow && !['meteor', 'blades'].includes(kind) ? t : null, max: def.life, rallyT: 0, dead: false, damage: entityStats(source).attackPower * (def.damageMul ?? 1), baseSpeed: entityStats(source).moveSpeed, knockback: entityStats(source).knockback * (def.knockbackMul ?? 1), ...def };
+  const z = { kind, source, team: entityTeam(source), x: o.x, y: o.y, follow, max: def.life, rallyT: 0, dead: false, damage: entityStats(source).attackPower * (def.damageMul ?? 1), baseSpeed: entityStats(source).moveSpeed, knockback: entityStats(source).knockback * (def.knockbackMul ?? 1), ...def };
   entitySlot(z, 'zone');
   return z;
 }
@@ -148,8 +148,8 @@ class Game {
     this.bossSpawned = false;
     this.clearT = null;
     this.spawnedBosses = new Set();
-    this.lootAt = rand(70, 200);   // 단계 안에서 보물 상자가 달아나기 시작하는 시각
     this.nextSwarmAt = SWARM_INTERVAL;
+    this.lootAt = rand(70, 200);   // 단계 안에서 보물 상자가 달아나기 시작하는 시각
     this.stageBanner();
     if (announce) this.shake(8);
   }
@@ -328,6 +328,7 @@ class Game {
     this.updateEffects(dt);
 
     this.resolveEntityDeaths();
+    flushSlotEvents(this);
     compact(this.enemies);
     compact(this.projectiles);
     compact(this.hazards);
@@ -360,7 +361,7 @@ class Game {
   /* ------------------------------------------------------------------ */
   spawnRing() { return Math.hypot(this.w, this.h) / 2 + 60; }
 
-  hpMul() { return this.stage.hp + (this.stageTime() / 60) * 0.2; }
+  hpMul() { return (this.stage.hp + (this.stageTime() / 60) * 0.2) * (this.stage.hpScale ?? 1); }
 
   spawnPoint(angle = Math.random() * TAU, extra = rand(0, 80)) {
     const r = this.spawnRing() + extra;
@@ -524,7 +525,10 @@ class Game {
       for (const e of near) {
         if (!entityCanHit(source, e, hit) || dist2(point.x, point.y, e.x, e.y) > (point.radius + e.radius) ** 2) continue;
         if (hit.repeatCd != null ? (point.hitTimes.get(e) || 0) > hit.time : source.hitSet.has(e)) continue;
-        this.damageEnemy(e, hit.damage, projectileEvent ? source.vx : e.x - point.x || 1, projectileEvent ? source.vy : e.y - point.y, hit.knockback);
+        const previousSource = this._collisionSource;
+        this._collisionSource = source;
+        try { this.damageEnemy(e, hit.damage, projectileEvent ? source.vx : e.x - point.x || 1, projectileEvent ? source.vy : e.y - point.y, hit.knockback); }
+        finally { this._collisionSource = previousSource; }
         if (hit.repeatCd != null) point.hitTimes.set(e, hit.time + hit.repeatCd);
         if (projectileEvent) this.events.emit('projectileHit', { projectile: source, enemy: e });
         if (consume) consume(e);
@@ -551,13 +555,17 @@ class Game {
       const o = i < nObjects ? objects[i] : allies[i - nObjects];
       if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
       if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
-      this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false);
+      this._collisionSource = s;
+      try { this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false); }
+      finally { this._collisionSource = null; }
       consume(o);
       if (s.dead) return;
     }
     const p = this.player;
     if (entityCanHit(s, p, hit) && !s.hitSet.has(p) && dist2(s.x, s.y, p.x, p.y) < (radius + p.radius * 0.8) ** 2) {
-      p.takeDamage(damage, this); consume(p); this.burst(s.x, s.y, s.color, 5);
+      this._collisionSource = s;
+      try { p.takeDamage(damage, this); } finally { this._collisionSource = null; }
+      consume(p); this.burst(s.x, s.y, s.color, 5);
     }
   }
 
@@ -590,7 +598,8 @@ class Game {
       if (!entityCanHit(e, p, e.slot.effect('entityHit'))) continue;
       const rr = p.radius + e.radius;
       if (dist2(p.x, p.y, e.x, e.y) < rr * rr) {
-        p.takeDamage(e.slot.effect('entityHit').damage, this);
+        this._collisionSource = e;
+        try { p.takeDamage(e.slot.effect('entityHit').damage, this); } finally { this._collisionSource = null; }
         break;
       }
     }
@@ -740,6 +749,7 @@ class Game {
 
   healTarget(o, n) {
     if (o.dead || !Number.isFinite(o.hp)) return;
+    const hpBefore = o.hp;
     if (o === this.player) o.heal(n);
     else if (o instanceof Enemy) this.healEnemy(o, n);
     else {
@@ -747,6 +757,7 @@ class Game {
       o.hp = Math.min(o.maxHp, o.hp + n);
       if (o.hp > before) this.addText(o.x, o.y - o.radius, `+${Math.round(o.hp - before)}`, '#7dff9a');
     }
+    if (o.hp > hpBefore) emitSlotEvent(this, o, 'healed', { subject: o, amount: o.hp - hpBefore });
   }
 
   consumeTarget(o) {
@@ -763,6 +774,7 @@ class Game {
     if (t.kind === 'enemy') this.damageEnemy(o, amount, o.x - p.x || 1, o.y - p.y, knock, '#ffffff', elem);
     else if (t.kind === 'self') p.takeDamage(amount, this);
     else if (Number.isFinite(o.hp) && Number.isFinite(o.maxHp)) {
+      const hpBefore = o.hp;
       let taken = Math.max(0, amount * markMultiplier(o));
       if (taken > 0) taken = Math.max(1, taken - (o.cardArmor || 0));
       const absorbed = Math.min(o.cardShield || 0, taken);
@@ -773,6 +785,7 @@ class Game {
       if (o.hp === 0) {
         o.dead = true; this.burst(o.x, o.y, '#c9d4ea', 10);
       }
+      reportSlotHit(this, this._collisionSource || this.actionActor || p, o, hpBefore - o.hp + absorbed, elem);
     }
     else if (t.kind !== 'point') this.shatter(o);
   }
@@ -782,6 +795,9 @@ class Game {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
+    this._slotExecution?.applied.push(o);
+    emitSlotEvent(this, o, 'applied', { subject: o, status: key });
+    if (key === 'burn') registerBurnLink(this, o, duration);
     const timers = direct ? (o.directStates ||= {}) : o;
     const timer = direct ? key : key + 'T';
     if (key === 'mark' || key === 'burn') {
@@ -908,11 +924,15 @@ class Game {
   }
 
   /** 플레이어 → 대상 방향 (자신이 대상이면 바라보는 방향) */
-  aimAt(t) {
-    const p = this.player;
-    if (t.kind === 'self') return Math.atan2(p.facing.y, p.facing.x);
-    const o = this.targetObj(t);
-    return Math.atan2(o.y - p.y, o.x - p.x);
+  aimAt(t, from) {
+    const actor = this.actionActor || this.player, o = this.targetObj(t);
+    // 이벤트 위치가 대상과 겹치면(타격된 상대에게 발동) 행동 주체에서 대상을 바라본다. 둘 다 겹치면 바라보는 방향.
+    for (const p of [from || this.actionOrigin || actor, actor]) {
+      const dx = o.x - p.x, dy = o.y - p.y;
+      if (dx * dx + dy * dy > 1) return Math.atan2(dy, dx);
+    }
+    const facing = actor.facing || this.player.facing;
+    return Math.atan2(facing.y, facing.x);
   }
 
   /** (x, y) 반경 r 안의 적 모두에게 피해. 넉백은 중심에서 바깥쪽으로. */
@@ -957,7 +977,7 @@ class Game {
   }
 
   shoot(opts) {
-    const p = this.player;
+    const p = this.actionOrigin || this.actionActor || this.player;
     return this.spawnProjectile({ source: this.actionActor || p, x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts });
   }
 
@@ -966,7 +986,7 @@ class Game {
     const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'bolt', this.actionCard);
     if (settings) {
       if (settings.blockFear && hasTargetState(actor, 'fear')) return;
-      const target = this.targetObj(t), base = Math.atan2(target.y - actor.y, target.x - actor.x);
+      const base = this.aimAt(t, actor);
       const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1);
       const n = settings.n ?? 1, ring = settings.ring === 'auto' ? n > 1 : settings.ring;
       for (let i = 0; i < n; i++) {
@@ -998,6 +1018,7 @@ class Game {
     const actor = this.actionActor || this.player, zone = actor.slot?.kind === 'zone' && actor.source;
     const damage = zone ? this.actionValue('explode', 'damage', zone) : this.actionDamage('explode');
     this.blast(o.x, o.y, 100, damage, '#ff8a3d', null, false, this.actionValue('explode', 'knockback'));
+    if (actor.kind === 'mine') emitSlotEvent(this, actor, 'detonate', { subject: actor });
   }
 
   frost(o, t) {
@@ -1019,24 +1040,13 @@ class Game {
   /** 장판 자신의 슬롯에서 소용돌이·결계 기본 카드가 매 프레임 작동할 때의 설정 */
   zoneModeSettings(actor, id, dt) {
     if (dt == null || !CARDS[id].zoneKinds.includes(actor.kind) || actor.slot?.kind !== 'zone') return undefined;
-    return { continuous: true, speedRatio: ACTION_STAT_RATIOS[id].forceSpeed, attached: !!actor.directTarget };
+    return { continuous: true, speedRatio: ACTION_STAT_RATIOS[id].forceSpeed };
   }
 
   vortex(o, t, dt) {
     const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'vortex', this.actionCard) ?? this.zoneModeSettings(actor, 'vortex', dt);
     if (!settings?.continuous || dt == null) return this.addZone('vortex', o, t);
     const speed = entityStats(actor).knockback * settings.speedRatio;
-    if (settings.attached) {
-      const target = o === actor ? actor.directTarget && this.targetObj(actor.directTarget) : o;
-      if (!target || target.dead) { actor.dead = true; return; }
-      const p = this.player;
-      if (target === p) return;
-      const dx = p.x - target.x || 1, dy = p.y - target.y, d = Math.hypot(dx, dy);
-      const step = Math.min(Math.max(0, d - 20), speed * dt);
-      target.x += dx / d * step; target.y += dy / d * step;
-      if (target.follow) target.follow = null;
-      return;
-    }
     const radius = entityStats(actor).range;
     const near = this.hash.query(o.x, o.y, radius, this._near);
     for (const e of near) {
@@ -1045,6 +1055,7 @@ class Game {
       if (d > radius || d < 10) continue;
       const step = Math.min(d - 10, speed * dt * e.knockResist);
       e.x += dx / d * step; e.y += dy / d * step;
+      if (step > 0) emitSlotEvent(this, actor, 'moved', { subject: e });
     }
   }
 
@@ -1068,6 +1079,7 @@ class Game {
     const p = this.player;
     const o = this.targetObj(t);
     if (o.dead) return;
+    const beforeHp = o.hp;
     if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
     else if (kind === 'heal') this.healTarget(o, this.actionValue('heal', 'heal', o));
     else if (kind === 'prolong') {
@@ -1080,6 +1092,8 @@ class Game {
       this.syncTargetBuffs(o);
     }
     const b = BUFFS[kind];
+    if (kind !== 'heal') emitSlotEvent(this, o, 'applied', { subject: o, status: kind });
+    else if (o === p && o.hp > beforeHp) emitSlotEvent(this, o, 'healed', { subject: o, amount: o.hp - beforeHp });
     const color = kind === 'heal' ? '#5be37a' : kind === 'shield' ? '#7fb2ff' : b.color;
     this.circleFx(o.x, o.y, 34, color, { life: 0.35, follow: o, style: 'wave' });
     if (b) this.addText(o.x, o.y - 44, b.name, color);
@@ -1363,6 +1377,7 @@ class Game {
     const angle = o.facing ? Math.atan2(o.facing.y, o.facing.x) : Number.isFinite(o.ang) ? o.ang : o.vx || o.vy ? Math.atan2(o.vy, o.vx) : o.flip ? Math.PI : Math.atan2(p.facing.y, p.facing.x);
     const x = o.x, y = o.y;
     o.x += Math.cos(angle) * distance; o.y += Math.sin(angle) * distance;
+    if (o.x !== x || o.y !== y) emitSlotEvent(this, o, 'moved', { subject: o });
     if (o.follow) o.follow = null;
     this.addFx({ kind: 'beam', x, y, x1: o.x, y1: o.y, color, w: 4, life: 0.2 });
   }
@@ -1385,17 +1400,6 @@ class Game {
     const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'ward', this.actionCard) ?? this.zoneModeSettings(actor, 'ward', dt);
     if (settings?.continuous && dt != null) {
       const speed = entityStats(actor).knockback * settings.speedRatio;
-      if (settings.attached) {
-        const target = o === actor ? actor.directTarget && this.targetObj(actor.directTarget) : o;
-        if (!target || target.dead) { actor.dead = true; return; }
-        const p = this.player;
-        if (target === p) return;
-        const dx = p.x - target.x || 1, dy = p.y - target.y, d = Math.hypot(dx, dy);
-        const step = -Math.min(Math.max(0, d - 20), speed * dt);
-        target.x += dx / d * step; target.y += dy / d * step;
-        if (target.follow) target.follow = null;
-        return;
-      }
       const radius = entityStats(actor).range;
       const near = this.hash.query(o.x, o.y, radius + MAX_ENEMY_RADIUS, this._near);
       for (const e of near) {
@@ -1404,6 +1408,7 @@ class Game {
         if (d >= edge) continue;
         const step = Math.min(edge - d, speed * dt * Math.max(0.25, e.knockResist));
         e.x += dx / d * step; e.y += dy / d * step;
+        if (step > 0) emitSlotEvent(this, actor, 'moved', { subject: e });
       }
       return;
     }
@@ -1527,7 +1532,7 @@ class Game {
         copiedStats[stat] = originalStats[stat];
       }
       c.team = o.team;
-      for (const field of ['follow', 'directTarget']) if (o[field] !== undefined) c[field] = o[field];
+      if (o.follow !== undefined) c.follow = o.follow;
       if (Number.isFinite(o.life)) c.life = o.life;
       if (Number.isFinite(o.escT)) c.escT = o.escT;
       if (Number.isFinite(o.hp)) c.hp = o.hp;
@@ -1606,15 +1611,11 @@ class Game {
     slot.onDeath(this);
     if (!forced || slot.cards.some(id => cardBaseId(id) === 'explode')) return;
     if (z.kind === 'poison') return;
-    this.zoneDeathBlast(z, { damage: 45, radius: 100, elem: null, color: '#ffb347', attached: !!z.directTarget });
+    this.zoneDeathBlast(z, { damage: 45, radius: 100, elem: null, color: '#ffb347' });
   }
 
   zoneDeathBlast(z, blast) {
-    if (blast.attached && z.directTarget) {
-      this.damageTarget(z.directTarget, blast.damage, 0, blast.elem);
-      this.circleFx(z.x, z.y, blast.radius, blast.color, { life: 0.35 });
-    } else {
-      this.blast(z.x, z.y, blast.radius, blast.damage * this.player.stats.might * this.player.cardMul, blast.color, blast.elem, false, blast.knockback);    }
+    this.blast(z.x, z.y, blast.radius, blast.damage * this.player.stats.might * this.player.cardMul, blast.color, blast.elem, false, blast.knockback);
   }
 
   updateZones(dt0) {
@@ -1650,7 +1651,6 @@ class Game {
           knockback: hit.knockback * (settings.knockbackRatio ?? 1), repeatCd: settings.repeatCd, time: z.bladeTime,
         }, z.collisionPoints);
       }
-      if (z.directTarget && z.kind === 'poison' && this.targetObj(z.directTarget).dead) z.dead = true;
 
   }
 
@@ -1868,8 +1868,11 @@ class Game {
     const source = opts.source ?? this.player;
     const pr = new Projectile({ source, ...opts, team: opts.team ?? entityTeam(source), pierce: Infinity });
     if (this.actionHitTeamRule) {
-      pr.slot.cards = pr.slot.cards.map(id => CARDS[id].hitTeamRule ? `entityHitTeam_${this.actionHitTeamRule}` : id);
-      pr.slot.defaults = pr.slot.cards.slice(); pr.slot.changed();
+      for (const slot of pr.slots) if (slot.cards.some(id => cardBaseId(id) === 'entityHit')) {
+        slot.cards = [`entityHitTeam_${this.actionHitTeamRule}`, ...slot.cards];
+        slot.defaults = slot.cards.slice(); slot.changed();
+      }
+      pr.slot.syncSlots();
     }
     this.projectiles.push(pr);
     return pr;
@@ -1887,12 +1890,16 @@ class Game {
     }
     const aff = Math.max(1, e.affinityOf(elem));
     let amount = Math.max(1, dmg * aff - (e.cardArmor || 0));
+    let shieldAbsorbed = 0;
     if (e.cardShield > 0) {
       const absorbed = Math.min(e.cardShield, amount);
+      shieldAbsorbed = absorbed;
       e.cardShield -= absorbed;
       amount -= absorbed;
     }
+    const before = e.hp;
     if (amount > 0) this.hurtEnemy(e, amount, dirX, dirY, knockback, aff > 1 ? '#ffe45c' : color);
+    reportSlotHit(this, this._collisionSource || this.actionActor || this.player, e, before - e.hp + shieldAbsorbed, elem);
   }
 
   /** 적을 치유. */

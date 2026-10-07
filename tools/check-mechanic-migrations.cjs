@@ -24,7 +24,7 @@ vm.runInContext(`
   assert.equal(game.hazards.length, 0);
   shooter.fearT = 0; shooter.freezeT = 1; shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 0);
-  shooter.freezeT = 0; shooter.update(0.01, game.player, game);
+  shooter.freezeT = 0; shooter.slots.forEach(s => { s.eventClock = null; }); shooter.update(0.01, game.player, game);
   assert.equal(game.hazards.length, 1);
   shooter.update(0.1, game.player, game); assert.equal(game.hazards.length, 1);
   shooter.slot.cards = ['entitySelf']; shooter.slot.changed();
@@ -45,7 +45,7 @@ vm.runInContext(`
   knight.slot.cards = knight.slot.cards.filter(id => CARDS[id].mechanic !== 'entityMove'); knight.slot.changed();
   knight.update(0.01, game);
   assert.equal(victim.hp, victim.maxHp - 12, 'rally no longer doubles ally damage'); assert.ok(knight.swing > 0);
-  const bow = new Ally('archer', 0, 0); bow.rallyT = 5; bow.slot.cooldowns.clear();
+  const bow = new Ally('archer', 0, 0); bow.rallyT = 5; bow.slots.forEach(s => { s.heat = 0; s.eventClock = null; });
   game.projectiles = []; bow.update(0.01, game);
   const arrow = game.projectiles[0];
   assert.equal(arrow.shape, 'arrow'); assert.equal(arrow.life, 0.8);
@@ -60,7 +60,7 @@ vm.runInContext(`
   assert.equal(victim.hp, before - 8); assert.ok(victim.x < afterX);
   abyss.slot.update(0.31, game); assert.equal(victim.hp, before - 16);
   const attached = game.addZone('abyss', victim, { kind: 'enemy', e: victim });
-  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityAttached'));
+  assert.ok(attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea'));
   const beforeAttached = victim.hp;
   attached.slot.update(0.01, game); assert.equal(victim.hp, beforeAttached - 8);
   const pullVictim = new Enemy('brute', 100, 0, 100);
@@ -80,10 +80,11 @@ vm.runInContext(`
   swirl.slot.update(0.1, game); assert.equal(pullVictim.x, 70);
   game.player.x = 0; game.player.y = 0; pullVictim.x = 100;
   const boundSwirl = game.addZone('vortex', pullVictim, { kind: 'enemy', e: pullVictim });
-  boundSwirl.slot.update(0.1, game); assert.ok(pullVictim.x < 100);
-  boundSwirl.combatStats.knockback = 10000; boundSwirl.slot.update(0.1, game);
-  assert.equal(pullVictim.x, 20);
-  pullVictim.dead = true; boundSwirl.slot.update(0.01, game); assert.ok(boundSwirl.dead);
+  const swirlNeighbor = new Enemy('brute', 160, 0, 100);
+  game.enemies.push(swirlNeighbor); game.rebuildHash();
+  boundSwirl.slot.update(0.1, game); assert.equal(pullVictim.x, 100, 'followed vortex does not pull its host');
+  assert.ok(swirlNeighbor.x < 160, 'followed vortex pulls nearby enemies toward its host');
+  pullVictim.dead = true; boundSwirl.slot.update(0.01, game); assert.ok(!boundSwirl.dead, 'followed vortex outlives its host');
   const ordinaryCount = game.zones.length;
   game.cardEnv().vortex({ x: 0, y: 0 }, { kind: 'point', x: 0, y: 0 });
   assert.equal(game.zones.length, ordinaryCount + 1, 'ordinary vortex still creates a zone');
@@ -101,8 +102,8 @@ vm.runInContext(`
   barrier.slot.cards = ['entitySelf']; barrier.slot.changed(); repelVictim.x = 50;
   barrier.slot.update(0.1, game); assert.equal(repelVictim.x, 50);
   const attachedBarrier = game.addZone('ward', repelVictim, { kind: 'enemy', e: repelVictim });
-  attachedBarrier.slot.update(0.01, game); assert.equal(repelVictim.x, 56);
-  repelVictim.dead = true; attachedBarrier.slot.update(0.01, game); assert.ok(attachedBarrier.dead);
+  attachedBarrier.slot.update(0.01, game); assert.equal(repelVictim.x, 50, 'followed ward does not push its host');
+  repelVictim.dead = true; attachedBarrier.slot.update(0.01, game); assert.ok(!attachedBarrier.dead, 'followed ward outlives its host');
   const gem = new Pickup('gem', 1850, 0);
   assert.equal(entityStats(gem).reach, 1800, 'experience gems are attracted from 20x the item distance');
   game.player.x = 0; game.player.y = 0;
@@ -146,7 +147,7 @@ vm.runInContext(`
   const expiredBlades = game.addZone('blades', { x: 0, y: 0 }); expiredBlades.life = 0.001;
   const expiryHp = bladeVictim.hp; expiredBlades.slot.update(0.01, game);
   assert.equal(bladeVictim.hp, expiryHp); assert.ok(expiredBlades.dead);
-  const expiring = new Ally('archer', 0, 0); expiring.life = 0.001; expiring.slot.cooldowns.clear();
+  const expiring = new Ally('archer', 0, 0); expiring.life = 0.001; expiring.slots.forEach(s => { s.heat = 0; s.eventClock = null; });
   const shotCount = game.projectiles.length; expiring.update(0.01, game);
   assert.equal(game.projectiles.length, shotCount, 'expired allies do not fire');
 `, context);
