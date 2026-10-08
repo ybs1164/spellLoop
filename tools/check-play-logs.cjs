@@ -69,12 +69,17 @@ const root = path.resolve(__dirname, '..');
     console.log('Storage status:', await page.evaluate(() => PlayLog.status));
     await page.waitForFunction(() => PlayLog.status.error?.includes('503'), null, { polling: 100 });
     const pending = JSON.parse(await page.evaluate(() => PlayLog.exportPending()));
-    const events = pending.batches.flatMap(b => b.events);
-    for (const type of ['run_start', 'run_ready', 'entity_spawn', 'entity_snapshot', 'card_execute', 'damageEnemy', 'player_takeDamage', 'pickup_collect', 'deck_addCard', 'openEditor', 'run_end']) {
-      assert.ok(events.some(e => e.type === type), `missing ${type}`);
-    }
-    assert.ok(events.some(e => e.executions?.length > 1), 'repeated card executions are compacted');
-    assert.ok(events.filter(e => e.type === 'entity_spawn').every(e => e.data.stats && e.data.slots));
+    const rows = table => pending.batches.flatMap(b => b.rows[table] || []);
+    const types = new Set(rows('event').map(r => r[3]));
+    for (const type of ['run_ready', 'openEditor', 'closeEditor', 'deck_addCard']) assert.ok(types.has(type), `missing ${type}`);
+    for (const table of ['run', 'end', 'entity', 'pos', 'card', 'damage', 'player']) assert.ok(rows(table).length, `missing ${table} rows`);
+    assert.ok(rows('damage').some(r => r[3] === 'damageEnemy'), 'missing damageEnemy');
+    assert.ok(rows('player').some(r => r[3] === 'takeDamage'), 'missing takeDamage');
+    assert.ok(types.has('pickup_collect'), 'missing pickup_collect');
+    assert.ok(rows('card').some(r => r[7].length > 1), 'repeated card executions are compacted');
+    assert.ok(rows('card').every(r => r[7].length === r[8].length));
+    assert.ok(rows('entity').filter(r => r[3] === 'S').every(r => r[8].length === 21 && r[9] !== undefined));
+    const events = pending.batches.flatMap(b => Object.values(b.rows).flat());
     assert.ok(pending.batches.length > 0, 'failed uploads stay durable');
     const retryId = requests[0].id;
     await page.reload();
@@ -117,7 +122,7 @@ const root = path.resolve(__dirname, '..');
     assert.equal(broken.fingerprint, baseline.fingerprint, 'storage failure must not affect gameplay');
     assert.ok(JSON.parse(await brokenPage.evaluate(() => PlayLog.exportPending())).memory.length > 0, 'storage failure retains memory for export');
     console.log(JSON.stringify({ result: 'PASS', events: events.length,
-      executions: events.reduce((n, e) => n + (e.executions?.length || 0), 0),
+      executions: rows('card').reduce((n, r) => n + r[7].length, 0),
       bytes: Buffer.byteLength(JSON.stringify(pending)), loggedMs: logged.ms, baselineMs: baseline.ms }));
   } finally {
     await browser?.close();
