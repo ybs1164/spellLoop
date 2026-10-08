@@ -17,24 +17,31 @@ const TRAITS = {
 /*
  * 적 상태 이상. 하나에 효과 하나. 설명은 여기 한 곳에서만 쓰고, 카드는 이름과 지속시간만 적는다 (keys 로 이 설명을 붙인다).
  * 보스는 빙결이 40% 시간만 걸리고 공포에 걸리지 않는다.
+ * 빙결·속박·공포는 합산하되 STATUS_CAPS × (1 - 상태 저항)을 넘지 않는다.
  */
 const STATUS = {
-  freeze: { name: '빙결', color: '#9fd8ff', desc: '완전히 멈춤 · 중첩 시 지속시간 합산' },
-  root:   { name: '속박', color: '#b5e48c', desc: '이동 불가 · 중첩 시 지속시간 합산' },
-  fear:   { name: '공포', color: '#ffd166', desc: '나에게서 도망 · 중첩 시 지속시간 합산' },
+  freeze: { name: '빙결', color: '#9fd8ff', desc: '완전히 멈춤 · 중첩 시 지속시간 합산(상한 있음)' },
+  root:   { name: '속박', color: '#b5e48c', desc: '이동 불가 · 중첩 시 지속시간 합산(상한 있음)' },
+  fear:   { name: '공포', color: '#ffd166', desc: '나에게서 도망 · 중첩 시 지속시간 합산(상한 있음)' },
   mark:   { name: '표식', color: '#ff5c5c', desc: '중첩당 받는 피해 +90% · 각각 만료' },
   burn:   { name: '화상', color: '#ff7b2e', desc: '중첩별 초당 피해 합산 · 각각 만료' },
 };
+const MARK_MAX_STACKS = 5;   // 표식 중첩 상한 (최대 +450%)
 function markMultiplier(o) {
   const count = o.markStacks ? o.markStacks.reduce((n, s) => n + (s.time > 0 ? s.count ?? 1 : 0), 0) : (o.markT > 0 || o.directStates?.mark > 0 ? 1 : 0);
-  return 1 + 0.9 * count;
+  return 1 + 0.9 * Math.min(count, MARK_MAX_STACKS);
 }
 
 const BOSS_FREEZE = 0.4;   // 보스가 받는 빙결 시간 배율
+// 합산되는 제어 상태 이상의 기본 지속 상한(초). 실제 상한은 × (1 - 상태 저항).
+const STATUS_CAPS = { freeze: 3, root: 4, fear: 4 };
+function statusCap(o, key) { return STATUS_CAPS[key] * (1 - entityStats(o).statusResistance); }
+/** 강제 이동(넉백·끌어당김·소용돌이·결계·공포 이동) 배율: 넉백 저항과 상태 저항을 함께 받는다. */
+function forcedMoveScale(o) { const st = entityStats(o); return (1 - st.knockbackResistance) * (1 - st.statusResistance); }
 
 /*
  * sprites: Tiny Dungeon 타일 후보(개체마다 무작위), scale: 도트 확대 배율(정수)
- * ai: chase(기본) | keep(거리 유지) | flee(도망, escape 초 뒤 사라짐 · loot: 잡으면 보물 상자) · summon: 주기적으로 부하 소환 · shoot: 주기적으로 탄 발사
+ * ai: chase(기본) | keep(거리 유지) · summon: 주기적으로 부하 소환 · shoot: 주기적으로 탄 발사
  * split: 죽으면 작은 적으로 분열 · elite: 체력바 표시 · tint: 스프라이트 색조
  */
 const ENEMY_TYPES = {
@@ -87,8 +94,6 @@ const ENEMY_TYPES = {
   mimic:     { name: '미믹',       hp: 110,  speed: 74,  radius: 16, damage: 18, xp: 10, color: '#d8a15a', sprites: [TD.mimic], scale: 3, traits: ['armored'], elite: true },
   darkKnight:{ name: '타락 기사',  hp: 150,  speed: 58,  radius: 16, damage: 20, xp: 12, color: '#8a93a8', sprites: [TD.darkKnight], scale: 3, traits: ['shielded'], elite: true },
   /* 모든 단계 · 한 번씩 나타나 도망친다. 잡으면 보물 상자. */
-  chestling: { name: '달아나는 보물 상자', hp: 90, speed: 150, radius: 14, damage: 0, xp: 0, color: '#ffd166', sprites: [TD.chest], scale: 3, elite: true,
-               ai: 'flee', escape: 22, loot: true },
   overlord:  { name: '심연 군주',  hp: 36000, speed: 52,  radius: 42, damage: 34, xp: 0,  color: '#ff3b6b', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire', 'armored'],
                shoot: { cd: 3, n: 14, speed: 180, damage: 16, ring: true },
                bossHint: '3초마다 14방향 탄막 · 화염과 갑주 — 빙결의 큰 한 방과 탄막 사이 이동이 핵심입니다.' },
@@ -296,7 +301,7 @@ class Enemy {
     this.color = def.color;
     this.boss = !!def.boss;
     this.knockbackResistance = this.boss ? 0.92 : this.radius > 20 ? 0.6 : def.traits?.includes('armored') ? 0.4 : 0;
-    this.expireWithoutDeathRewards = !!def.escape;
+    this.statusResistance = this.boss ? 0.8 : def.elite ? 0.25 : 0;
     this.sprite = pick(def.sprites);
     this.scale = def.scale;
     // 속성: 원소 배율을 하나로 합치고, 갑주는 더한다
@@ -314,7 +319,6 @@ class Enemy {
     this.summonCd = 0;
     this.shootCd = 0;
     this.strafe = Math.random() < 0.5 ? 1 : -1;
-    this.escT = def.escape || 0;   // flee: 남은 도주 시간
     this.healT = 0;     // 회복 섬광
     this.kx = 0; this.ky = 0;   // 넉백 속도
     // 상태 이상 남은 시간
@@ -370,14 +374,6 @@ class Enemy {
       const fx = this.x - player.x, fy = this.y - player.y, fd = Math.hypot(fx, fy) || 1;
       mx = fx / fd; my = fy / fd;
       this.ang = Math.atan2(my, mx);   // 도망칠 땐 등을 보인다
-    } else if (this.slot.has('entityFlee')) {
-      // 플레이어에게서 멀어지며 지그재그로 도망친다.
-      const fx = this.x - player.x, fy = this.y - player.y, fd = Math.hypot(fx, fy) || 1;
-      const zig = Math.sin(this.wobble * 0.35) * 0.7;
-      mx = fx / fd - (fy / fd) * zig; my = fy / fd + (fx / fd) * zig;
-      const m = Math.hypot(mx, my) || 1;
-      mx /= m; my /= m;
-      this.ang = Math.atan2(my, mx);
     } else if (this.slot.has('entityKeep')) {
       // 사거리 유지: 너무 가까우면 물러나고, 적당하면 옆으로 돈다
       const k = this.slot.effect('entityKeep').distance;
@@ -408,7 +404,7 @@ class Enemy {
     return action && elem === action.elem ? action.multiplier : 1;
   }
 
-  get knockResist() { return 1 - entityStats(this).knockbackResistance; }
+  get knockResist() { return forcedMoveScale(this); }
 
   hit(dmg, kx, ky) {
     this.hp -= dmg;
@@ -424,11 +420,11 @@ class Enemy {
     const flip = Math.cos(this.ang) < 0;
     const sy = y - r * 0.15 + bob;
     const fire = this.traits.includes('fire');
-    const alpha = this.escT > 0 && this.escT < 4 && Math.floor(time * 10) % 2 === 0 ? 0.4 : this.traits.includes('undead') ? 0.78 : 1;
+    const alpha = this.traits.includes('undead') ? 0.78 : 1;
     // 종족 색조는 본체와 한 장으로 합성한 타일을 쓴다
     const overlay = this.tint, overlayAlpha = this.def.tint ? 0.62 : 0.28;
     let drawn;
-    if (this.rootT <= 0 && !this.def.loot) {
+    if (this.rootT <= 0) {
       // 흔한 경우: 그림자·불꽃 아우라·본체·색조를 합성한 몸체 한 장 (아우라 밝기는 0.02 단계)
       let family = this._body;
       if (!family || family.r !== r || family.idx !== this.sprite) {
@@ -452,14 +448,6 @@ class Enemy {
         ctx.fillStyle = '#ff6e28';
         Px.disc(ctx, x, sy, r + 6);
         ctx.globalAlpha = 1;
-      }
-      if (this.def.loot) {
-        // 금빛 광채 + 뒤로 흩날리는 금가루
-        ctx.globalAlpha = 0.22 + Math.sin(time * 8) * 0.08;
-        ctx.fillStyle = '#ffd166';
-        Px.disc(ctx, x, sy, r + 10);
-        ctx.globalAlpha = 1;
-        if (Math.random() < 0.3) game.burst(x, y, '#ffd166', 1);
       }
       drawn = Sprites.draw(ctx, 'td', this.sprite, x, sy, this.scale, overlay ? { flip, alpha, overlay, overlayAlpha } : { flip, alpha });
     }

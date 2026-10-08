@@ -16,7 +16,7 @@ get(`
     ['ally', 'a', new Ally('archer', 0, 0), true, true],
     ['ally', 'a', new Ally('clone', 0, 0), false, false],
     ...['orb', 'mine', 'turret', 'barrel', 'decoy'].map(k => ['object', 'o', new Placed(k, 0, 0, 1), k !== 'decoy', ['orb', 'turret'].includes(k)]),
-    ...['grunt', 'pyro', 'necro', 'chestling'].map(k => ['enemy', 'e', new Enemy(k, 0, 0, 1), k !== 'chestling', ['pyro', 'necro'].includes(k)]),
+    ...['grunt', 'pyro', 'necro'].map(k => ['enemy', 'e', new Enemy(k, 0, 0, 1), true, ['pyro', 'necro'].includes(k)]),
     ['gem', 'g', new Pickup('gem', 0, 0, 4), true, false],
     ['pickup', 'g', new Pickup('heart', 0, 0), false, false],
     ['zone', 'z', { kind: 'ward', x: 0, y: 0, tick: 0 }, false, false],
@@ -73,7 +73,7 @@ assert.equal(get('Number.isFinite(nearPullTarget.x) && Number.isFinite(nearPullT
 get(`
   const game = Object.create(Game.prototype);
   game.player = new Player(0, 0);
-  game.enemies = [new Enemy('grunt', 20, 0, 1), new Enemy('grunt', 2000, 0, 1), new Enemy('chestling', 30, 0, 1)];
+  game.enemies = [new Enemy('grunt', 20, 0, 1), new Enemy('grunt', 2000, 0, 1), new Enemy('grunt', 30, 0, 1)];
   game.objects = [new Placed('orb', 10, 0, 1)];
   game.allies = [new Ally('knight', 15, 0)];
   game.zones = [{ kind: 'poison', x: 20, y: 0, r: 60, life: 2, max: 4, tick: 0 }];
@@ -95,7 +95,6 @@ assert.equal(get('CARDS.woundedEnemies.resolve(env).length'), 1);
 assert.equal(get("actionApplies(CARDS.heal, all.find(t => t.kind === 'enemy'), env)"), true);
 assert.equal(get("actionApplies(CARDS.heal, all.find(t => t.kind === 'shot'), env)"), false);
 assert.equal(get("actionApplies(CARDS.refresh, { kind: 'enemy', e: game.enemies[0] }, env)"), false);
-assert.equal(get("actionApplies(CARDS.refresh, { kind: 'enemy', e: game.enemies[2] }, env)"), true);
 get('game.enemies[0].targetFeatures = { health: false }');
 assert.equal(get("actionApplies(CARDS.heal, { kind: 'enemy', e: game.enemies[0] }, env)"), false, 'explicit OFF overrides health');
 get('delete game.enemies[0].targetFeatures');
@@ -109,8 +108,6 @@ get("game.castBuff('prolong', { kind: 'zone', z: game.zones[0] })");
 assert.equal(get('game.zones[0].life'), 3);
 get('game.refresh(game.zones[0])');
 assert.equal(get('game.zones[0].life'), 4);
-get('game.enemies[2].escT = 1; game.refresh(game.enemies[2])');
-assert.equal(get('game.enemies[2].escT'), 22);
 get("game.castBuff('haste', { kind: 'shot', s: game.hazards[0] }); game.castBuff('rage', { kind: 'ally', a: game.allies[0] }); game.updateTargetBuffs(6)");
 assert.ok(Math.abs(get('game.zones[0].r') - 60) < 1e-9, 'expired size buff restores radius');
 assert.equal(get('game.hazards[0].cardMove'), 1);
@@ -130,7 +127,7 @@ assert.equal(get('game.pickups[1].dead'), true);
 get("game.split({ kind: 'gem', g: game.pickups[0] })");
 assert.equal(get("game.pickups.filter(o => o.kind === 'gem').reduce((n, o) => n + o.value, 0)"), 4, 'splitting gems preserves XP');
 get("game.absorb(game.enemies[0], { kind: 'enemy', e: game.enemies[0] })");
-assert.equal(get('game.enemies[0].dead'), true);
+assert.equal(get('game.enemies[0].dead'), false, 'absorb cannot kill enemies');
 get(`
   game.state = 'playing'; game.events = new EventBus();
   game.player.hp = 70; game.player.invuln = 0;
@@ -240,7 +237,7 @@ get(`
   for (let i = 0; i < 240; i++) simulation.step(1 / 60);
   for (const t of simulation.allTargets()) {
     const o = simulation.targetObj(t);
-    for (const key of ['x', 'y', 'hp', 'radius', 'r', 'life', 'escT', 'vx', 'vy']) {
+    for (const key of ['x', 'y', 'hp', 'radius', 'r', 'life', 'vx', 'vy']) {
       if (key in o && !Number.isFinite(o[key])) throw new Error('invalid field: ' + t.kind + '.' + key);
     }
   }

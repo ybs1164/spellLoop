@@ -92,7 +92,7 @@ function run(seed, scenario, cards, seconds, tunings=null) {
 }
 const catalog={actions:actions.map(id=>({id,name:CARDS[id].name,cost:CARDS[id].cost,delay:cardDelay(id)})),targets:targets.map(id=>({id,name:CARDS[id].name,cost:CARDS[id].cost}))};
 const compatibility=[];
-for(const t of targets)for(const a of actions){const g=setup(1,{n:8,wounded:true,type:'chestling'},[t,a]);const env=g.cardEnv();const selected=CARDS[t].resolve(env,{deck:g.player.deck});compatibility.push({target:t,action:a,selected:selected.length,applicable:selected.filter(x=>actionApplies(CARDS[a],x,env)).length,cost:cardsCost([t,a])});}
+for(const t of targets)for(const a of actions){const g=setup(1,{n:8,wounded:true,type:'grunt'},[t,a]);const env=g.cardEnv();const selected=CARDS[t].resolve(env,{deck:g.player.deck});compatibility.push({target:t,action:a,selected:selected.length,applicable:selected.filter(x=>actionApplies(CARDS[a],x,env)).length,cost:cardsCost([t,a])});}
 function arena(seed, tier, slots, tunings=null) {
   const saved={};
   if(tunings)for(const [id,t]of Object.entries(tunings)){saved[id]=CARDS[id].delay;CARDS[id].delay=t.delay;}

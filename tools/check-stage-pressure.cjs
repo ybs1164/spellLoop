@@ -10,7 +10,7 @@ const g=Object.create(Game.prototype);
 Object.assign(g,{events:new EventBus(),hash:new SpatialHash(64),_near:[],w:1000,h:800,clock:0});
 g.start([0,3,6]);
 for(const stage of STAGES){
-  g.stage=stage;g.stageStart=0;g.time=180;g.nextSwarmAt=Infinity;g.lootAt=null;
+  g.stage=stage;g.stageStart=0;g.time=180;g.nextSwarmAt=Infinity;
   g.spawnedBosses=new Set(stage.bosses.map((_,i)=>i));g.bossSpawned=false;g.spawnAcc=0;
   let spawned=0;
   g.spawnEnemy=()=>{spawned++;};

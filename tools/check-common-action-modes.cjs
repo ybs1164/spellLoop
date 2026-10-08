@@ -27,8 +27,9 @@ vm.runInContext(`
   const markedHp = armored.hp;
   game.damageEnemy(armored, 10, 1, 0, 0); close(armored.hp, markedHp - 15);
   armored.slot.cards = armored.slot.cards.filter(id => cardBaseId(id) !== 'armor'); armored.slot.changed();
-  assert.equal(armored.slot.effect('armor'), undefined); close(armored.knockResist, 0.6);
-  armored.combatStats.knockbackResistance = 0; close(armored.knockResist, 1);
+  assert.equal(armored.slot.effect('armor'), undefined); close(armored.knockResist, 0.6 * 0.75);
+  armored.combatStats.knockbackResistance = 0; close(armored.knockResist, 0.75);
+  armored.combatStats.statusResistance = 0; close(armored.knockResist, 1);
   const unarmoredHp = armored.hp;
   game.damageEnemy(armored, 10, 1, 0, 0); close(armored.hp, unarmoredHp - 19);
   assert.ok(!armored.cardBuffs?.armor, 'passive armor leaves no timed buff');

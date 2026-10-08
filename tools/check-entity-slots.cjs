@@ -34,33 +34,6 @@ vm.runInContext(`
     assert.equal(game.pickups.length, drops + 1, state + ' preserves death rewards');
     game.pickups.splice(drops);
   }
-  const runner = new Enemy('chestling', 300, 300, 1);
-  assert.equal(runner.slots.length, 4);
-  assert.equal(runner.slot.effect('entityFlee').seconds, undefined);
-  runner.slots[0].cards = []; runner.slots[0].changed(); runner.slot.syncSlots();
-  const runnerX = runner.x;
-  runner.escT = 0.2;
-  game.castBuff('prolong', { kind: 'enemy', e: runner });
-  runner.update(0.2, game.player, game);
-  assert.equal(runner.dead, false, 'prolong delays independent expiration');
-  assert.equal(runner.x, runnerX, 'expiration does not require movement');
-  game.refresh(runner);
-  assert.equal(runner.escT, 22);
-  const escapeRewards = game.pickups.length;
-  runner.freezeT = 30;
-  runner.update(22, game.player, game);
-  assert.equal(runner.dead, true, 'expiration works while movement is frozen');
-  runner.slot.onDeath(game);
-  assert.equal(game.pickups.length, escapeRewards, 'expiration suppresses death rewards');
-  const immortalRunner = new Enemy('chestling', 300, 300, 1);
-  immortalRunner.slot.cards = []; immortalRunner.slot.changed();
-  immortalRunner.escT = 0.01;
-  immortalRunner.update(0.1, game.player, game);
-  assert.equal(immortalRunner.dead, true, 'basic lifetime expires with every slot empty');
-  const killedRunner = new Enemy('chestling', 300, 300, 1);
-  game.damageEnemy(killedRunner, 10000, 1, 0, 0);
-  assert.ok(game.pickups.slice(escapeRewards).some(p => p.kind === 'chest'), 'killing before expiration still drops a chest');
-  game.pickups.splice(escapeRewards);
   UI.game = game; UI.editSel = 0; UI.editMsg = '';
   assert.equal('entityPlayer' in CARDS, false);
   assert.equal('entityChase' in CARDS, false);
@@ -369,11 +342,13 @@ vm.runInContext(`
   }
   const boss = new Enemy('slimeKing', 100, 0, 1);
   game.addDebuff(boss, 'freeze', 5);
-  assert.equal(boss.freezeT, 2);
+  assert.ok(Math.abs(boss.freezeT - 0.6) < 1e-9);   // 보스 상태 저항 80% → 빙결 상한 3 × 0.2
+  boss.freezeT = 0; game.addDebuff(boss, 'freeze', 0.5);
+  assert.ok(Math.abs(boss.freezeT - 0.2) < 1e-9);
   boss.slot.cards = boss.slot.cards.filter(id => cardBaseId(id) !== 'entityResistance');
   boss.slot.changed(); boss.freezeT = 0;
-  game.addDebuff(boss, 'freeze', 5);
-  assert.equal(boss.freezeT, 5, 'removing boss resistance restores full freeze duration');
+  game.addDebuff(boss, 'freeze', 0.5);
+  assert.ok(Math.abs(boss.freezeT - 0.5) < 1e-9);   // 저항 카드를 빼면 배율은 사라지지만 상한은 상태 저항 스탯을 따른다
   game.start(); game.player.deck.slots = [];
   const lure = new Placed('decoy', 100, 0, 1);
   const follower = new Enemy('grunt', 150, 0, 1);

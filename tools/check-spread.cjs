@@ -28,12 +28,12 @@ vm.runInContext(`
 const { source, near, far, boss } = context.result;
 assert.equal(source.directStates.burn, 3, 'source duration is preserved');
 assert.equal(near.directStates.burn, 3);
-assert.equal(near.directStates.root, 6.8, 'existing control durations stack');
+assert.equal(near.directStates.root, 5, 'durations already above the cap are not extended');
 assert.equal(near.markT, 6);
 assert.equal(far.directStates, undefined, 'enemies outside the radius are unaffected');
 assert.equal(boss.directStates.fear, undefined, 'bosses remain immune to fear');
-assert.equal(boss.directStates.freeze, 4.4, 'boss freeze stacks with resistance');
-assert.equal(boss.freezeT, 4.4);
+assert.equal(boss.directStates.freeze, 4, 'durations already above the cap are not extended');
+assert.equal(boss.freezeT, 4);
 vm.runInContext(`
   boss.directStates.freeze = 0; boss.freezeT = 0;
   game.spread({ kind: 'enemy', e: source });
@@ -45,7 +45,7 @@ vm.runInContext(`
 `, context);
 assert.equal(boss.directStates.freeze, 0.4);
 assert.equal(boss.freezeT, 0.4);
-assert.equal(near.rootT, 7, 'legacy carried states also spread');
+assert.equal(near.rootT, vm.runInContext('STATUS_CAPS.root', context), 'legacy carried states also spread up to the cap');
 assert.equal(context.allyResult.directStates.burn, 0, 'ally carried states are consumed');
 assert.equal(context.allyResult.rootT, 0);
 console.log('Spread checks passed.');

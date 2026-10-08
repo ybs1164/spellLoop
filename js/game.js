@@ -4,6 +4,16 @@ const MAX_ENEMIES = 400;
 const CLEAR_DELAY = 2;   // 마지막 보스가 쓰러지고 클리어 화면까지
 const MAX_HAZARDS = 200;
 const SWARM_INTERVAL = 60;
+// 이펙트 상한: 넘치면 가장 오래된 것부터 지운다
+const MAX_FX = 250;
+const MAX_TEXTS = 150;
+const MAX_PARTICLES = 600;
+
+/** 상한을 넘으면 가장 오래된(앞쪽) 항목을 버리고 새 항목을 넣는다 */
+function pushCapped(list, item, max) {
+  if (list.length >= max) list.splice(0, list.length - max + 1);
+  list.push(item);
+}
 
 // 카드 실행 환경(cardEnv)이 그대로 넘겨받는 Game 메서드 이름
 // 행동 위임 함수: env.bolt(...) 처럼 환경의 메서드로 불리며, 환경의 owner 를 행동 주체로 둔다.
@@ -149,7 +159,6 @@ class Game {
     this.clearT = null;
     this.spawnedBosses = new Set();
     this.nextSwarmAt = SWARM_INTERVAL;
-    this.lootAt = rand(70, 200);   // 단계 안에서 보물 상자가 달아나기 시작하는 시각
     this.stageBanner();
     if (announce) this.shake(8);
   }
@@ -362,7 +371,7 @@ class Game {
   spawnRing() { return Math.hypot(this.w, this.h) / 2 + 60; }
 
   /** 단계 배수 hpScale 은 보물 상자(loot)에는 적용하지 않는다 */
-  hpMul(type) { return (this.stage.hp + (this.stageTime() / 60) * 0.2) * (ENEMY_TYPES[type]?.loot ? 1 : this.stage.hpScale ?? 1); }
+  hpMul(type) { return (this.stage.hp + (this.stageTime() / 60) * 0.2) * (this.stage.hpScale ?? 1); }
 
   spawnPoint(angle = Math.random() * TAU, extra = rand(0, 80)) {
     const r = this.spawnRing() + extra;
@@ -408,14 +417,6 @@ class Game {
       this.showBanner('포위 공격!', '#f2a541');
     }
 
-    if (this.lootAt !== null && tRel >= this.lootAt) {
-      this.lootAt = null;
-      // 화면 가장자리 안쪽에 나타나 곧장 달아난다
-      const a = Math.random() * TAU, d = Math.min(this.w, this.h) * 0.38;
-      this.spawnEnemy('chestling', { x: this.player.x + Math.cos(a) * d, y: this.player.y + Math.sin(a) * d });
-      this.showBanner('달아나는 보물 상자!', '#ffd166', `${ENEMY_TYPES.chestling.escape}초 안에 잡으면 보상`);
-    }
-
     for (const [index, encounter] of stageBosses(st).entries()) {
       if (this.spawnedBosses.has(index) || tRel < encounter.at) continue;
       const b = this.spawnEnemy(encounter.type);
@@ -426,21 +427,12 @@ class Game {
     }
   }
 
-  /** 보물 상자가 도망쳤다 */
-  lootEscaped(e) {
-    e.dead = true;
-    e.slot.deathDone = true;
-    this.circleFx(e.x, e.y, 40, '#ffd166', { life: 0.5, style: 'wave' });
-    this.addText(e.x, e.y - 30, '도망쳤다…', '#ffd166');
-  }
-
   /** 화면에서 너무 멀어진 적은 반대편 스폰 링으로 재배치 (뱀서식 무한 필드) */
   recycleFarEnemies() {
     const far = this.spawnRing() * 1.6;
     const p = this.player;
     for (const e of this.enemies) {
       if (dist2(e.x, e.y, p.x, p.y) > far * far) {
-        if (e.def.loot) { this.lootEscaped(e); continue; }
         const ang = Math.atan2(p.y - e.y, p.x - e.x) + rand(-0.6, 0.6);
         const pos = this.spawnPoint(ang, 20);
         e.x = pos.x; e.y = pos.y;
@@ -763,8 +755,8 @@ class Game {
 
   consumeTarget(o) {
     if (o === this.player || o.dead) return;
-    if (o instanceof Enemy) this.killEnemy(o);
-    else o.dead = true;
+    if (o instanceof Enemy) return;   // 흡수는 적을 처치하지 못한다
+    o.dead = true;
   }
 
   damageTarget(t, damage, knock = 0, elem = null, scaleByCard = true) {
@@ -791,7 +783,7 @@ class Game {
     else if (t.kind !== 'point') this.shatter(o);
   }
 
-  // 제어는 지속시간을 합산하고 표식·화상은 중첩마다 수명을 유지한다.
+  // 제어는 지속시간을 합산하되 상한(statusCap)을 넘지 않고, 표식·화상은 중첩마다 수명을 유지한다.
   addDebuff(o, key, duration, dps = 0, direct = false, count = 1) {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
@@ -818,7 +810,10 @@ class Game {
       if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
       // burnDps 는 항상 직전 스택 합계이므로 새로 더해진 초당 피해만 더한다.
       if (key === 'burn' && !direct) o.burnDps = fresh ? o.burnStacks.reduce((sum, s) => sum + s.dps, 0) : o.burnDps + dps;
-    } else timers[timer] = Math.max(0, timers[timer] || 0) + duration;
+    } else {
+      const current = Math.max(0, timers[timer] || 0);
+      timers[timer] = Math.max(current, Math.min(statusCap(o, key), current + duration));
+    }
   }
 
   directAction(id, t) {
@@ -833,7 +828,7 @@ class Game {
       else this.damageTarget(t, damage, settings.knockback, settings.elem, false);
       return;
     }
-    const hits = { bolt: 20, slash: 24, explode: 26, frost: 4, shockwave: 12, scatter: 60, lance: 16, boomerang: 16, homing: 60, laser: 16, chain: 20, snipe: 100, drain: 60 };
+    const hits = { bolt: 20, slash: 24, explode: 26, frost: 4, shockwave: 12, scatter: 40, lance: 16, boomerang: 16, homing: 40, laser: 16, chain: 20, snipe: 100, drain: 36 };
     const status = { frost: ['freeze', 0.9], root: ['root', 1.6], fear: ['fear', 1.8], mark: ['mark', 6], burn: ['burn', 3] };
     if (status[id]) {
       const [key, dur] = status[id];
@@ -880,8 +875,9 @@ class Game {
         const dx = o === this.player ? -o.facing.x : o.x - this.player.x || 1;
         const dy = o === this.player ? -o.facing.y : o.y - this.player.y;
         const d = Math.hypot(dx, dy) || 1;
-        o.x += dx / d * 120 * Math.min(dt, states.fear);
-        o.y += dy / d * 120 * Math.min(dt, states.fear);
+        const step = 120 * Math.min(dt, states.fear) * forcedMoveScale(o);
+        o.x += dx / d * step;
+        o.y += dy / d * step;
         if (o.follow) o.follow = null;
       }
       if (o.directBurnStacks) {
@@ -1084,8 +1080,7 @@ class Game {
     if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
     else if (kind === 'heal') this.healTarget(o, this.actionValue('heal', 'heal', o));
     else if (kind === 'prolong') {
-      const key = Number.isFinite(o.life) ? 'life' : 'escT';
-      o[key] *= 1.5;
+      if (Number.isFinite(o.life)) o.life *= 1.5;
     } else {
       o.cardBuffs ||= {};
       o.cardBuffs[kind] = Math.max(o.cardBuffs[kind] || 0, (BUFFS[kind]?.dur ?? 6) * p.stats.duration);
@@ -1121,7 +1116,7 @@ class Game {
     const p = this.player, dx = p.x - o.x, dy = p.y - o.y;
     const distance = Math.hypot(dx, dy);
     if (distance === 0) return;
-    const step = Math.min(this.actionValue('pull', 'pullDistance'), distance);
+    const step = Math.min(this.actionValue('pull', 'pullDistance') * forcedMoveScale(o), distance);
     this.circleFx(o.x, o.y, (o.radius || o.r || 5) + 12, '#8be9ff', { life: 0.3, style: 'pulse' });
     o.x += dx / distance * step;
     o.y += dy / distance * step;
@@ -1391,7 +1386,6 @@ class Game {
     const t = this.allTargets().find(t => this.targetObj(t) === a);
     if (!t) return;
     if (Number.isFinite(a.life)) a.life += 3;
-    else if (a.def?.escape) a.escT += 3;
     if (a.max !== undefined) a.max = Math.max(a.max, a.life);
     this.circleFx(a.x, a.y, 26, '#ffd166', { life: 0.35, follow: a, style: 'wave' });
   }
@@ -1481,7 +1475,6 @@ class Game {
   refresh(o) {
     if (o.dead) return;
     if (Number.isFinite(o.life)) o.life = Math.max(o.life, o.max ?? o.life);
-    else if (o.def?.escape) o.escT = Math.max(o.escT, entityStats(o).lifetime);
     this.circleFx(o.x, o.y, 24, '#b8f0ff', { life: 0.3, follow: o, style: 'wave' });
   }
 
@@ -1489,7 +1482,7 @@ class Game {
    * 분열: 대상을 하나 더 만든다.
    *  자신 → 분신 (입력 이동과 스킬 계승) · 아군·설치물·장판 → 남은 수명과 슬롯을 계승한 복제
    *  탄환 → 진행 방향 양옆으로 갈라진다 (적 탄은 적 탄으로)
-   *  적 → 체력을 반씩 나눈 복제 (복제는 경험치 없음, 보스·보물 상자는 나뉘지 않음)
+   *  적 → 체력을 반씩 나눈 복제 (복제는 경험치 없음, 보스는 나뉘지 않음)
    */
   split(t) {
     const o = this.targetObj(t);
@@ -1510,7 +1503,7 @@ class Game {
         break;
       case 'shot': c = this.splitShot(o); if (!c) return; break;
       case 'enemy':
-        if (o.boss || o.def.loot) return;
+        if (o.boss) return;
         o.hp /= 2;
         c = this.spawnEnemy(o.type, at);
         c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
@@ -1528,14 +1521,13 @@ class Game {
       const kind = { self: 'ally', ally: 'ally', object: 'object', zone: 'zone', enemy: 'enemy', gem: 'pickup', pickup: 'pickup' }[t.kind];
       inheritEntitySlots(o, c, kind);
       const originalStats = entityStats(o), copiedStats = entityStats(c);
-      for (const stat of ['attackPower', 'moveSpeed', 'knockback', 'knockbackResistance', 'range', 'maxHp', 'lifetime']) {
+      for (const stat of ['attackPower', 'moveSpeed', 'knockback', 'knockbackResistance', 'statusResistance', 'range', 'maxHp', 'lifetime']) {
         if (t.kind === 'self' && stat === 'lifetime') continue;
         copiedStats[stat] = originalStats[stat];
       }
       c.team = o.team;
       if (o.follow !== undefined) c.follow = o.follow;
       if (Number.isFinite(o.life)) c.life = o.life;
-      if (Number.isFinite(o.escT)) c.escT = o.escT;
       if (Number.isFinite(o.hp)) c.hp = o.hp;
       if (t.kind === 'enemy') {
         for (const slot of c.slots) {
@@ -1689,9 +1681,8 @@ class Game {
   }
 
   addFx(f) {
-    if (this.fx.length >= 250) return;
     f.max = f.life; f.dead = false;
-    this.fx.push(f);
+    pushCapped(this.fx, f, MAX_FX);
   }
 
   /**
@@ -2026,17 +2017,16 @@ class Game {
   showBanner(text, color, sub) { this.banner = { text, color, sub, life: sub ? 4 : 2.5, max: sub ? 4 : 2.5 }; }
 
   addText(x, y, text, color) {
-    if (this.texts.length >= 150) return;
-    this.texts.push({ x, y, text: String(text), color, life: 0.7, dead: false });
+    pushCapped(this.texts, { x, y, text: String(text), color, life: 0.7, dead: false }, MAX_TEXTS);
   }
 
   burst(x, y, color, n) {
-    for (let i = 0; i < n && this.particles.length < 600; i++) {
+    for (let i = 0; i < Math.min(n, MAX_PARTICLES); i++) {
       const a = Math.random() * TAU, s = rand(60, 220);
-      this.particles.push({
+      pushCapped(this.particles, {
         x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
         life: rand(0.25, 0.55), max: 0.55, size: rand(2, 4.5), color, dead: false,
-      });
+      }, MAX_PARTICLES);
     }
   }
 
@@ -2222,7 +2212,7 @@ class Game {
 
     // 화면 밖 보스 방향 표시
     for (const e of this.enemies) {
-      if (!(e.boss || e.def.loot) || e.dead) continue;
+      if (!e.boss || e.dead) continue;
       const sx = e.x - this.cam.x + this.w / 2, sy = e.y - this.cam.y + this.h / 2;
       if (sx >= 0 && sx <= this.w && sy >= 0 && sy <= this.h) continue;
       const m = 36;

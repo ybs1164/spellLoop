@@ -89,7 +89,7 @@ const UI = {
   entityStatsHtml(owner, withRange) {
     const st = entityStats(owner);
     const hp = Number.isFinite(owner.hp) ? this.statHtml('uiHp', '체력', `${Math.ceil(owner.hp)}/${st.maxHp}`) : '';
-    return `<div class="entity-stats">${hp}${this.statHtml('uiSpeed', '이동 속도', st.moveSpeed)}${this.statHtml('uiAtk', '공격력', st.attackPower)}${this.statHtml('uiKnock', '넉백', st.knockback)}${this.statHtml('uiKnock', '넉백 저항', `${Math.round(st.knockbackResistance * 100)}%`)}${Number.isFinite(st.lifetime) ? this.statHtml('uiTime', '기본 수명', `${+st.lifetime.toFixed(2)}초`) : ''}${withRange ? this.statHtml('uiRange', '범위', st.range) : ''}</div>`;
+    return `<div class="entity-stats">${hp}${this.statHtml('uiSpeed', '이동 속도', st.moveSpeed)}${this.statHtml('uiAtk', '공격력', st.attackPower)}${this.statHtml('uiKnock', '넉백', st.knockback)}${this.statHtml('uiKnock', '넉백 저항', `${Math.round(st.knockbackResistance * 100)}%`)}${this.statHtml('uiKnock', '상태 저항', `${Math.round(st.statusResistance * 100)}%`)}${Number.isFinite(st.lifetime) ? this.statHtml('uiTime', '기본 수명', `${+st.lifetime.toFixed(2)}초`) : ''}${withRange ? this.statHtml('uiRange', '범위', st.range) : ''}</div>`;
   },
 
   /** eff: 슬롯 안에서 실제로 매겨진 코스트 (costBreakdown). 없으면 카드에 적힌 코스트 */
@@ -189,7 +189,7 @@ const UI = {
       blink: '바라보는 방향으로 대상을 순간이동시킨다.', dash: '바라보는 방향으로 대상을 돌진시킨다.', pull: '선택한 대상을 시전자 쪽으로 끌어당긴다.', vortex: '1.5초간 주변 적을 끌어당긴다.', ward: '3초간 주변 적을 밀어낸다.',
       summon: '기사 1체를 10초간 소환한다.', archer: '대상 위치에 궁수를 소환한다.', orb: '대상 위치에 구체를 설치한다.', mine: '대상 위치에 지뢰를 설치한다.', turret: '대상 위치에 포탑을 설치한다.', decoy: '대상 위치에 미끼를 설치한다.',
       haste: '4초간 이동 속도를 높인다.', rage: '5초간 공격력을 높인다.', focus: '5초간 슬롯 게이지 감소 속도를 높인다.', amplify: '6초간 범위를 넓힌다.', prolong: '8초간 지속시간을 늘린다.',
-      entityMove: '선택한 대상 쪽으로 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.', entityKeep: '추적 대상과 거리를 유지하며 옆으로 돈다.', entityFlee: '대상 반대 방향으로 도망치며 제한시간이 지나면 보상 없이 사라진다.',
+      entityMove: '선택한 대상 쪽으로 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.', entityKeep: '추적 대상과 거리를 유지하며 옆으로 돈다.',
       entityDecoy: '범위 안의 적이 이 개체를 쫓도록 유인한다.',
       entityHit: '타격 조건에 맞는 충돌 대상에게 피해와 넉백을 적용한다. 같은 대상은 한 번만 타격한다.',
       entityResistance: '빙결 시간을 줄이며 공포에 저항한다.', entityAffinity: '특정 원소 피해에 취약해진다.', entityGuard: '정면 타격을 막는다. 독·방향 없는 피해·빙결 중에는 막지 못한다.',
@@ -523,6 +523,7 @@ const UI = {
     add('공격력', st.attackPower, 'uiAtk');
     add('넉백', st.knockback, 'uiKnock');
     add('넉백 저항', `${Math.round(st.knockbackResistance * 100)}%`, 'uiKnock');
+    add('상태 저항', `${Math.round(st.statusResistance * 100)}%`, 'uiKnock');
     add('기본 수명', Number.isFinite(st.lifetime) ? sec(st.lifetime) : '무제한', 'uiTime');
     add('범위', st.range, 'uiRange');
     if (st.sight > 0) add('시야', st.sight, 'fFar');
@@ -536,14 +537,13 @@ const UI = {
     if (st.attackPeriod > 0) add('공격 주기', sec(st.attackPeriod), 'haste');
     if (st.summonPeriod > 0) add('소환 주기', sec(st.summonPeriod), 'haste');
     if (st.supportPeriod > 0) add('보조 주기', sec(st.supportPeriod), 'haste');
-    if (o instanceof Enemy && !o.boss && !o.def.loot) add('경험치', st.xpReward, 'gems');
+    if (o instanceof Enemy && !o.boss) add('경험치', st.xpReward, 'gems');
     switch (e.cat) {
       case 'player':
         add('자석 범위', o.stats.magnet, 'magnet');
         add('슬롯', `${o.deck.slots.length} / ${MAX_SLOTS}`, 'uiCost');
         break;
       case 'boss': case 'elite': case 'enemy':
-        if (Number.isFinite(st.lifetime) && Number.isFinite(o.escT)) add('남은 수명', sec(o.escT), 'uiTime');
         break;
       case 'ally':
         if (Number.isFinite(st.lifetime) && Number.isFinite(o.life)) add('수명', sec(o.life), 'uiTime');

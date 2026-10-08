@@ -28,8 +28,8 @@ vm.runInContext(`
   Input.keys.clear();
 
   const boss = new Enemy('overlord', 200, 0, 1);
-  boss.slot.cards = []; boss.slot.changed(); close(boss.knockResist, 0.08);
-  boss.combatStats.knockbackResistance = 0.25;
+  boss.slot.cards = []; boss.slot.changed(); close(boss.knockResist, 0.08 * 0.2);
+  boss.combatStats.knockbackResistance = 0.25; boss.combatStats.statusResistance = 0;
   boss.hit(0, 100, 0); close(boss.kx, 75);
   const fleeting = new Ally('knight', 500, 0);
   fleeting.slot.cards = []; fleeting.slot.changed();
@@ -37,10 +37,6 @@ vm.runInContext(`
   fleeting.directFrozen = true;
   fleeting.update(0.1, game); assert.equal(fleeting.dead, false);
   fleeting.update(0.1, game); assert.equal(fleeting.dead, true);
-  const escape = new Enemy('chestling', 500, 0, 1);
-  escape.slot.cards = []; escape.slot.changed(); escape.combatStats.lifetime = 0.1;
-  const drops = game.pickups.length;
-  escape.update(0.1, p, game); assert.ok(escape.dead); assert.equal(game.pickups.length, drops);
 
   const barrel = new Placed('barrel', 0, 0, 1);
   game.objects = [barrel]; game.enemies = []; game.rebuildHash();

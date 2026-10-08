@@ -15,10 +15,20 @@ vm.runInContext(`
   game.enemies = [enemy];
   game.hitCircle = (x, y, r, damage, knock, effect) => { if (effect) for (const e of game.enemies) effect(e); };
   const t = { kind: 'enemy', e: enemy };
+  entityStats(enemy).statusResistance = 0;
   for (const [id, field, duration] of [['frost', 'freezeT', 0.9], ['root', 'rootT', 1.6], ['fear', 'fearT', 1.8]]) {
     game[id](enemy, t); game[id](enemy, t);
     close(enemy[field], duration * 2);
   }
+  // 합산은 상한에서 멈추고, 상한은 상태 저항만큼 줄어든다.
+  for (let i = 0; i < 10; i++) game.addDebuff(enemy, 'freeze', 0.9);
+  close(enemy.freezeT, STATUS_CAPS.freeze);
+  const resisted = new Enemy('grunt', 0, 0, 1);
+  entityStats(resisted).statusResistance = 0.5;
+  for (let i = 0; i < 10; i++) game.addDebuff(resisted, 'root', 1.6);
+  close(resisted.rootT, STATUS_CAPS.root * 0.5);
+  close(resisted.knockResist, 0.5);
+  enemy.freezeT = enemy.rootT = enemy.fearT = 0;
   game.mark(t);
   game.updateTargetBuffs(1);
   game.mark(t);
@@ -99,7 +109,8 @@ vm.runInContext(`
   game.addDebuff(a, 'mark', 4); game.addDebuff(a, 'burn', 4, 9);
   for (let i = 0; i < 20; i++) { game.spreadFrom(a); game.spreadFrom(b); }
   assert.ok(a.markStacks.length <= 2 && b.burnStacks.length <= 2, 'spread keeps stack arrays bounded');
-  assert.ok(markMultiplier(b) > 1 + 0.9 * 20, 'merged mark stacks keep their count');
+  assert.ok(b.markStacks.reduce((n, s) => n + (s.count ?? 1), 0) > 20, 'merged mark stacks keep their count');
+  assert.equal(markMultiplier(b), 1 + 0.9 * 5, 'mark multiplier is capped at 5 stacks');
 
 `, context);
 console.log('Debuff stacking, independent expiry, spread, and boss resistance checks passed.');

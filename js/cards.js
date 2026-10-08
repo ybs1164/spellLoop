@@ -70,7 +70,7 @@ function targetFeatures(t, o) {
     health: Number.isFinite(o.hp) && Number.isFinite(o.maxHp ?? o.stats?.maxHp),
     area: Number.isFinite(o.r) || Number.isFinite(o.radius) || Number.isFinite(o.stats?.area),
     position: Number.isFinite(o.x) && Number.isFinite(o.y),
-    lifetime: Number.isFinite(o.life) || (o.def?.escape > 0 && Number.isFinite(o.escT)),
+    lifetime: Number.isFinite(o.life),
     ...o.targetFeatures,
   };
 }
@@ -274,7 +274,7 @@ const CARDS = {
   /* ================= 1차: 능력치 → 행동 ================= */
   scatter: {
     type: 'action', group: 1, name: '산탄', cost: 2, weight: 2, accepts: ALL_KINDS,
-    desc: '발당 피해 12의 마탄 5발을 부채꼴로 발사한다.',
+    desc: '발당 피해 8의 마탄 5발을 부채꼴로 발사한다.',
     run: (ts, env) => ts.forEach((t) => env.scatter(t)),
   },
   lance: {
@@ -335,7 +335,7 @@ const CARDS = {
   },
   homing: {
     type: 'action', group: 3, name: '유도탄', cost: 2, weight: 2, accepts: ALL_KINDS,
-    desc: '피해 60의 추적 미사일을 발사한다.',
+    desc: '피해 40의 추적 미사일을 발사한다.',
     run: (ts, env) => ts.forEach((t) => env.homing(t)),
   },
   laser: {
@@ -378,7 +378,7 @@ const CARDS = {
   },
   drain: {
     type: 'action', group: 4, name: '흡혈', cost: 2, weight: 1, accepts: ALL_KINDS,
-    desc: '피해 60을 준다.', run: (ts, env) => ts.forEach((t) => env.drain(t)),
+    desc: '피해 36을 준다.', run: (ts, env) => ts.forEach((t) => env.drain(t)),
   },
 
   /* ================= 5차: 이동·아군·메타 ================= */
@@ -536,7 +536,7 @@ const ACTION_RULES = {
   magnet: { requires: ['position'], exclude: ['self', 'point'], supports: (t, o) => o instanceof Pickup || t.kind === 'object' },
   blink: { requires: ['position'], exclude: ['point'] },
   dash: { requires: ['position'], exclude: ['point'] },
-  absorb: { requires: ['position'], exclude: ['self', 'point'] },
+  absorb: { requires: ['position'], exclude: ['self', 'point', 'enemy'] },
   split: { requires: ['position'], exclude: ['point'] },
   swap: { requires: ['position'], exclude: ['self'] },
 };
@@ -549,7 +549,7 @@ for (const [id, c] of Object.entries(CARDS)) {
   if (c.type !== 'action') continue;
   Object.assign(c, ACTION_RULES[id] || { requires: ['position'] });
   c.group = c.requires[0];
-  c.accepts = ALL_KINDS.filter(k => (!c.exclude || !c.exclude.includes(k)) && (c.requires.every(f => KIND_FEATURES[k][f]) || k === 'enemy' && c.requires.includes('lifetime')));
+  c.accepts = ALL_KINDS.filter(k => (!c.exclude || !c.exclude.includes(k)) && (c.requires.every(f => KIND_FEATURES[k][f])));
 }
 CARDS.heal.desc = '체력 10 회복.';
 CARDS.shield.desc = '6초간 피해 25 흡수.';
@@ -581,10 +581,10 @@ const ACTION_STAT_RATIOS = {
   bolt: { damage: 2, speed: 420 / 170 }, slash: { damage: 2.4 },
   explode: { damage: 2.6 }, frost: { damage: 0.4 },
   poison: { damage: 1.2 }, shockwave: { damage: 1.2 },
-  scatter: { damage: 1.2, speed: 400 / 170 }, lance: { damage: 1.6, speed: 900 / 170 },
-  boomerang: { damage: 1.6, speed: 520 / 170 }, homing: { damage: 6, speed: 2 },
+  scatter: { damage: 0.8, speed: 400 / 170 }, lance: { damage: 1.6, speed: 900 / 170 },
+  boomerang: { damage: 1.6, speed: 520 / 170 }, homing: { damage: 4, speed: 2 },
   laser: { damage: 1.6 }, chain: { damage: 1.2 }, meteor: { damage: 4.8 },
-  blades: { damage: 0.8 }, burn: { damage: 0.9 }, drain: { damage: 6, heal: 0.06 }, snipe: { damage: 10 },
+  blades: { damage: 0.8 }, burn: { damage: 0.9 }, drain: { damage: 3.6, heal: 0.04 }, snipe: { damage: 10 },
   heal: { heal: 0.1 }, shield: { shield: 0.25 }, armor: { armor: 0.05 },
   blink: { distance: 160 / 170 }, dash: { distance: 1 }, pull: { pullDistance: 1.6 },
   vortex: { forceSpeed: 2.6 }, ward: { forceSpeed: 6 },
@@ -852,7 +852,6 @@ const ENTITY_CARD_STATS = {
   entityFollow: [1, 'pursue'],
   entityMove: [1, 'haste'],
   entityKeep: [1, 'fFar'],
-  entityFlee: [1, 'fear'],
   entityDecoy: [2, 'decoy'],
   entityHit: [1, 'shockwave'],
   entityResistance: [3, 'fBoss'],
@@ -868,12 +867,11 @@ CARDS.entitySelf = {
 CARDS.disappear = {
   type: 'action', name: '소멸', cost: 1, weight: 0, entityOnly: true,
   icon: 'absorb', runsWhileBlocked: true, requires: ['position'], accepts: ALL_KINDS, group: 'entity',
-  desc: '선택한 대상을 사망 보상 없이 제거한다. 도주형 적은 탈출 처리한다.',
+  desc: '선택한 대상을 사망 보상 없이 제거한다.',
   run: (ts, env) => ts.forEach(t => {
     const o = env.at(t);
     if (o === env.game.player || o.dead) return;
-    if (o.def?.ai === 'flee') env.game.lootEscaped(o);
-    else { o.dead = true; if (o.slot) o.slot.deathDone = true; }
+    o.dead = true; if (o.slot) o.slot.deathDone = true;
   }),
 };
 CARDS.entityArea = {
@@ -919,7 +917,6 @@ const ENTITY_EFFECT_DEFAULTS = {
   entityFollow: {},
   entityMove: { speed: 170, redirectTargets: true },
   entityKeep: { distance: 240 },
-  entityFlee: {},
   entityDecoy: { range: 350, redirectTargets: true },
   entityHit: { damage: 10, knockback: 140, pierce: null },
   entityResistance: { freezeMultiplier: 0.4, fearImmune: true },
@@ -937,9 +934,6 @@ function entityEffectText(id, e) {
     case 'entityMove': return [`속도 ${n(e.speed)} 이동`, `선택한 대상 쪽으로 초당 ${n(e.speed)} 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.`];
     case 'entityKeep': if (typeof e.distance === 'string') return ['거리 유지', '추적 대상과 거리가 유지 거리 상태의 80% 미만이면 후퇴하고 115% 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.'];
       return [`거리 ${e.distance} 유지`, `추적 대상과 거리 ${scaled(e.distance, 0.8)} 미만이면 후퇴하고 ${scaled(e.distance, 1.15)} 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.`];
-    case 'entityFlee': return e.seconds != null
-      ? [`${e.seconds}초 도주`, `플레이어 반대 방향으로 지그재그 이동한다. ${e.seconds}초가 지나면 보상을 주지 않고 사라진다. 이동 카드가 필요하다.`]
-      : ['도주', '플레이어 반대 방향으로 지그재그 이동한다. 이동 카드가 필요하다.'];
     case 'entityDecoy': return [`반경 ${e.range} 유인`, `반경 ${e.range} 안의 적이 플레이어 대신 이 개체를 쫓게 한다. 유인 대상이 여러 개면 가장 가까운 것을 쫓는다.`];
     case 'entityHit': return [`충돌 피해 ${n(e.damage)}`, `타격 조건에 맞는 충돌 대상에게 피해 ${n(e.damage)}, 넉백 ${e.knockback}을 적용한다. 탄환은 같은 대상을 한 번만 타격하고 접촉·공전 개체는 각자의 재타격 간격을 따른다. ${e.pierce == null ? '관통 횟수 제한 없음.' : typeof e.pierce === 'string' ? '탄환은 관통 상태 횟수만큼 관통한 뒤 소멸한다.' : `탄환은 관통 ${e.pierce}회 이후 소멸한다.`}`];
     case 'entityResistance': return ['상태 저항', `빙결 지속시간을 ${scaled(e.freezeMultiplier, 100)}%로 줄이고${e.fearImmune ? ' 공포를 무효화한다' : ''}.`];
@@ -1046,12 +1040,13 @@ class EntityCombatStats {
   constructor(owner) { this.#owner = owner; }
   get knockbackResistance() { const owner = this.#owner; return owner.knockbackResistance; }
   set knockbackResistance(value) { const owner = this.#owner; owner.knockbackResistance = clamp(value, 0, 1); }
+  get statusResistance() { const owner = this.#owner; return owner.statusResistance; }
+  set statusResistance(value) { const owner = this.#owner; owner.statusResistance = clamp(value, 0, 1); }
   get lifetime() { const owner = this.#owner; return owner.max; }
   set lifetime(value) {
     const owner = this.#owner;
     owner.max = Math.max(0, value);
     if (Number.isFinite(owner.life)) owner.life = Math.min(owner.life, owner.max);
-    else if (owner.def?.escape) owner.escT = Math.min(owner.escT, owner.max);
     else if (Number.isFinite(owner.max)) owner.life = owner.max;
   }
   get range() { const owner = this.#owner; return Math.max(0, Math.round(owner.range)); }
@@ -1100,7 +1095,8 @@ function entityStats(owner) {
   owner.damage ??= owner.def?.damage ?? (owner.kind === 'orb' ? 6 : owner.kind === 'turret' ? 9 : ['mine', 'barrel', 'poison', 'slime', 'abyss', 'blades', 'meteor'].includes(owner.kind) ? 10 : 0);
   owner.knockback ??= 100;
   owner.knockbackResistance ??= 0;
-  owner.max ??= Number.isFinite(owner.life) ? owner.life : owner.def?.escape || Infinity;
+  owner.statusResistance ??= 0;
+  owner.max ??= Number.isFinite(owner.life) ? owner.life : Infinity;
   owner.range ??= Math.max(0, Math.round(owner.r ?? owner.radius ?? 0));
   owner.sight ??= owner.def?.sight ?? (owner.def?.shoot || owner.def?.summon ? 560 : 0);
   owner.keepDistance ??= owner.def?.keep || (owner.def?.reach ?? 0) * 0.6;
@@ -1535,7 +1531,6 @@ function entitySlot(owner, kind) {
     cards.push('entityMove', 'entityHit');
     if (owner.boss) cards.push('entityResistance');
     if (owner.def.ai === 'keep') cards.push('entityKeep');
-    if (owner.def.ai === 'flee') cards.push('entityFlee');
     if (Object.keys(owner.affinity || {}).length) cards.push('entityAffinity');
 
     if (owner.guard) cards.push('entityGuard');
@@ -1577,9 +1572,9 @@ function entitySlot(owner, kind) {
 
   }
   if (kind === 'enemy') {
-    settings.spawnOrb ??= { reward: owner.boss || owner.def.loot
+    settings.spawnOrb ??= { reward: owner.boss
       ? { kind: 'chest', value: 0, magnetChance: 0 }
-      : { kind: 'gem', magnetChance: 0 }, look: owner.boss || owner.def.loot ? 'chestDrop' : 'xpDrop' };
+      : { kind: 'gem', magnetChance: 0 }, look: owner.boss ? 'chestDrop' : 'xpDrop' };
     if (owner.armor) {
       settings.armor ??= { passive: true, look: 'innateArmor', statRatios: { reduction: { stat: 'defense', ratio: 1 } } };
       chain.push('entitySelf', 'armor', 'entitySelf');
@@ -1742,14 +1737,12 @@ function installEntityGimmick(owner, kind, id) {
 }
 
 function tickEntityLifetime(owner, dt, game) {
-  const key = Number.isFinite(owner.life) ? 'life' : owner.def?.escape ? 'escT' : null;
-  if (!key) return true;
-  owner[key] -= dt;
-  if (owner[key] > 0) return true;
-  owner[key] = 0;
+  if (!Number.isFinite(owner.life)) return true;
+  owner.life -= dt;
+  if (owner.life > 0) return true;
+  owner.life = 0;
   emitSlotEvent(game, owner, 'expired', { subject: owner });
-  if (owner.expireWithoutDeathRewards) game.lootEscaped(owner);
-  else if (owner.silentExpire) { owner.dead = true; if (owner.slot) owner.slot.deathDone = true; }
+  if (owner.silentExpire) { owner.dead = true; if (owner.slot) owner.slot.deathDone = true; }
   else { owner.dead = true; owner.slot?.onDeath(game); }
   return false;
 }
@@ -1980,7 +1973,7 @@ const SLOT_HEAT_MAX = 60;
 const SLOT_HEAT_DECAY = 10; // 0.1초마다 1 감소
 const SLOT_HEAT_OVER_DECAY = 1; // 최대치 초과분은 초당 1 감소
 // 이동 행동만 있는 슬롯은 움직이는 동안 초당 1씩 게이지를 쓴다. 다른 행동 카드와 합치면 일반 실행 비용을 써서 매 프레임 실행되지 않는다.
-const MOVE_ACTIONS = new Set(['inputMove', 'entityMove', 'entityFollow', 'entityKeep', 'entityFlee']);
+const MOVE_ACTIONS = new Set(['inputMove', 'entityMove', 'entityFollow', 'entityKeep']);
 const MOVE_HEAT_PER_SEC = 1;
 const SLOT_HEAT_UNIT = 1;
 // 게이지 값을 코스트와 분리해 지정하는 행동 카드.
@@ -2078,9 +2071,9 @@ function slotCanSpend(slot, amount) {
   const heat = slot.heat || 0, max = slotGaugeMax(slot);
   return heat < max - 1e-8 && (!slot.overheated || heat + amount <= max + 1e-8);
 }
-/** 이벤트 카드 n장이면 냉각 속도 2^n 배. */
+/** 이벤트 카드 n장이면 냉각 속도 n배(0장이면 1배). */
 function slotCoolMultiplier(slot) {
-  return 2 ** slot.cards.filter(id => CARDS[id]?.type === 'event').length;
+  return Math.max(1, slot.cards.filter(id => CARDS[id]?.type === 'event').length);
 }
 function coolSlot(slot, dt, owner) {
   const rate = (owner === slot.owner ? owner.cardRate || 1 : owner.stats?.heatRecovery || 1) * slotCoolMultiplier(slot);

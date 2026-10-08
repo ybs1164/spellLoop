@@ -9,9 +9,9 @@ const baseline = (t,s) => r.rows.find(x=>x.baseline&&x.cards[0]===t&&x.scenario=
 const delta = row => row ? row.dps-(baseline(row.cards[0],row.scenario)?.dps||0) : null;
 const label = cards => cards.map(x=>name[x]||({flurry:'직전 행동 2회 추가',sequence:'뒤 행동 1회 추가',rewind:'묶음 1회 반복',pursue:'처치 후 재시전'}[x])||x).join(' → ');
 const proposals = {
-  scatter:{delay:0.2,cd:1.8,per:0.2,reason:'직접 피해 60; 같은 코스트의 관통탄·부메랑 피해 16과 비교해 기본 재사용 비용 증가'},
-  homing:{delay:0.2,cd:1.8,per:0.2,reason:'직접 피해 60; 투사체 도달 지연 없이 즉시 적용'},
-  drain:{delay:0.2,cd:2.2,per:0.25,reason:'직접 피해 60에 회복 6을 동반하므로 공격 전용 카드보다 긴 재사용 비용'},
+  scatter:{delay:0.2,cd:1.8,per:0.2,reason:'직접 피해 40; 같은 코스트의 관통탄·부메랑 피해 16과 비교해 기본 재사용 비용 증가'},
+  homing:{delay:0.2,cd:1.8,per:0.2,reason:'직접 피해 40; 투사체 도달 지연 없이 즉시 적용'},
+  drain:{delay:0.2,cd:2.2,per:0.25,reason:'직접 피해 36에 회복 4를 동반하므로 공격 전용 카드보다 긴 재사용 비용'},
   snipe:{delay:0.3,cd:3.1,per:0.3,reason:'직접 피해 100; 단일·집군 모두 긴 기본 재사용 비용 필요'},
   frost:{delay:0.15,cd:0.55,per:0.15,reason:'피해 4에 제어 포함; 집군 제어율을 유지하면서 연계 대기를 단축하는 후보'},
   root:{delay:0.15,cd:2.0,per:0.2,reason:'1차 CD 기여값 1.10초에서도 보스 제어율 99.89%로 부족하여 2.00초로 재검증'},

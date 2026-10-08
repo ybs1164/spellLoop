@@ -146,8 +146,6 @@ const GIMMICKS = [
   { icon: 'burn', name: '잔불 정령', stages: stagesWith('emberling'), desc: '사망하면 6초간 화상 장판을 남긴다. 장판은 적군 소유이며 다른 팀에만 화상을 적용한다.' },
   { icon: 'fBarrels', name: '화약통', stages: ALL_STAGES,
     desc: `${PLACED_TYPES.barrel.desc}. 불이 옆 화약통으로 번져 연쇄 폭발한다.` },
-  { icon: 'chest', name: '달아나는 보물 상자', stages: ALL_STAGES,
-    desc: `스테이지마다 한 번 나타나 ${ENEMY_TYPES.chestling.escape}초 동안 도망친다. 잡으면 카드 선택 + 코스트 포인트. 속박·빙결로 붙잡자.` },
 ];
 
 const STAGE_TIERS = 3;
