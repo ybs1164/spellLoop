@@ -16,26 +16,24 @@ get(`
     hpRatio: () => 0.2, enemiesAround: () => 3, setMul() {}, flag() {},
   };
   const game = { cardEnv: () => env, projectiles: [], hazards: [], allies: [], objects: [], zones: [], enemies: [], pickups: [] };
-  CARDS.group = { type: 'target', kind: 'enemy', cost: 1, resolve: () => targets };
-  CARDS.record = { type: 'action', cost: 1, accepts: ALL_KINDS, run: ts => hits.push(...ts) };
+  CARDS.group = { type: 'target', kind: 'enemy', resolve: () => targets };
+  CARDS.record = { type: 'action', accepts: ALL_KINDS, run: ts => hits.push(...ts) };
   const run = cards => {
-    hits.length = 0; deck.slots = [{ cards, limit: 30, heat: 0, cast: null }];
+    hits.length = 0; deck.slots = [{ cards, cd: 0, cast: null }];
     deck.update(0.01, game, {});
   };
 `);
-assert.equal(get("Object.values(CARDS).filter(c => c.type === 'event' && !c.entityOnly && c.cost === 1).length >= 13"), true, 'player event cards exist');
-assert.equal(get("Object.values(CARDS).some(c => c.type === 'filter' && !c.entityOnly)"), false, 'player condition filters are event cards');
+assert.equal(get("Object.values(CARDS).filter(c => c.type === 'artifact' && !c.entityOnly && c.weight > 0).length >= 5"), true, 'player artifact cards exist');
+assert.equal(get("Object.values(CARDS).some(c => c.type === 'filter' || c.type === 'event')"), false, 'no filter or event cards remain');
 get("run(['group','record'])");
-assert.equal(get('hits.length'), 3, 'no event card: runs every frame on all targets');
+assert.equal(get('hits.length'), 3, 'a ready slot runs on all targets');
 get("run(['group','record','record'])");
-assert.equal(get('hits.length'), 6);
-get("deck.slots = [{ cards: ['on_hurt', 'on_hit', 'group', 'record'], limit: 30 }]");
-assert.equal(SkillDeckRunnable(), true, 'several event cards share one slot');
-function SkillDeckRunnable() { return get('SkillDeck.runnable(deck.slots[0])'); }
-assert.equal(get('deck.preview(0).warns.length'), 0, 'several event cards are not a warning');
+assert.equal(get('hits.length'), 6, 'the second action runs as the continuation of each completed target');
+get("deck.slots = [{ cards: ['artifactRing', 'artifactHourglass', 'group', 'record'], cd: 0 }]");
+assert.equal(get('SkillDeck.runnable(deck.slots[0])'), true, 'several artifacts share one slot');
 get("run(['group','record'])");
-get('deck.slots[0].heat = 100; deck.slots[0].overheated = true; hits.length = 0; deck.update(0.01, game, {})');
-assert.equal(get('hits.length'), 0, 'full gauge blocks execution');
+get('hits.length = 0; deck.update(0.01, game, {})');
+assert.equal(get('hits.length'), 0, 'a cooling slot blocks execution');
 get(`
   Input.axis = () => ({ x: 1, y: 0 });
   var mover = { x: 0, y: 0, facing: { x: 0, y: 1 }, combatStats: { moveSpeed: 100 } }, caster = { x: 0, y: 0, moving: true };
@@ -43,4 +41,4 @@ get(`
 `);
 assert.equal(get('JSON.stringify([mover.x, mover.facing.x, mover.moving, caster.x, caster.moving])'), '[50,1,true,0,false]', 'input move moves the target card selection');
 assert.equal(get("CARDS.inputMove.accepts.includes('point')"), false);
-console.log('Event conditions, one-event limit, every-frame default, gauge block and input-move target checks passed.');
+console.log('Artifact cards, several artifacts per slot, cooldown block and input-move target checks passed.');

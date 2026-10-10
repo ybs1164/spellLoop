@@ -1,0 +1,1024 @@
+{
+ "settings": {
+  "stage": "graveyard",
+  "sim": "dt=0.05;max=600;barrels=0",
+  "events": [
+   0,
+   5
+  ],
+  "targets": [
+   1,
+   2
+  ],
+  "actions": [
+   1,
+   4
+  ],
+  "cost_penalty": 0.0,
+  "max_cost": 0,
+  "dps_tie": 1.0
+ },
+ "build": "291df9b1cd",
+ "rng_seed": 541378859,
+ "generation": 22,
+ "seeds": [
+  223408006,
+  793881626,
+  987878288
+ ],
+ "population": [
+  {
+   "event": [
+    "ifHealthy",
+    "ifNear"
+   ],
+   "target": [
+    "objects",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "on_complete",
+    "ifNear"
+   ],
+   "target": [
+    "objects",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "lance",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "on_complete",
+    "on_moved"
+   ],
+   "target": [
+    "woundedEnemies",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "lance",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "on_hurt"
+   ],
+   "target": [
+    "lastHit"
+   ],
+   "action": [
+    "refresh",
+    "ward",
+    "root",
+    "meteor"
+   ]
+  },
+  {
+   "event": [
+    "on_moved",
+    "on_expired",
+    "on_death",
+    "on_spawn",
+    "ifEnemyNear"
+   ],
+   "target": [
+    "lastHit",
+    "objects"
+   ],
+   "action": [
+    "frost",
+    "blink",
+    "homing"
+   ]
+  },
+  {
+   "event": [
+    "ifLowHp",
+    "on_expired"
+   ],
+   "target": [
+    "shots",
+    "allies"
+   ],
+   "action": [
+    "burn"
+   ]
+  },
+  {
+   "event": [
+    "on_applied",
+    "ifHealthy",
+    "on_complete"
+   ],
+   "target": [
+    "allies"
+   ],
+   "action": [
+    "split",
+    "slash",
+    "frost",
+    "ward"
+   ]
+  },
+  {
+   "event": [
+    "ifEnemyNear",
+    "ifNear"
+   ],
+   "target": [
+    "objects",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "dash",
+    "lance"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "enemies",
+    "woundedEnemies"
+   ],
+   "action": [
+    "orb",
+    "meteor",
+    "frost"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "ifSafe",
+    "on_moved"
+   ],
+   "target": [
+    "woundedEnemies",
+    "zones"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "boomerang",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifElite"
+   ],
+   "target": [
+    "enemies"
+   ],
+   "action": [
+    "poison",
+    "focus"
+   ]
+  },
+  {
+   "event": [
+    "ifElite"
+   ],
+   "target": [
+    "enemies"
+   ],
+   "action": [
+    "meteor"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "ifElite",
+    "on_hit"
+   ],
+   "target": [
+    "objects",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "ward",
+    "haste"
+   ]
+  },
+  {
+   "event": [
+    "on_applied",
+    "on_collect",
+    "on_spawn",
+    "on_complete"
+   ],
+   "target": [
+    "objects",
+    "eventOwner"
+   ],
+   "action": [
+    "split",
+    "slash",
+    "frost",
+    "amplify"
+   ]
+  },
+  {
+   "event": [
+    "ifLowHp"
+   ],
+   "target": [
+    "pickups"
+   ],
+   "action": [
+    "mark"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "ahead"
+   ],
+   "action": [
+    "refresh"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "enemies",
+    "woundedEnemies"
+   ],
+   "action": [
+    "orb"
+   ]
+  },
+  {
+   "event": [
+    "ifSingle",
+    "ifMany",
+    "on_detonate",
+    "ifHealthy"
+   ],
+   "target": [
+    "ahead"
+   ],
+   "action": [
+    "frost",
+    "absorb"
+   ]
+  },
+  {
+   "event": [
+    "ifLowHp",
+    "ifFar"
+   ],
+   "target": [
+    "woundedEnemies",
+    "self"
+   ],
+   "action": [
+    "drain",
+    "explode",
+    "lance",
+    "blades"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "enemies"
+   ],
+   "action": [
+    "meteor"
+   ]
+  },
+  {
+   "event": [
+    "ifFar"
+   ],
+   "target": [
+    "fallen",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "laser",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifSafe",
+    "ifHealthy"
+   ],
+   "target": [
+    "woundedEnemies"
+   ],
+   "action": [
+    "meteor"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "ahead",
+    "allies"
+   ],
+   "action": [
+    "orb"
+   ]
+  },
+  {
+   "event": [
+    "on_applied",
+    "on_healed",
+    "ifEnemyNear"
+   ],
+   "target": [
+    "pickups"
+   ],
+   "action": [
+    "mark",
+    "focus",
+    "slash",
+    "frost"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "on_complete"
+   ],
+   "target": [
+    "objects",
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "vortex",
+    "lance",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifHealthy",
+    "on_complete",
+    "ifNear"
+   ],
+   "target": [
+    "enemies"
+   ],
+   "action": [
+    "drain",
+    "bolt",
+    "lance",
+    "blades"
+   ]
+  },
+  {
+   "event": [
+    "ifFront",
+    "interval",
+    "ifElite",
+    "ifEnemyNear",
+    "on_detonate"
+   ],
+   "target": [
+    "prey"
+   ],
+   "action": [
+    "bolt",
+    "swap",
+    "meteor"
+   ]
+  },
+  {
+   "event": [
+    "on_kill",
+    "ifSingle",
+    "ifSafe",
+    "ifMany"
+   ],
+   "target": [
+    "objects",
+    "shots"
+   ],
+   "action": [
+    "blink"
+   ]
+  },
+  {
+   "event": [],
+   "target": [
+    "enemies"
+   ],
+   "action": [
+    "burn",
+    "slash",
+    "frost",
+    "shockwave"
+   ]
+  },
+  {
+   "event": [
+    "on_applied",
+    "ifSingle"
+   ],
+   "target": [
+    "self"
+   ],
+   "action": [
+    "root",
+    "lance"
+   ]
+  }
+ ],
+ "stale": 1,
+ "best_key": "ifHealthy|ifNear|objects|enemies|drain|vortex|blades",
+ "archive": [
+  "objects|enemies|vortex|lance|ward|frost",
+  "on_detonate|ifBurning|ifSingle|objects|behind|slash|bolt",
+  "ifMarked|gems|poison|focus|orb",
+  "on_applied|on_healed|on_expired|eventOwner|bolt|rage|summon|homing",
+  "on_detonate|ifSingle|ifFar|ifFront|ifLowHp|shots|enemies|root|poison",
+  "enemies|blink|summon|shield",
+  "on_death|self|randomPoint|mark|amplify|root",
+  "ahead|slash|pull",
+  "on_hit|interval|ifSingle|ifMarked|enemies|armor",
+  "woundedEnemies|enemies|root|amplify",
+  "objects|summon|refresh",
+  "gems|bolt|poison|boomerang|absorb",
+  "ifStopped|on_death|ifBurning|on_spawn|ahead|gems|shockwave|focus|snipe|burn",
+  "on_hurt|on_complete|eventSubject|ahead|amplify|bolt|snipe",
+  "ifSingle|on_collect|ifMarked|ifFront|fallen|blades|fear|vortex|explode",
+  "on_detonate|on_hurt|on_hit|on_complete|on_healed|objects|prey|pull|dash|explode|shockwave",
+  "on_spawn|ifSingle|behind|shots|slash|absorb|magnet|orb",
+  "ifMarked|self|dash|homing|split",
+  "ifLowHp|on_collect|ifStopped|on_moved|on_kill|woundedEnemies|dash|frost|pull",
+  "fallen|eventSubject|shield",
+  "ifStopped|randomPoint|shots|mark|frost|shockwave",
+  "on_kill|eventSubject|meteor|scatter|root|mine",
+  "ifMany|ifLowHp|on_complete|eventOwner|eventSubject|frost|spread",
+  "ifElite|ifFar|ifSafe|objects|boomerang|pull",
+  "on_expired|lastHit|fallen|frost",
+  "ifSafe|ifMarked|on_collect|enemies|self|refresh|split|mine|vortex",
+  "ifStopped|fallen|eventOwner|mark|bolt|slash",
+  "on_healed|on_moved|ifElite|eventSubject|archer|poison|summon|root",
+  "ifLowHp|on_hurt|enemies|lastHit|mark",
+  "on_complete|ifSingle|ifHealthy|enemies|mine|armor",
+  "ifHealthy|on_collect|enemies|heal",
+  "ifSingle|on_hurt|ifSafe|ahead|dash",
+  "on_applied|on_expired|ifElite|ifSingle|self|all|focus",
+  "objects|shockwave|armor",
+  "ifLowHp|eventOwner|armor|shield",
+  "on_detonate|ifSingle|eventSubject|ahead|slash|snipe",
+  "on_death|objects|prey|pull|turret|explode|dash",
+  "ifSingle|ifHealthy|randomPoint|summon|refresh|haste",
+  "ifEnemyNear|objects|blink|scatter|refresh",
+  "enemies|shield|summon|blink",
+  "ifNear|on_complete|objects|enemies|vortex|lance|ward|frost",
+  "on_complete|ifSingle|ifFar|ifHealthy|enemies|armor|mine",
+  "on_hurt|on_complete|allies|mine|armor",
+  "all|eventSubject|poison|meteor",
+  "on_hurt|on_complete|eventSubject|ahead|amplify|bolt|mark",
+  "ifHealthy|objects|gems|vortex|homing|archer",
+  "on_hurt|ifElite|self|randomPoint|amplify|bolt|snipe|mark",
+  "on_hurt|on_complete|eventSubject|ahead|amplify|turret|bolt|snipe",
+  "objects|enemies|lance|armor",
+  "ifSingle|on_collect|ifMarked|on_applied|fallen|dash|pull|explode|shockwave",
+  "ifEnemyNear|ifMarked|self|dash|homing|split",
+  "gems|dash|focus|orb",
+  "on_complete|ifSingle|ifHealthy|enemies|mine|armor|dash",
+  "woundedEnemies|enemies|blink|summon|shield",
+  "all|frost|orb|rally|amplify",
+  "ifLowHp|on_spawn|ifMarked|fallen|split|archer|meteor|bolt",
+  "ifMany|on_hit|on_kill|enemies|mine|turret|explode",
+  "gems|focus|dash|orb",
+  "on_hit|objects|enemies|lance|frost",
+  "on_kill|on_complete|woundedEnemies|enemies|shield|split",
+  "on_hurt|on_complete|eventSubject|ahead|amplify|bolt|poison|meteor",
+  "ifStopped|ifSingle|ifHealthy|enemies|mine|dash|armor",
+  "ifLowHp|ifHealthy|ifStopped|on_moved|on_kill|allies|frost|pull",
+  "ifFar|ifMarked|pickups|ahead|blink|absorb",
+  "on_hurt|on_complete|eventSubject|woundedEnemies|shockwave|shield",
+  "ifNear|on_complete|objects|eventOwner|lance|vortex|ward|frost",
+  "objects|enemies|laser|lance|ward|frost",
+  "all|enemies|summon|blink|poison",
+  "on_detonate|on_hurt|on_hit|on_complete|ifSingle|objects|prey|explode|dash|pull|bolt",
+  "on_detonate|on_hurt|on_hit|on_complete|on_healed|enemies|mine|armor|dash",
+  "pickups|lastHit|mine|armor|blink|summon",
+  "ifHealthy|on_complete|on_moved|objects|enemies|vortex|lance|ward|frost",
+  "objects|enemies|mine|armor|dash",
+  "eventOwner|slash|pull",
+  "on_hurt|ifMany|on_complete|eventSubject|ahead|shockwave|armor",
+  "ifEnemyNear|objects|scatter|snipe|refresh|frost",
+  "on_hurt|on_complete|eventSubject|ahead|snipe",
+  "ifSingle|on_hurt|ahead|dash",
+  "ifLowHp|on_collect|ifStopped|ifFront|on_kill|objects|enemies|dash|lance|vortex|frost",
+  "on_hurt|on_complete|objects|enemies|vortex|ward|lance|frost",
+  "ifSingle|on_hurt|ifSafe|objects|self|lance|armor|dash",
+  "on_healed|on_moved|ifSingle|ifMany|ifStopped|ahead|enemies|refresh|shockwave",
+  "ifBurning|woundedEnemies|frost|lance|armor|decoy",
+  "ifHealthy|on_hurt|randomPoint|scatter",
+  "objects|eventOwner|blink|poison|spread",
+  "on_hurt|enemies|mine|armor|shockwave|pull",
+  "objects|enemies|turret|burn|meteor",
+  "ifHealthy|on_complete|ifEnemyNear|objects|enemies|vortex|lance|laser|frost",
+  "fallen|enemies|laser|lance|ward|frost",
+  "ifHealthy|on_complete|on_moved|objects|nearestEnemy|dash|lance|vortex|frost",
+  "objects|enemies|laser|blades|ward|frost",
+  "enemies|dash|armor|mine",
+  "ifSingle|on_hurt|objects|enemies|mine|dash|armor",
+  "ifSingle|ifMany|on_hurt|ahead|dash|orb",
+  "on_death|on_detonate|on_complete|eventSubject|woundedEnemies|shield",
+  "eventSubject|woundedEnemies|shockwave|frost",
+  "all|eventSubject|poison|orb",
+  "on_hurt|on_hit|objects|zones|vortex|ward|lance|drain",
+  "ifEnemyNear|behind|scatter|snipe|refresh|frost",
+  "all|prey|dash|snipe|bolt",
+  "on_hurt|on_healed|eventSubject|woundedEnemies|shockwave|bolt",
+  "shots|rally|orb|frost|amplify",
+  "on_detonate|ifBurning|on_hit|on_complete|ifSingle|eventOwner|woundedEnemies|explode|bolt",
+  "all|objects|lance|armor|bolt",
+  "ifLowHp|ifNear|on_complete|objects|enemies|vortex|ward|lance|frost",
+  "all|eventSubject|poison",
+  "on_spawn|ifEnemyNear|enemies|split|archer|armor|dash",
+  "objects|enemies|mine|ward|dash|frost",
+  "ifMany|on_collect|ifEnemyNear|ifMarked|all|woundedEnemies|burn|homing|explode",
+  "ifHealthy|on_detonate|ifSingle|on_healed|gems|orb|shield|chain",
+  "ifFar|on_complete|interval|ifBurning|ifStopped|enemies|snipe|slash|focus|mine",
+  "objects|mine|ward|dash|frost",
+  "objects|enemies|poison|armor",
+  "on_complete|enemies|scatter|lance|ward|frost",
+  "ifNear|objects|self|lance|armor|poison|orb",
+  "objects|enemies|laser|blades|ward|burn",
+  "objects|enemies|mine|ward|blades|blink",
+  "enemies|mine|armor|shockwave|blades",
+  "ifSafe|ifBurning|all|nearestEnemy|frost|lance|armor|decoy",
+  "ifHealthy|on_expired|ifEnemyNear|all|enemies|snipe|dash|frost",
+  "all|eventSubject|poison|orb|slash",
+  "ifHealthy|on_complete|on_moved|self|enemies|lance|slash|frost",
+  "all|eventSubject|dash|armor|orb",
+  "enemies|mine|explode|dash|frost",
+  "on_hurt|enemies|mine|armor|shockwave|orb",
+  "ifStopped|nearestEnemy|enemies|dash|mine",
+  "on_moved|objects|enemies|explode|frost",
+  "ifMarked|objects|enemies|blades|lance|ward|frost",
+  "ifLowHp|on_complete|enemies|vortex|burn|ward|frost",
+  "ifMarked|fallen|ahead|laser|lance|ward|root",
+  "shots|objects|explode|armor|shockwave|bolt",
+  "ifBurning|all|ahead|frost|pull|armor|poison",
+  "fallen|eventOwner|mine|pull|shockwave|armor",
+  "ifFar|on_spawn|ifMarked|enemies|rage|magnet|orb|poison",
+  "on_moved|ifNear|on_spawn|ifElite|randomPoint|root|homing",
+  "on_hit|ifFar|ifLowHp|ifFront|on_healed|nearestEnemy|woundedEnemies|orb",
+  "ifHealthy|on_complete|ifEnemyNear|all|eventSubject|vortex|lance|laser|frost",
+  "on_moved|ahead|enemies|bolt|slash|frost",
+  "ifHealthy|on_complete|on_moved|self|vortex|lance|ward|shield",
+  "ifHealthy|on_complete|on_moved|enemies|homing|lance|ward|frost",
+  "on_hurt|objects|vortex|rage|ward|frost",
+  "objects|enemies|poison|armor|root",
+  "objects|enemies|lance|armor|laser|blades",
+  "allies|poison|orb|heal",
+  "objects|fallen|poison|magnet|blades|ward",
+  "ifMarked|on_complete|on_moved|enemies|vortex|lance|ward|frost",
+  "shots|objects|vortex|lance|ward|frost",
+  "all|eventSubject|frost|orb|laser",
+  "ifStopped|ifElite|allies|ward|lance|laser|orb",
+  "objects|armor",
+  "on_hurt|objects|enemies|lance|shockwave|bolt",
+  "objects|enemies|poison|orb|slash|blades",
+  "enemies|scatter|lance|ward|frost",
+  "objects|enemies|poison|armor|meteor",
+  "enemies|mine|armor|shockwave|frost",
+  "ifNear|objects|self|lance|shield|dash|mine",
+  "objects|shots|armor|poison",
+  "on_complete|enemies|frost|pull|armor|lance",
+  "eventSubject|enemies|blades|snipe",
+  "on_death|on_detonate|pickups|allies|magnet|orb|burn|bolt",
+  "interval|ifLowHp|on_expired|lastHit|ahead|snipe|amplify",
+  "nearestEnemy|woundedEnemies|orb|scatter|lance|ward",
+  "objects|ahead|poison|armor|meteor",
+  "on_moved|enemies|scatter|lance|frost",
+  "enemies|scatter|frost|ward|lance",
+  "ifHealthy|on_complete|on_moved|enemies|homing|vortex|lance|laser",
+  "ifEnemyNear|all|eventSubject|frost|poison|armor",
+  "enemies|amplify|poison|armor|meteor",
+  "ahead|scatter|lance|ward|frost",
+  "objects|enemies|orb|slash|bolt",
+  "on_complete|fallen|scatter|lance|ward|frost",
+  "self|enemies|poison|orb|slash|blades",
+  "nearestEnemy|enemies|vortex",
+  "on_complete|objects|enemies|frost|pull|armor|lance",
+  "fallen|eventOwner|laser|armor|lance|blades",
+  "objects|mine|pull|shockwave|armor",
+  "enemies|lance|shockwave|bolt",
+  "ifHealthy|on_complete|on_moved|self|enemies|lance|slash",
+  "enemies|ahead|scatter|lance|ward|frost",
+  "on_complete|objects|lastHit|scatter|lance|ward|frost",
+  "allies|enemies|frost|orb|poison|armor",
+  "self|enemies|lance|slash|frost",
+  "on_kill|ifSingle|ifSafe|ifFar|on_complete|randomPoint|nearestEnemy|blink|mine|orb|dash",
+  "on_collect|on_moved|interval|on_detonate|enemies|magnet|bolt|mark",
+  "ifEnemyNear|allies|zones|slash|blink|meteor|focus",
+  "nearestEnemy|blades|armor|laser|homing",
+  "eventSubject|enemies|laser|armor|lance|blades",
+  "ifBurning|on_complete|ifEnemyNear|on_spawn|self|enemies|vortex|lance|laser|frost",
+  "allies|enemies|orb|poison|blink",
+  "objects|enemies|poison|orb|armor|blades",
+  "objects|enemies|frost|pull|armor|lance",
+  "ifHealthy|on_complete|on_moved|enemies|drain|vortex|lance|laser",
+  "allies|enemies|poison|orb|slash|blades",
+  "ifEnemyNear|self|enemies|frost|poison|armor",
+  "self|enemies|lance|poison|armor|meteor",
+  "enemies|ahead|blink|pull|armor|lance",
+  "self|zones|poison|slash|orb|blades",
+  "ifBurning|on_complete|on_hit|on_moved|allies|poison|frost|vortex|lance",
+  "on_hurt|objects|enemies|lance|shockwave|blades",
+  "zones|enemies|poison|orb|slash|blades",
+  "objects|ahead|poison|armor|dash|bolt",
+  "enemies|lance|laser",
+  "ifNear|enemies|lance|frost|ward|homing",
+  "ifMarked|self|ahead|blades|snipe",
+  "on_complete|enemies|frost|magnet|armor|lance",
+  "on_applied|all|eventSubject|poison|armor",
+  "interval|objects|ahead|poison|turret|meteor",
+  "on_complete|interval|enemies|ahead|orb|ward|frost",
+  "prey|scatter|lance|ward|frost",
+  "on_kill|ifFar|ifStopped|ifMany|ifElite|shots|spread|frost|scatter|root",
+  "nearestEnemy|orb|laser|homing",
+  "on_hit|on_complete|on_kill|on_collect|eventOwner|slash|bolt|boomerang|laser",
+  "allies|poison|orb|slash|blades",
+  "enemies|orb|blink|armor|blades",
+  "objects|lance|scatter|blades",
+  "ifHealthy|on_complete|on_moved|behind|objects|drain|vortex|laser",
+  "eventSubject|enemies|orb|snipe",
+  "on_complete|enemies|boomerang|magnet|armor|lance",
+  "on_detonate|eventSubject|frost|poison|armor",
+  "objects|frost|pull|armor|lance",
+  "ifEnemyNear|on_moved|prey|enemies|armor|lance|blades",
+  "zones|enemies|poison|blades",
+  "ifHealthy|on_complete|on_collect|enemies|homing|vortex|lance|laser",
+  "ifHealthy|on_complete|on_moved|enemies|lance|laser",
+  "objects|enemies|orb|poison|armor|blades",
+  "self|zones|laser|armor|poison|slash",
+  "ifHealthy|objects|enemies|poison|spread|armor",
+  "ifNear|all|enemies|ward|homing|lance",
+  "ifSingle|objects|enemies|frost",
+  "lastHit|lance|laser|blades",
+  "shots|scatter|lance|ward|frost",
+  "ifHealthy|on_complete|on_collect|objects|enemies|armor|orb|poison|blades",
+  "objects|enemies|frost|root|armor|poison",
+  "nearestEnemy|enemies|poison|blades",
+  "ifMany|ifEnemyNear|on_detonate|on_kill|behind|prey|slash",
+  "on_collect|ifEnemyNear|shots|objects|orb|spread|armor",
+  "ifSafe|on_collect|on_applied|enemies|ahead|frost|refresh|summon",
+  "ifStopped|objects|enemies|poison|lance|armor|blades",
+  "objects|enemies|lance|armor|homing",
+  "zones|enemies|lance|armor|laser|blades",
+  "enemies|orb|blink|boomerang|poison",
+  "interval|woundedEnemies|enemies|lance|blades",
+  "self|homing|vortex|orb|poison",
+  "objects|enemies|meteor|armor|laser|blades",
+  "objects|enemies|frost|root|fear|poison",
+  "ifEnemyNear|enemies|blades|poison",
+  "on_expired|self|zones|poison|laser|slash|blades",
+  "eventOwner|slash|bolt|boomerang|prolong",
+  "on_hurt|all|randomPoint|lance|laser|blades",
+  "ifBurning|enemies|poison|orb|blades|lance",
+  "eventSubject|enemies|orb|slash|bolt|boomerang",
+  "on_detonate|enemies|gems|homing|vortex|lance|frost",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "objects|enemies|magnet|snipe|ward",
+  "ifHealthy|on_complete|allies|homing|vortex|lance|slash",
+  "eventOwner|slash|bolt|boomerang|laser",
+  "eventSubject|shots|orb|blades|poison",
+  "ifHealthy|on_complete|on_collect|enemies|boomerang|lance",
+  "eventOwner|orb|bolt|boomerang|laser",
+  "ifMany|on_applied|all|vortex",
+  "on_hurt|fallen|scatter|lance|focus",
+  "interval|fallen|enemies|scatter",
+  "ifHealthy|ifEnemyNear|on_moved|shots|lance|vortex|homing|laser",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|spread|lance",
+  "ifLowHp|zones|enemies|frost|armor|laser|blades",
+  "woundedEnemies|enemies|fear|blades",
+  "on_hurt|zones|enemies|lance|laser|armor|blades",
+  "ifHealthy|on_complete|on_moved|objects|enemies|drain|vortex|lance|blades",
+  "woundedEnemies|enemies|lance|blades",
+  "ifHealthy|interval|on_moved|all|root|armor|blades",
+  "ifHealthy|on_complete|on_moved|objects|lance|homing|laser",
+  "woundedEnemies|nearestEnemy|bolt|drain|homing|lance",
+  "on_complete|eventSubject|enemies|boomerang|mine",
+  "eventOwner|blink|bolt|boomerang|laser",
+  "ifEnemyNear|eventOwner|slash|bolt|boomerang|laser",
+  "ifHealthy|on_complete|on_moved|objects|enemies|homing|vortex|scatter|laser",
+  "on_healed|ifHealthy|on_complete|on_moved|lastHit|vortex|drain|lance|laser",
+  "on_hit|on_complete|ifHealthy|on_collect|prey|slash|bolt|boomerang|laser",
+  "on_hurt|objects|ahead|frost|lance|laser|blades",
+  "interval|nearestEnemy|lance|magnet|blades",
+  "objects|woundedEnemies|meteor|armor|blades",
+  "objects|enemies|slash|bolt|absorb",
+  "ahead|enemies|poison|blades",
+  "all|eventOwner|laser|blades",
+  "on_spawn|on_collect|ifHealthy|zones|eventOwner|bolt|summon|orb",
+  "on_death|enemies|prey|scatter|mine|bolt",
+  "ifFar|ifLowHp|shots|turret",
+  "ifHealthy|on_complete|on_moved|eventSubject|enemies|boomerang|lance|blades",
+  "on_hit|on_complete|on_kill|on_collect|fallen|boomerang|slash",
+  "ahead|randomPoint|poison|chain|blades",
+  "nearestEnemy|bolt|drain|homing|lance",
+  "on_hurt|eventSubject|enemies|slash|bolt|mark|prolong",
+  "on_hit|on_complete|on_kill|on_collect|enemies|boomerang|vortex|scatter|laser",
+  "ahead|enemies|bolt|drain|homing|lance",
+  "on_hurt|on_complete|on_moved|enemies|drain|vortex|lance|laser",
+  "ifBurning|on_complete|on_kill|on_collect|eventOwner|slash|bolt|boomerang|laser",
+  "ahead|slash|bolt|boomerang|laser",
+  "on_hit|on_complete|on_kill|on_collect|eventOwner|slash|bolt|rage|laser",
+  "on_hit|on_complete|on_kill|on_collect|ahead|enemies|slash|bolt|magnet",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|lance|blades",
+  "on_complete|ifHealthy|on_collect|on_detonate|prey|slash|dash|absorb",
+  "on_applied|fallen|enemies|focus",
+  "on_hit|on_hurt|on_kill|on_collect|enemies|slash|bolt|boomerang|laser",
+  "ifBurning|eventSubject|enemies|boomerang|mine",
+  "ifHealthy|on_complete|on_moved|eventSubject|enemies|drain|vortex|magnet|blades",
+  "ifHealthy|on_complete|on_moved|zones|enemies|drain|vortex|lance|blades",
+  "on_hurt|ifHealthy|on_complete|on_moved|objects|enemies|lance|armor|drain|vortex",
+  "zones|enemies|meteor|armor|blades|orb",
+  "ifHealthy|on_complete|on_moved|pickups|drain|vortex|lance|laser",
+  "woundedEnemies|homing|orb",
+  "on_applied|ifSingle|interval|ifFront|ahead|fallen|summon|scatter",
+  "on_applied|ifBurning|ifEnemyNear|interval|on_complete|ahead|orb|pull|homing",
+  "ifHealthy|on_complete|ahead|enemies|blades|vortex|lance|drain",
+  "fallen|poison|chain|blades",
+  "ifHealthy|on_complete|ifStopped|objects|shots|drain|vortex|lance|blades",
+  "ifHealthy|on_complete|ifNear|objects|enemies|vortex|drain|magnet",
+  "on_complete|ifHealthy|on_collect|on_detonate|ifMarked|eventOwner|slash|bolt|rage|dash",
+  "on_hit|on_hurt|on_death|on_kill|on_collect|objects|slash|bolt|boomerang|drain",
+  "woundedEnemies|enemies|bolt|laser",
+  "ahead|slash|drain|vortex|lance",
+  "on_hit|on_hurt|on_kill|on_collect|eventOwner|drain|bolt|blades",
+  "enemies|bolt|drain|homing|lance",
+  "on_hit|on_complete|on_kill|on_collect|enemies|meteor|armor|dash|scatter",
+  "ifHealthy|on_complete|on_moved|eventOwner|amplify|bolt|boomerang|laser",
+  "ifHealthy|on_complete|ifNear|enemies|boomerang|vortex|scatter|laser",
+  "ifHealthy|ifSingle|on_complete|on_moved|objects|fallen|lance|armor|drain",
+  "ifHealthy|ifNear|objects|enemies|drain|vortex|blades",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|lance|pull",
+  "objects|enemies|turret|bolt|boomerang|laser",
+  "ahead|enemies|bolt|drain|vortex|lance",
+  "on_hurt|ifHealthy|on_complete|on_moved|objects|enemies|lance|blink|drain|vortex",
+  "ifEnemyNear|objects|enemies|magnet|homing|drain",
+  "on_hit|on_complete|on_kill|on_collect|eventOwner|drain|vortex|laser|rage",
+  "ifHealthy|on_complete|on_moved|ifNear|objects|enemies|meteor|armor|blades|orb",
+  "on_hurt|on_complete|on_moved|lastHit|spread|bolt|boomerang|laser",
+  "interval|ahead|split|slash|magnet|refresh",
+  "self|gems|mine|shield",
+  "ifFront|on_complete|nearestEnemy|meteor",
+  "on_hurt|ifHealthy|on_complete|on_moved|eventSubject|enemies|lance|slash",
+  "on_detonate|eventOwner|blades|summon|snipe|drain",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|lance",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|magnet",
+  "ifHealthy|on_complete|ahead|enemies|lance|blink|drain|vortex",
+  "objects|enemies|bolt|laser",
+  "ifHealthy|on_complete|on_moved|objects|bolt|laser",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|zones|blink|drain|vortex|lance",
+  "on_hurt|ifHealthy|on_complete|on_moved|zones|enemies|lance|blink|vortex|rage",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|pickups|drain|vortex|lance|blades",
+  "objects|lance|ward|drain|homing",
+  "on_hurt|on_complete|on_moved|enemies|ahead|bolt|drain|homing|lance",
+  "ifHealthy|on_complete|ifNear|woundedEnemies|enemies|drain|bolt|laser",
+  "interval|ahead|self|drain|vortex|laser|rage",
+  "objects|enemies|homing|drain|lance",
+  "objects|blades|vortex|lance|drain",
+  "ifHealthy|ifNear|randomPoint|enemies|mark|vortex|blades|lance",
+  "ifHealthy|on_complete|ifNear|randomPoint|enemies|drain|vortex|blades|lance",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|blades|lance|vortex",
+  "ifHealthy|on_moved|objects|enemies|drain|vortex|blades",
+  "on_detonate|on_complete|ifNear|self|enemies|drain|vortex|lance|blink",
+  "on_hurt|ifHealthy|on_complete|ifElite|objects|lance|blink|drain|vortex",
+  "ifHealthy|ifNear|shots|enemies|drain|vortex|lance|chain",
+  "enemies|self|fear|shield|swap",
+  "on_healed|ifSingle|on_moved|ifEnemyNear|eventOwner|orb",
+  "eventOwner|behind|heal|haste|explode|poison",
+  "ifFar|objects|laser|bolt",
+  "ifHealthy|on_complete|on_expired|nearestEnemy|enemies|drain|fear|blades",
+  "ifHealthy|on_complete|ifEnemyNear|enemies|drain|vortex|lance|chain",
+  "objects|lance|ward|frost|homing",
+  "ifHealthy|on_complete|woundedEnemies|enemies|bolt|homing|lance",
+  "ifBurning|on_complete|ifNear|objects|enemies|bolt|drain|homing|lance",
+  "objects|all|homing|drain|bolt|laser",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|rally|lance|blades",
+  "on_complete|ifNear|shots|self|drain|mine|lance|chain",
+  "ifHealthy|on_spawn|ifNear|enemies|ahead|bolt|drain|homing|lance",
+  "on_spawn|on_complete|ahead|enemies|lance|mine|drain|vortex",
+  "ifHealthy|ifNear|objects|enemies|laser|vortex|mark",
+  "ifHealthy|on_complete|ifNear|enemies|drain|mark|vortex",
+  "self|gems|drain|bolt|mine|shield",
+  "on_complete|ifEnemyNear|ifNear|woundedEnemies|enemies|homing|drain|lance|bolt",
+  "woundedEnemies|enemies|drain|shield",
+  "on_hurt|ifSingle|on_moved|randomPoint|enemies|bolt|vortex|blades|lance",
+  "ifHealthy|ifNear|objects|self|drain|blades|lance|vortex",
+  "ifHealthy|on_complete|ifNear|objects|drain|vortex|lance",
+  "on_healed|ifNear|eventSubject|enemies|drain|blades|vortex",
+  "on_complete|on_moved|objects|enemies|drain|blades|lance|vortex",
+  "on_hurt|ifHealthy|on_complete|on_moved|objects|enemies|drain|lance|blink|vortex",
+  "on_collect|on_moved|on_spawn|lastHit|nearestEnemy|haste|mark|lance|burn",
+  "on_kill|ifMarked|objects|randomPoint|mine|lance",
+  "ahead|poison|heal|magnet|frost",
+  "ifHealthy|ifNear|objects|enemies|drain|blades|lance",
+  "on_detonate|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "on_expired|on_complete|ifNear|objects|enemies|drain|scatter",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|bolt|shield",
+  "on_complete|on_moved|eventSubject|enemies|drain|vortex",
+  "on_spawn|ifElite|ahead|enemies|lance|mine|drain|vortex",
+  "ifBurning|on_complete|ifNear|enemies|bolt|drain|homing|lance",
+  "ifMarked|on_complete|ifNear|objects|enemies|drain|vortex|blades",
+  "ifHealthy|on_kill|ifEnemyNear|objects|enemies|vortex|drain|lance|blades",
+  "ifHealthy|on_complete|on_expired|nearestEnemy|enemies|dash|fear|blades",
+  "ifHealthy|ifStopped|objects|enemies|vortex|blades",
+  "on_hurt|ifHealthy|on_complete|ifMany|on_moved|allies|enemies|lance|blink|vortex",
+  "eventSubject|homing|drain|bolt|mark",
+  "on_spawn|on_complete|lastHit|enemies|blink|drain|vortex",
+  "ifHealthy|woundedEnemies|self|drain|rally|lance|blades",
+  "on_expired|on_complete|on_moved|objects|allies|lance|vortex|drain|blades",
+  "ifHealthy|ifEnemyNear|on_complete|woundedEnemies|enemies|homing|drain|lance|bolt",
+  "ifHealthy|on_complete|woundedEnemies|enemies|homing|drain|bolt|lance",
+  "on_complete|ifMarked|nearestEnemy|eventSubject|drain|fear|blades",
+  "ifHealthy|ifNear|woundedEnemies|homing|drain|lance|bolt",
+  "ifHealthy|on_complete|ifNear|woundedEnemies|enemies|bolt|homing|lance",
+  "ifSingle|ifHealthy|ifNear|objects|pickups|vortex|blades",
+  "on_complete|ifHealthy|on_collect|on_moved|ifNear|shots|self|homing|rage",
+  "ifHealthy|ifLowHp|on_expired|nearestEnemy|fear|frost|orb|rally",
+  "ifLowHp|on_hit|prey|pull",
+  "ifHealthy|ifNear|enemies|drain|blades|lance|dash",
+  "ifHealthy|on_complete|ifNear|objects|lastHit|drain|vortex|lance|blades",
+  "ifMarked|on_complete|on_moved|enemies|drain|vortex|lance|blades",
+  "ifHealthy|on_expired|lastHit|vortex|drain|scatter",
+  "on_complete|ifEnemyNear|ifNear|woundedEnemies|enemies|shield|prolong",
+  "ifHealthy|interval|woundedEnemies|ahead|homing|drain|magnet|bolt",
+  "ifMarked|on_hit|on_complete|ifNear|objects|enemies|drain|archer|turret|blades",
+  "ifHealthy|on_kill|ifEnemyNear|objects|enemies|drain|vortex|lance|blades",
+  "ifFront|on_complete|on_moved|woundedEnemies|enemies|drain|snipe|archer|blades",
+  "ifHealthy|woundedEnemies|drain|vortex|blades",
+  "on_detonate|on_complete|on_moved|woundedEnemies|prey|drain|vortex|lance|blades",
+  "interval|on_complete|on_moved|woundedEnemies|randomPoint|drain|vortex|lance|pull",
+  "on_complete|on_moved|self|enemies|drain|root",
+  "on_complete|ifNear|enemies|drain|scatter",
+  "on_complete|on_moved|woundedEnemies|enemies|drain|vortex|bolt|shield",
+  "ifHealthy|on_complete|woundedEnemies|eventOwner|blades|lance|vortex",
+  "ifHealthy|on_complete|on_moved|enemies|homing|drain|bolt|blades",
+  "ifHealthy|on_spawn|ifNear|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "ahead|poison|heal|magnet|homing",
+  "ifNear|woundedEnemies|homing|drain|lance|bolt",
+  "on_complete|on_moved|eventSubject|enemies|frost|scatter|drain",
+  "on_spawn|ifHealthy|on_complete|ifNear|objects|enemies|drain|scatter",
+  "self|spread|rage",
+  "on_death|ifStopped|ifEnemyNear|on_moved|ifFront|enemies|bolt",
+  "ifNear|nearestEnemy|blink|poison|orb|refresh",
+  "on_applied|on_complete|on_moved|objects|lastHit|drain|vortex|lance|blades",
+  "on_complete|ifHealthy|on_collect|on_moved|ifNear|enemies|drain|shield",
+  "on_detonate|ifStopped|on_moved|woundedEnemies|homing",
+  "on_healed|ifNear|objects|enemies|drain|root|vortex|blades",
+  "ifHealthy|on_complete|on_kill|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "ifHealthy|on_moved|enemies|drain|scatter",
+  "on_complete|on_moved|on_applied|eventSubject|enemies|amplify|rally|drain",
+  "on_hit|ifHealthy|on_collect|on_moved|ifNear|enemies|drain|scatter|homing|rage",
+  "on_detonate|on_complete|on_moved|objects|enemies|drain|vortex|lance|blades",
+  "on_complete|on_moved|woundedEnemies|eventOwner|drain|vortex|bolt|shockwave",
+  "on_collect|on_complete|lastHit|enemies|blink|drain|vortex|bolt",
+  "ifHealthy|objects|enemies|drain|homing",
+  "ifHealthy|on_complete|enemies|eventOwner|lance|vortex",
+  "ifMany|on_complete|on_moved|objects|frost|scatter|drain",
+  "ifHealthy|on_complete|enemies|blades|drain|dash|lance",
+  "ifFront|on_complete|on_moved|woundedEnemies|enemies|root|snipe|archer|blades",
+  "ifHealthy|on_complete|ifBurning|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "ifFront|on_complete|on_moved|allies|randomPoint|drain|vortex|lance|blades",
+  "on_complete|woundedEnemies|enemies|drain|blink|bolt|shield",
+  "on_healed|ifHealthy|on_complete|ifNear|objects|enemies|vortex|drain|lance|blades",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|mark|blades",
+  "ifHealthy|on_complete|ifNear|enemies|drain|blades|lance",
+  "on_detonate|on_complete|woundedEnemies|prey|snipe|drain|scatter",
+  "ifElite|on_death|ifMany|fallen|shots|bolt|mine|armor|lance",
+  "enemies|gems|snipe|bolt",
+  "on_collect|on_healed|on_hit|on_detonate|enemies|amplify|bolt|refresh",
+  "on_detonate|on_complete|on_moved|woundedEnemies|prey|blades|vortex|lance|drain",
+  "ifHealthy|on_spawn|enemies|drain|shield|dash",
+  "ifBurning|ifNear|objects|enemies|drain|vortex|blades",
+  "on_collect|ifHealthy|on_applied|enemies|behind|blades|drain|ward|lance",
+  "ifHealthy|ifNear|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "ifHealthy|on_complete|on_kill|ifSingle|ifLowHp|woundedEnemies|enemies|vortex|lance|blades",
+  "on_detonate|on_complete|on_moved|objects|zones|drain|vortex|lance|blades",
+  "on_healed|ifHealthy|on_complete|ifNear|woundedEnemies|shots|drain|pull|lance|blades",
+  "on_collect|on_complete|lastHit|enemies|blink|drain|vortex|lance",
+  "on_collect|ifElite|lastHit|ahead|drain|vortex|poison|bolt",
+  "ifHealthy|on_kill|fallen|drain|vortex|blades",
+  "ifHealthy|on_complete|enemies|allies|blades|chain",
+  "ifHealthy|on_complete|on_kill|on_moved|enemies|drain|lance|blades",
+  "ifHealthy|on_complete|self|enemies|dash|drain|lance",
+  "ifStopped|on_complete|ifNear|enemies|drain|vortex|lance|blades",
+  "ifMarked|ifHealthy|on_complete|on_kill|on_moved|allies|randomPoint|drain|vortex|orb|lance",
+  "ifHealthy|enemies|shots|lance|vortex|blades",
+  "on_detonate|on_complete|on_moved|objects|enemies|drain|vortex|lance|pull",
+  "on_complete|ifHealthy|ifFar|on_moved|ifNear|lastHit|enemies|blink|boomerang|vortex|bolt",
+  "ifHealthy|ifBurning|on_kill|on_moved|woundedEnemies|enemies|drain|vortex|blades|lance",
+  "ifHealthy|ifNear|eventOwner|lance|vortex|blades",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|blades",
+  "on_applied|ifHealthy|ifNear|objects|enemies|drain|vortex|blades",
+  "on_death|ifSingle|ifFar|ifSafe|eventSubject|enemies|summon|shockwave|poison",
+  "ifSafe|on_hurt|ifFront|ifElite|on_kill|allies|woundedEnemies|poison|mark",
+  "ifEnemyNear|ifStopped|on_detonate|ifSafe|all|allies|refresh|explode|vortex",
+  "on_kill|on_complete|lastHit|blink|drain|vortex|lance",
+  "ifHealthy|on_complete|ifNear|objects|drain|vortex|lance|blades",
+  "ifMarked|ifHealthy|on_applied|zones|enemies|amplify|bolt|refresh",
+  "ifNear|ifHealthy|ifLowHp|fallen|refresh|drain|homing|blades",
+  "ifHealthy|enemies|allies|blades|chain",
+  "ifHealthy|on_complete|on_kill|ifSingle|ifLowHp|woundedEnemies|enemies|vortex|lance",
+  "ifHealthy|on_complete|ifNear|self|drain|lance|blades",
+  "ifHealthy|on_complete|on_kill|on_moved|enemies|behind|blades|orb|ward|lance",
+  "ifHealthy|on_complete|ifNear|woundedEnemies|fallen|drain|vortex|lance|blades",
+  "ifHealthy|on_complete|ifNear|objects|enemies|drain|blades|lance",
+  "on_moved|lastHit|enemies|blink|drain|blades|vortex",
+  "on_applied|ifElite|ifNear|objects|enemies|blades|drain",
+  "on_hurt|on_complete|objects|enemies|drain|vortex|orb|pull",
+  "ifHealthy|on_complete|enemies|allies|armor|chain",
+  "ifHealthy|on_complete|on_kill|on_moved|enemies|drain|vortex|lance|blades",
+  "ifHealthy|on_complete|on_kill|on_moved|objects|randomPoint|drain|lance|blades|vortex",
+  "ifHealthy|ifEnemyNear|objects|enemies|drain|vortex|blades",
+  "ifHealthy|enemies|shots|bolt|mine|armor|lance",
+  "on_detonate|on_complete|on_moved|objects|enemies|lance|vortex|blades",
+  "on_detonate|on_complete|enemies|ahead|blades|chain",
+  "ifHealthy|on_complete|ahead|enemies|vortex|lance|drain",
+  "ahead|blades|shield|vortex",
+  "on_collect|on_detonate|objects|enemies|blink|drain|vortex|blades",
+  "ifStopped|on_healed|zones|shockwave|mine|refresh",
+  "ifSafe|on_death|on_moved|on_healed|ifNear|allies|homing|magnet|mine|frost",
+  "objects|woundedEnemies|orb|pull|frost|poison",
+  "ifHealthy|ifLowHp|objects|eventOwner|drain|vortex|blades",
+  "ifHealthy|ifFront|on_complete|interval|on_moved|self|drain|lance|decoy",
+  "ifHealthy|on_complete|ifNear|on_applied|woundedEnemies|enemies|drain|vortex|lance|turret",
+  "ifHealthy|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades",
+  "ifMarked|ifHealthy|on_hurt|objects|enemies|drain|mine|blades|pull",
+  "on_detonate|on_complete|ifFar|objects|fallen|lance|summon|blades",
+  "on_moved|objects|enemies|chain|blades|slash",
+  "ifHealthy|ifEnemyNear|ifLowHp|objects|enemies|drain|vortex|blades",
+  "on_applied|ifElite|ifNear|woundedEnemies|enemies|spread|lance|drain|blades",
+  "ifHealthy|on_expired|on_kill|on_moved|enemies|drain|homing|blades",
+  "on_hurt|on_complete|on_kill|objects|enemies|blink|drain|vortex|blades",
+  "ifHealthy|ifEnemyNear|objects|behind|turret|bolt|vortex|blades",
+  "on_death|ifSingle|ifFar|ifSafe|objects|drain|meteor|blades",
+  "ifHealthy|on_complete|on_kill|on_moved|lastHit|enemies|blades|orb|ward|lance",
+  "ahead|drain|shield|blades|vortex",
+  "ifHealthy|on_complete|ifNear|objects|fallen|vortex|drain|blades",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|lance|vortex|drain|blades",
+  "ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|blades",
+  "ifHealthy|zones|bolt|mine|vortex|blades",
+  "ifHealthy|ifNear|objects|fallen|drain|vortex|lance",
+  "ahead|drain|vortex|lance",
+  "ifHealthy|on_complete|on_kill|on_moved|enemies|bolt|mine|armor|lance",
+  "ifBurning|ifNear|on_hurt|pickups|orb|rage",
+  "ifMarked|eventOwner|objects|dash",
+  "ifSingle|allies|vortex",
+  "enemies|shockwave|slash|frost|burn",
+  "ifSafe|on_complete|ifFar|ifLowHp|ifFront|ahead|archer",
+  "ifEnemyNear|ahead|lastHit|homing|orb|summon|mine",
+  "enemies|woundedEnemies|orb",
+  "on_applied|on_healed|ifEnemyNear|pickups|mark|poison|focus",
+  "ifHealthy|woundedEnemies|shield|spread",
+  "ifMarked|on_expired|on_applied|on_moved|ifLowHp|enemies|bolt|pull|blades",
+  "ifSingle|ifMany|on_detonate|ifHealthy|nearestEnemy|frost|absorb",
+  "on_spawn|ifSingle|ifSafe|ifMarked|gems|spread",
+  "ahead|amplify|haste",
+  "ifFront|interval|ifElite|ifEnemyNear|on_detonate|enemies|woundedEnemies|refresh|swap",
+  "ifFront|on_applied|ifFar|ifBurning|ahead|prey|boomerang|absorb|bolt|lance",
+  "ifHealthy|on_detonate|enemies|mine|refresh",
+  "ifMarked|ifSingle|ifBurning|ifMany|on_kill|prey|slash|chain",
+  "on_kill|ifSingle|ifSafe|ifMany|objects|shots|blink",
+  "ifSingle|interval|ifStopped|eventOwner|gems|frost|meteor",
+  "ifElite|enemies|meteor",
+  "on_spawn|on_detonate|ifLowHp|eventSubject|bolt",
+  "on_applied|on_moved|on_detonate|ifSafe|on_spawn|randomPoint|gems|prolong|magnet|absorb",
+  "on_kill|ifMany|ifNear|on_expired|lastHit|fallen|orb|haste|spread",
+  "ifLowHp|woundedEnemies|self|root",
+  "on_spawn|self|slash|swap|boomerang|scatter",
+  "on_spawn|ifNear|ifLowHp|zones|enemies|dash|spread|homing|pull",
+  "on_applied|on_collect|on_complete|enemies|split|slash|frost|amplify"
+ ]
+}

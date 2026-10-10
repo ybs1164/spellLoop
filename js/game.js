@@ -8,6 +8,24 @@ const SWARM_INTERVAL = 60;
 const MAX_FX = 250;
 const MAX_TEXTS = 150;
 const MAX_PARTICLES = 600;
+// 분열 상한: 분열로 늘어나는 개체 수 (복제가 다시 분열하며 기하급수로 늘어나 멈추는 것을 막는다)
+const SPLIT_CAPS = { enemy: ['enemies', MAX_ENEMIES], self: ['allies', 120], ally: ['allies', 120], object: ['objects', 120], zone: ['zones', 120], shot: ['projectiles', 400], gem: ['pickups', 400], pickup: ['pickups', 400] };
+
+// 종류별 장판·설치물 상한: 「전체」 대상이 자기가 만든 장판·설치물 위에 또 만들며 끝없이 늘어나는 것을 막는다.
+// 넘치면 같은 종류에서 가장 오래된 것이 끝난다.
+const MAX_ZONES_PER_KIND = 150;
+const MAX_OBJECTS_PER_KIND = Infinity;   // 설치물 상한 해제 (스트레스 테스트 중)
+const MAX_STRUCT_RADIUS = 64;            // 설치물·아군 최대 반지름 여유분 (해시 조회용)
+const FAR_SHOT_VIEWS = 1.5;   // 화면 긴 변의 몇 배 밖부터 먼 투사체로 보는가
+const FAR_SHOT_PERIOD = 4;    // 먼 투사체의 갱신 주기 (프레임)
+// 유인이 없을 때의 플레이어 대상. 읽기 전용이라 하나를 공유한다 (복사해서 쓰는 호출부만 있다).
+const SELF_TARGET = Object.freeze({ kind: 'self' });
+const byStructOrder = (a, b) => a._so - b._so;
+function oldestOverCap(list, kind, team, max) {
+  let count = 0, oldest = null;
+  for (const o of list) if (!o.dead && o.kind === kind && entityTeam(o) === team) { count++; oldest ||= o; }
+  return count >= max ? oldest : null;
+}
 
 /** 상한을 넘으면 가장 오래된(앞쪽) 항목을 버리고 새 항목을 넣는다 */
 function pushCapped(list, item, max) {
@@ -221,11 +239,9 @@ class Game {
     else UI.hideOverlay();
   }
 
-  /** 레벨이 오를 때마다: 코스트 포인트 +1, 카드 선택 1회 */
+  /** 레벨이 오를 때마다 카드 선택 1회 */
   onLevelUp(level) {
-    const deck = this.player.deck;
     this.leveledUp = true;
-    deck.onLevelUp();
     this.pendingLevelUps++;
   }
 
@@ -234,16 +250,12 @@ class Game {
     const notes = this.levelNotes, leveled = this.leveledUp;
     this.levelNotes = [];
     this.leveledUp = false;
-    const show = () => UI.showLevelUp(this.player, rollRewards(this.player, REWARD_CHOICES), notes, leveled, (r) => {
+    UI.showLevelUp(this.player, rollRewards(this.player, REWARD_CHOICES), notes, leveled, (r) => {
       applyReward(this.player, r, this);
       this.pendingLevelUps--;
       if (this.pendingLevelUps > 0) this.openLevelUp();
       else this.resume();
-    }, () => {
-      // 코스트 포인트 1로 보상 카드를 다시 뽑는다
-      if (this.player.deck.spendRefresh()) show();
     });
-    show();
   }
 
   endRun(victory) {
@@ -292,7 +304,6 @@ class Game {
       case 'levelup':
         if (Input.consume('KeyE') || Input.consume('Tab')) { this.openEditor(); break; }
         for (let i = 0; i < REWARD_CHOICES; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickLevelUp(i);
-        if (Input.consume('KeyR')) UI.refreshLevelUp();
         break;
       case 'gameover':
       case 'victory':
@@ -305,13 +316,21 @@ class Game {
 
   step(dt) {
     this.time += dt;
+    this._decoyStamp = (this._decoyStamp | 0) + 1;
+    this._eventBudget = SLOT_EVENT_BUDGET;
     const p = this.player;
 
     this.updateSpawns(dt);
     this.updateBarrels(dt);
     this.updateTargetBuffs(dt);
     p.update(dt, this);
-    for (const e of this.enemies) e.update(dt, this.chaseTarget(e), this);
+    for (const e of this.enemies) {
+      // 슬롯의 「플레이어」 대상도 같은 값을 쓰므로, 이 적이 움직이기 전에 한 번만 구해 둔다.
+      const redirect = this._redirectValue = this.findRedirect(e);
+      this._redirectUnit = e;
+      e.update(dt, this.targetObj(redirect), this);
+    }
+    this._redirectUnit = null; this._redirectValue = null;
 
     this.rebuildHash();
     this.separateEnemies();
@@ -324,7 +343,7 @@ class Game {
     }
     this.updateZones(dt);
     this.updateStatuses(dt);
-    for (const pr of this.projectiles) pr.update(dt, this);
+    this.updateProjectiles(dt);
     this.collideProjectiles();
     this.resolveProjectileEnds();
     this.updateHazards(dt);
@@ -453,35 +472,29 @@ class Game {
    * (적마다 객체 형태가 달라 속성 읽기가 느리다). 계산 순서와 값은 객체에서 직접 하던 것과 같다.
    */
   separateEnemies() {
-    const list = this.enemies, n = list.length, cs = this.hash.cs;
+    const list = this.enemies, n = list.length, hash = this.hash, cs = hash.cs;
     let buf = this._sep;
     if (!buf || buf.x.length < n) {
       const size = Math.max(n, 2 * (buf?.x.length || 256));
-      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size), grid: new Map(), stamp: 0 };
+      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size) };
     }
-    const X = buf.x, Y = buf.y, R = buf.r, grid = buf.grid, stamp = ++buf.stamp;
-    // rebuildHash 직후라 지금 좌표가 해시에 넣은 좌표와 같다. 살아 있는 적만 배열 순서대로 칸에 넣는다.
-    for (let i = 0; i < n; i++) {
-      const e = list[i];
-      X[i] = e.x; Y[i] = e.y; R[i] = e.radius;
-      if (e.dead) continue;
-      const k = this.hash.key(Math.floor(X[i] / cs), Math.floor(Y[i] / cs));
-      let cell = grid.get(k);
-      if (!cell) { cell = []; grid.set(k, cell); }
-      if (cell.stamp !== stamp) { cell.length = 0; cell.stamp = stamp; }
-      cell.push(i);
-    }
-    if (grid.size > 4096) for (const [k, cell] of grid) if (cell.stamp !== stamp) grid.delete(k);
+    const X = buf.x, Y = buf.y, R = buf.r;
+    // rebuildHash 직후라 지금 좌표가 해시에 넣은 좌표와 같다. 해시의 칸 연결 목록(살아 있는 적, 배열 순서)을 그대로 이웃 목록으로 쓴다.
+    for (let i = 0; i < n; i++) { const e = list[i]; X[i] = e.x; Y[i] = e.y; R[i] = e.radius; e._si = i; }
+    if (!hash.n) return;
+    const items = hash.items, next = hash.next, head = hash.head, slotStamp = hash.slotStamp, stamp = hash.stamp, CX = hash.cx, CY = hash.cy;
     for (let ai = 0; ai < n; ai++) {
       const reach = R[ai] + MAX_ENEMY_RADIUS, wa = list[ai].boss ? 0.05 : 0.5;
       const x0 = Math.floor((X[ai] - reach) / cs), x1 = Math.floor((X[ai] + reach) / cs);
       const y0 = Math.floor((Y[ai] - reach) / cs), y1 = Math.floor((Y[ai] + reach) / cs);
       for (let cx = x0; cx <= x1; cx++) {
+        const hx = Math.imul(cx, 73856093);
         for (let cy = y0; cy <= y1; cy++) {
-          const cell = grid.get(this.hash.key(cx, cy));
-          if (!cell || cell.stamp !== stamp) continue;
-          for (let j = 0; j < cell.length; j++) {
-            const bi = cell[j];
+          const slot = (hx ^ Math.imul(cy, 19349663)) & (HASH_SLOTS - 1);
+          if (slotStamp[slot] !== stamp) continue;
+          for (let k = head[slot]; k >= 0; k = next[k]) {
+            if (CX[k] !== cx || CY[k] !== cy) continue;
+            const bi = items[k]._si;
             if (bi === ai) continue;
             const dx = X[ai] - X[bi], dy = Y[ai] - Y[bi];
             const min = R[ai] + R[bi];
@@ -507,8 +520,62 @@ class Game {
     return n;
   }
 
+  /** 설치물·아군을 투사체 판정용 해시에 넣는다. _so 는 objects→allies 배열 순서. */
+  rebuildStructHash() {
+    const hashes = this.structHashes ||= new Map();
+    this._nearStruct ||= [];
+    for (const hash of hashes.values()) hash.clear();
+    let order = 0, live = 0;
+    const add = o => {
+      o._so = order++;
+      if (o.dead) return;
+      live++;
+      const team = o.team ?? 'friendly';
+      let hash = hashes.get(team);
+      if (!hash) hashes.set(team, hash = new SpatialHash(64));
+      hash.insert(o);
+    };
+    for (const o of this.objects) add(o);
+    for (const a of this.allies || []) add(a);
+    this._structCount = live;
+  }
+
+  /** 충돌 규칙이 통과시키는 팀의 설치물·아군만 모은다 (entityCanHit 이 어차피 걸러낼 팀은 조회하지 않는다). 배열 순서는 _so 로 맞춘다. */
+  queryStructs(s, hit, reach) {
+    const out = this._nearStruct, rule = hit.hitTeamRule ?? 'opposing', sourceTeam = entityTeam(s);
+    out.length = 0;
+    for (const [team, hash] of this.structHashes) {
+      const pass = rule === 'same' ? sourceTeam === team : rule === 'friendly' ? team === 'friendly' : rule === 'hostile' ? team === 'hostile'
+        : rule === 'all' ? true : sourceTeam !== team;
+      if (pass) hash.queryInto(s.x, s.y, reach, out);
+    }
+    return out.length > 1 ? out.sort(byStructOrder) : out;
+  }
+
+  /** 플레이어에게서 먼 투사체는 FAR_SHOT_PERIOD 프레임에 한 번, 모인 시간만큼 한꺼번에 갱신한다. 이번 프레임에 갱신 안 한 것은 충돌도 건너뛴다. */
+  updateProjectiles(dt) {
+    const p = this.player, tick = this._shotTick = (this._shotTick || 0) + 1;
+    const far = Math.max(this.w, this.h) * FAR_SHOT_VIEWS, far2 = far * far;
+    const list = this.projectiles;
+    for (let i = 0; i < list.length; i++) {
+      const pr = list[i];
+      if (!pr.dead && dist2(pr.x, pr.y, p.x, p.y) > far2) {
+        pr._lodDt = (pr._lodDt || 0) + dt;
+        if ((tick + i) % FAR_SHOT_PERIOD) { pr._lodSkip = true; continue; }
+        pr._lodSkip = false;
+        const acc = pr._lodDt; pr._lodDt = 0;
+        pr.update(acc, this);
+      } else {
+        pr._lodSkip = false;
+        pr.update((pr._lodDt || 0) + dt, this);
+        pr._lodDt = 0;
+      }
+    }
+  }
+
   collideProjectiles() {
-    for (const pr of this.projectiles) this.collideShot(pr);
+    this.rebuildStructHash();
+    for (const pr of this.projectiles) if (!pr._lodSkip) this.collideShot(pr);
   }
 
   collideEnemyPoints(source, hit, points, consume, projectileEvent = false) {
@@ -536,29 +603,49 @@ class Game {
     if (!hit) return;
     if (!s._hitEffect || s._hitEffect.pierce !== hit.pierce) s.pierce = hit.pierce ?? Infinity;
     s._hitEffect = hit;
-    s.hitSet ||= new Set();
+    const hitSet = s.hitSet ||= new Set();
     const radius = s.radius ?? s.r;
     const damage = hit.damage;
-    const consume = target => { s.hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
-    this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
+    if (hit.repeatCd != null) {
+      const consume = target => { hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
+      this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
+    } else {
+      // 대상별 재타격 간격이 없는 탄은 점 목록·재타격 표를 만들지 않고 바로 훑는다 (collideEnemyPoints 와 같은 순서·판정).
+      // 거리·재타격 검사가 싸므로 먼저 하고, 팀 규칙은 겹친 것에만 본다 (모두 부수 효과 없는 판정이라 결과는 같다).
+      const near = this.hash.query(s.x, s.y, radius + MAX_ENEMY_RADIUS, this._near);
+      for (let i = 0; i < near.length; i++) {
+        const e = near[i], rr = radius + e.radius;
+        if (dist2(s.x, s.y, e.x, e.y) > rr * rr || hitSet.has(e) || !entityCanHit(s, e, hit)) continue;
+        const previousSource = this._collisionSource;
+        this._collisionSource = s;
+        try { this.damageEnemy(e, hit.damage, s.vx, s.vy, hit.knockback); }
+        finally { this._collisionSource = previousSource; }
+        this.events.emit('projectileHit', { projectile: s, enemy: e });
+        hitSet.add(e); if (--s.pierce < 0) s.dead = true;
+        if (s.dead) return;
+      }
+    }
     if (s.dead) return;
-    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외)
-    const objects = this.objects, allies = this.allies || [], nObjects = objects.length, total = nObjects + allies.length;
-    for (let i = 0; i < total; i++) {
-      const o = i < nObjects ? objects[i] : allies[i - nObjects];
-      if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
-      if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
-      this._collisionSource = s;
-      try { this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false); }
-      finally { this._collisionSource = null; }
-      consume(o);
-      if (s.dead) return;
+    // 이번 검사 시작 시점의 설치물·아군만 본다 (도중에 생긴 개체 제외). 공간 해시로 가까운 것만 훑고, 배열 순서를 지키려고 정렬한다.
+    if (this._structCount !== 0) {
+      const near = this.queryStructs(s, hit, radius + MAX_STRUCT_RADIUS), total = near.length;
+      for (let i = 0; i < total; i++) {
+        const o = near[i];
+        if (!entityCanHit(s, o, hit) || s.hitSet.has(o)) continue;
+        if (dist2(s.x, s.y, o.x, o.y) > (radius + o.radius) ** 2) continue;
+        this._collisionSource = s;
+        try { this.damageTarget(o instanceof Ally ? { kind: 'ally', a: o } : { kind: 'object', o }, damage, hit.knockback, null, false); }
+        finally { this._collisionSource = null; }
+        s.hitSet.add(o); if (--s.pierce < 0) s.dead = true;
+        if (s.dead) return;
+      }
     }
     const p = this.player;
     if (entityCanHit(s, p, hit) && !s.hitSet.has(p) && dist2(s.x, s.y, p.x, p.y) < (radius + p.radius * 0.8) ** 2) {
       this._collisionSource = s;
       try { p.takeDamage(damage, this); } finally { this._collisionSource = null; }
-      consume(p); this.burst(s.x, s.y, s.color, 5);
+      s.hitSet.add(p); if (--s.pierce < 0) s.dead = true;
+      this.burst(s.x, s.y, s.color, 5);
     }
   }
 
@@ -611,22 +698,32 @@ class Game {
     const cache = this._cardEnvs ||= new WeakMap();
     const hit = cache.get(owner);
     if (hit && hit.player === this.player) return hit.env;
-    const env = this.buildCardEnv(owner);
+    const env = this.newCardEnv(owner);
     cache.set(owner, { player: this.player, env });
     return env;
   }
 
-  buildCardEnv(owner) {
+  /** 새 환경 객체. 개체와 무관한 함수는 플레이어마다 한 번 만든 공용 환경이 모두 물려주고(프로토타입이 하나라 객체 모양이 같다), 개체별로는 owner 만 얹는다. */
+  newCardEnv(owner) {
+    let base = this._cardEnvBase;
+    if (!base || base.player !== this.player) base = this._cardEnvBase = { player: this.player, env: this.buildCardEnv() };
+    const env = Object.create(base.env);
+    env.owner = owner;
+    return env;
+  }
+
+  buildCardEnv() {
     const g = this, p = this.player;
     const obj = (t) => g.targetObj(t);
-    const d2 = (t) => { const o = obj(t); return dist2(o.x, o.y, owner.x, owner.y); };
     return {
-      game: g, owner,
-      playerTarget: () => ({ ...g.redirectedPlayerTarget(owner), playerSelection: true }),
+      game: g,
+      playerTarget() { return { ...g.redirectedPlayerTarget(this.owner), playerSelection: true }; },
       at: obj,
       alive: (t) => !obj(t).dead,
       features: (t) => targetFeatures(t, obj(t)),
-      allTargets: () => g.allTargets(),
+      /** features 의 기본 특성을 비트로 (대상이 특성을 따로 지정했으면 -1) */
+      featureMask: (t) => { const o = obj(t); return o.targetFeatures ? -1 : featureBits(o); },
+      allTargets: (keep) => g.allTargets(keep),
 
       /* ---- 대상 카드 ---- */
       enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map((e) => ({ kind: 'enemy', e })),
@@ -659,11 +756,11 @@ class Game {
       },
 
       /* ---- 대상 조건 카드가 쓰는 질의 ---- */
-      d2,
-      byDist: (ts) => ts.slice().sort((x, y) => d2(x) - d2(y)),
+      d2(t) { const o = obj(t), owner = this.owner; return dist2(o.x, o.y, owner.x, owner.y); },
+      byDist(ts) { return ts.slice().sort((x, y) => this.d2(x) - this.d2(y)); },
       /** 바라보는 방향(+offset) 기준 ±half 라디안 안에 있는가 */
-      inCone: (t, half, offset = 0) => {
-        const o = obj(t), f = (owner.facing ? Math.atan2(owner.facing.y, owner.facing.x) : owner.ang ?? (Number.isFinite(owner.vx) ? Math.atan2(owner.vy, owner.vx) : owner.flip ? Math.PI : 0)) + offset;
+      inCone(t, half, offset = 0) {
+        const o = obj(t), owner = this.owner, f = (owner.facing ? Math.atan2(owner.facing.y, owner.facing.x) : owner.ang ?? (Number.isFinite(owner.vx) ? Math.atan2(owner.vy, owner.vx) : owner.flip ? Math.PI : 0)) + offset;
         return Math.abs(angDiff(Math.atan2(o.y - owner.y, o.x - owner.x), f)) <= half;
       },
       /** e 주변 r 안의 다른 적 수 */
@@ -750,7 +847,6 @@ class Game {
       o.hp = Math.min(o.maxHp, o.hp + n);
       if (o.hp > before) this.addText(o.x, o.y - o.radius, `+${Math.round(o.hp - before)}`, '#7dff9a');
     }
-    if (o.hp > hpBefore) emitSlotEvent(this, o, 'healed', { subject: o, amount: o.hp - hpBefore });
   }
 
   consumeTarget(o) {
@@ -789,7 +885,6 @@ class Game {
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
     this._slotExecution?.applied.push(o);
-    emitSlotEvent(this, o, 'applied', { subject: o, status: key });
     if (key === 'burn') registerBurnLink(this, o, duration);
     const timers = direct ? (o.directStates ||= {}) : o;
     const timer = direct ? key : key + 'T';
@@ -1076,7 +1171,6 @@ class Game {
     const p = this.player;
     const o = this.targetObj(t);
     if (o.dead) return;
-    const beforeHp = o.hp;
     if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
     else if (kind === 'heal') this.healTarget(o, this.actionValue('heal', 'heal', o));
     else if (kind === 'prolong') {
@@ -1088,8 +1182,6 @@ class Game {
       this.syncTargetBuffs(o);
     }
     const b = BUFFS[kind];
-    if (kind !== 'heal') emitSlotEvent(this, o, 'applied', { subject: o, status: kind });
-    else if (o === p && o.hp > beforeHp) emitSlotEvent(this, o, 'healed', { subject: o, amount: o.hp - beforeHp });
     const color = kind === 'heal' ? '#5be37a' : kind === 'shield' ? '#7fb2ff' : b.color;
     this.circleFx(o.x, o.y, 34, color, { life: 0.35, follow: o, style: 'wave' });
     if (b) this.addText(o.x, o.y - 44, b.name, color);
@@ -1140,18 +1232,22 @@ class Game {
   }
 
   /* ---------------- 2차: 설치물 ---------------- */
-  place(kind, o) {
+  place(kind, o, t) {
+    // 같은 종류 설치물 위에는 다시 설치하지 않는다
+    if (t?.kind === 'object' && o.kind === kind && !o.dead && entityTeam(o) === entityTeam(this.actionActor || this.player)) return o;
     const obj = new Placed(kind, o.x, o.y, this.player.stats.duration);
     this.scaleCreatedEntity(obj, kind);
+    const old = oldestOverCap(this.objects, kind, entityTeam(obj), MAX_OBJECTS_PER_KIND);
+    if (old) old.dead = true;
     this.objects.push(obj);
     this.circleFx(obj.x, obj.y, 22, '#d9a8ff', { life: 0.25, style: 'wave', sparks: 6 });
     return obj;
   }
 
-  placeOrb(o) { this.place('orb', o); }
-  placeMine(o) { this.place('mine', o); }
-  placeTurret(o) { this.place('turret', o); }
-  placeDecoy(o) { this.place('decoy', o); }
+  placeOrb(o, t) { this.place('orb', o, t); }
+  placeMine(o, t) { this.place('mine', o, t); }
+  placeTurret(o, t) { this.place('turret', o, t); }
+  placeDecoy(o, t) { this.place('decoy', o, t); }
 
   /* ---------------- 화약통 ---------------- */
   /** 주변에 화약통이 모자라면 화면 바로 바깥에 하나 굴려 둔다. 너무 멀어진 것은 치운다. */
@@ -1222,24 +1318,98 @@ class Game {
   }
 
   redirectedPlayerTarget(unit) {
-    let best = { kind: 'self' }, distance = Infinity;
-    if (unit === this.player) return best;
-    const visit = (owner, wrap) => {
-      if (owner === unit || owner.dead || !owner.slot?.has('entityDecoy')) return;
-      const effect = owner.slot.effect('entityDecoy');
+    if (unit === this._redirectUnit) return this._redirectValue;   // 이번 개체 업데이트에서 이미 구했다 (step 이 미리 구해 둔다)
+    return this.findRedirect(unit);
+  }
+
+  /** 켜진 유인 효과 (없으면 null). visitDecoy 와 인덱스가 같은 기준을 쓴다. */
+  decoyEffectOf(owner) {
+    const slot = owner.slot;
+    if (!slot) return null;
+    // 슬롯이 한 번이라도 갱신됐으면 켜진 메커니즘 표에서 바로 읽는다 (has·effect 와 같은 값).
+    if (slot.enabled && slot.effects) return slot.enabled.has('entityDecoy') ? slot.effects.get('entityDecoy') || null : null;
+    return slot.has('entityDecoy') ? slot.effect('entityDecoy') || null : null;
+  }
+
+  /**
+   * 유인 인덱스: 켜진 유인(플레이어 → 목록 순서)을 격자 칸에 넣어 두고, 개체는 자기 칸의 후보만 본다.
+   * 프레임마다·유인 슬롯이 켜지거나 꺼지거나 범위가 바뀔 때·개체가 늘어날 때 다시 만든다. 거리는 항상 현재 좌표로 잰다.
+   * 대상 지정이 따로 있는 유인이 있으면 옛 방식(전부 훑기)으로 돌아간다.
+   */
+  decoyIndex() {
+    const sig = this.enemies.length + this.objects.length + this.allies.length + this.zones.length + this.projectiles.length + this.hazards.length + this.pickups.length;
+    let idx = this._decoyIdx;
+    if (idx && idx.stamp === this._decoyStamp && idx.sig === sig && idx.epoch === entityDecoyEpoch) return idx;
+    const CELL = 128, PAD = 48;
+    idx = this._decoyIdx = { stamp: this._decoyStamp, sig, epoch: entityDecoyEpoch, grid: new Map(), linear: false };
+    const lists = this.decoyCandidates();
+    const add = (owner, wrap) => {
+      if (idx.linear || owner.dead) return;
+      const effect = this.decoyEffectOf(owner);
       if (!effect) return;
-      for (const target of effect.targets || [wrap(owner)]) {
-        const center = this.targetObj(target);
-        if (center.dead || center === unit) continue;
-        const d = dist2(center.x, center.y, unit.x, unit.y);
-        if (d < effect.range ** 2 && d < distance) { best = target; distance = d; }
+      const range = effect.range;
+      const own = !effect.targets || effect.targets.length === 1 && this.targetObj(effect.targets[0]) === owner;
+      if (!own || !(range <= 2000)) { idx.linear = true; return; }
+      const en = { owner, wrap, r2: range * range };
+      const reach = range + PAD, x0 = Math.floor((owner.x - reach) / CELL), x1 = Math.floor((owner.x + reach) / CELL);
+      const y0 = Math.floor((owner.y - reach) / CELL), y1 = Math.floor((owner.y + reach) / CELL);
+      for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+        const key = cx * 100003 + cy;
+        const cell = idx.grid.get(key);
+        if (cell) cell.push(en); else idx.grid.set(key, [en]);
       }
     };
-    visit(this.player, () => ({ kind: 'self' }));
-    for (const [i, entry] of this.decoyCandidates().entries()) {
-      for (const o of entry.found) visit(o, TARGET_LIST_WRAP[i]);
+    add(this.player, null);
+    for (let i = 0; i < lists.length; i++) {
+      const found = lists[i].found;
+      for (let j = 0; j < found.length; j++) add(found[j], TARGET_LIST_WRAP[i]);
     }
-    return best;
+    return idx;
+  }
+
+  findRedirect(unit) {
+    const st = this._redirect ||= { best: null, distance: 0 };
+    st.best = SELF_TARGET; st.distance = Infinity;
+    if (unit === this.player) return st.best;
+    const idx = this.decoyIndex();
+    if (!idx.linear) {
+      if (!idx.grid.size) return st.best;   // 켜진 유인이 없다
+      const cell = idx.grid.get(Math.floor(unit.x / 128) * 100003 + Math.floor(unit.y / 128));
+      if (cell) for (let i = 0; i < cell.length; i++) {
+        const en = cell[i], o = en.owner;
+        if (o === unit || o.dead) continue;
+        const d = dist2(o.x, o.y, unit.x, unit.y);
+        if (d < en.r2 && d < st.distance) { st.best = en.wrap ? en.wrap(o) : { kind: 'self' }; st.distance = d; }
+      }
+      return st.best;
+    }
+    this.visitDecoy(this.player, null, unit, st);
+    const lists = this.decoyCandidates();
+    for (let i = 0; i < lists.length; i++) {
+      const found = lists[i].found;
+      for (let j = 0; j < found.length; j++) this.visitDecoy(found[j], TARGET_LIST_WRAP[i], unit, st);
+    }
+    return st.best;
+  }
+
+  visitDecoy(owner, wrap, unit, st) {
+    if (owner === unit || owner.dead) return;
+    const effect = this.decoyEffectOf(owner);
+    if (!effect) return;
+    const r2 = effect.range ** 2;
+    if (!effect.targets) {
+      // 대상 지정이 없으면 유인 중심은 개체 자신이다: 거리부터 보고 가까울 때만 대상 래퍼를 만든다.
+      const d = dist2(owner.x, owner.y, unit.x, unit.y);
+      if (d < r2 && d < st.distance) { st.best = wrap ? wrap(owner) : { kind: 'self' }; st.distance = d; }
+      return;
+    }
+    const targets = effect.targets;
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i], center = this.targetObj(target);
+      if (center.dead || center === unit) continue;
+      const d = dist2(center.x, center.y, unit.x, unit.y);
+      if (d < r2 && d < st.distance) { st.best = target; st.distance = d; }
+    }
   }
 
   chaseTarget(unit) {
@@ -1487,6 +1657,8 @@ class Game {
   split(t) {
     const o = this.targetObj(t);
     if (o.dead) return;
+    const cap = SPLIT_CAPS[t.kind];
+    if (cap && this[cap[0]].length >= cap[1]) return;
     const a = Math.random() * TAU, off = (o.radius || 12) + 18;
     const at = { x: o.x + Math.cos(a) * off, y: o.y + Math.sin(a) * off };
     let c = null;
@@ -1591,7 +1763,11 @@ class Game {
   addZone(kind, o, t) {
     const source = this.actionActor || this.player;
     kind = entityActionConfig(source, kind, this.actionCard)?.zoneKind ?? kind;
+    // 같은 팀의 같은 종류 장판 위에는 다시 만들지 않는다 (시간도 되돌리지 않는다: 되돌리면 영구 유지된다)
+    if (t?.kind === 'zone' && o.kind === kind && !o.dead && entityTeam(o) === entityTeam(source)) return o;
     const z = createZone(kind, source, o, t, this.player.stats);
+    const old = oldestOverCap(this.zones, z.kind, entityTeam(z), MAX_ZONES_PER_KIND);
+    if (old) this.endZone(old);
     this.zones.push(z);
     return z;
   }
@@ -1953,6 +2129,7 @@ class Game {
   }
 
   updateHazards(dt) {
+    this.rebuildStructHash();
     for (const h of this.hazards) entitySlot(h, 'shot').update(dt, this);
   }
 

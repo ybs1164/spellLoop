@@ -92,37 +92,29 @@ const UI = {
     return `<div class="entity-stats">${hp}${this.statHtml('uiSpeed', '이동 속도', st.moveSpeed)}${this.statHtml('uiAtk', '공격력', st.attackPower)}${this.statHtml('uiKnock', '넉백', st.knockback)}${this.statHtml('uiKnock', '넉백 저항', `${Math.round(st.knockbackResistance * 100)}%`)}${this.statHtml('uiKnock', '상태 저항', `${Math.round(st.statusResistance * 100)}%`)}${Number.isFinite(st.lifetime) ? this.statHtml('uiTime', '기본 수명', `${+st.lifetime.toFixed(2)}초`) : ''}${withRange ? this.statHtml('uiRange', '범위', st.range) : ''}</div>`;
   },
 
-  /** eff: 슬롯 안에서 실제로 매겨진 코스트 (costBreakdown). 없으면 카드에 적힌 코스트 */
-  miniHtml(id, eff) {
+  miniHtml(id) {
     const c = CARDS[id];
-    const cost = `코스트 ${costLabel(eff ?? c.cost)}`;
-    return `<span class="mini t-${c.type}" title="${c.name} (${cost})">${this.iconHtml(id, 16)}</span>`;
+    return `<span class="mini t-${c.type}" title="${c.name} (쿨타임 ${cooldownOpText(c)})">${this.iconHtml(id, 16)}</span>`;
   },
 
-  /** 편집기용 작은 카드. eff 를 주면 슬롯 안의 실제 코스트로 표시한다 */
-  cardHtml(id, attrs, eff) {
+  /** 편집기용 작은 카드: 좌측 상단에 쿨타임 연산을 표시한다 */
+  cardHtml(id, attrs) {
     const c = CARDS[id];
     return `<div class="pcard t-${c.type}" draggable="true" ${attrs} title="[${CARD_TYPES[c.type].label}] ${c.name} — ${c.desc}">
-      ${this.costHtml(c, eff)}${this.iconHtml(id, 32)}<span class="nm">${this.cardName(c)}</span>${this.cardStatsHtml(c)}${this.adjustBarHtml(c, !attrs.includes('data-src'))}</div>`;
+      ${this.cardCooldownHtml(c)}${this.iconHtml(id, 32)}<span class="nm">${this.cardName(c)}</span>${this.cardStatsHtml(c)}</div>`;
   },
 
-  /** 값을 조절하는 카드 안의 숫자 입력 (주기 카드). */
-  adjustBarHtml(c, readonly = false) {
-    const a = c.adjust;
-    return a ? `<label class="card-bar"><input type="number" min="${a.min}" max="${a.max}" step="${a.step}" value="${c.adjustValue ?? c.interval}" aria-label="${c.name}"${readonly ? ' disabled' : ''} draggable="false">${a.unit}</label>` : '';
+  /** 카드의 슬롯 쿨타임 연산 (배치 순서대로 적용된다) */
+  cardCooldownHtml(c) {
+    return `<span class="card-cd" title="슬롯 쿨타임 ${cooldownOpText(c)}${cooldownOp(c).op === '×' ? '' : '초'}">${this.iconHtml('uiTime', 12)}${cooldownOpText(c)}</span>`;
   },
 
-  /** 카드의 실제 코스트를 표시한다. */
-  costHtml(c, eff) {
-    const v = eff ?? c.cost;
-    const cls = v < 0 ? ' neg' : v === 0 ? ' zero' : '';
-    return `<span class="cost${cls}" title="코스트 ${costLabel(v)}">${costLabel(v)}</span>`;
-  },
-
-  /** 슬롯 카드들의 실제 코스트. 묶음 최소 코스트로 더해진 값은 대상 카드에 얹는다 */
-  slotCosts(ids) {
-    const { cards, floors } = costBreakdown(ids);
-    return cards.map((v, i) => v + floors[i]);
+  /** 슬롯의 현재 쿨타임: 남은 시간 / 전체 쿨타임 */
+  slotCooldownHtml(slot) {
+    const total = slotCooldown(slot), left = Math.max(0, slot.cd || 0), frame = slotEveryFrame(slot);
+    const label = frame ? `매 프레임 (=${FRAME_COOLDOWN})` : `${left.toFixed(1)} / ${cooldownText(total)}초`;
+    const err = slotRuleError(slot.cards);
+    return `<div class="slot-cd" role="meter" aria-label="슬롯 쿨타임" aria-valuemin="0" aria-valuemax="${cooldownText(total)}" aria-valuenow="${left.toFixed(2)}"><i style="width:${frame ? 0 : Math.min(1, left / total) * 100}%"></i><span>${this.iconHtml('uiTime', 16)}쿨타임 ${label}</span>${err ? `<b class="warn">⚠ ${err}</b>` : ''}</div>`;
   },
 
   /** 대상 카드에만 대상 종류를 표시한다. */
@@ -240,12 +232,12 @@ const UI = {
   bigCardHtml(id, extra = '') {
     const c = CARDS[id], kind = this.acceptsText(c);
     return `
-      ${this.costHtml(c)}
+      ${this.cardCooldownHtml(c)}
       <span class="ribbon">${CARD_TYPES[c.type].label}</span>
       <div class="art">${this.iconHtml(id, 48)}</div>
       <div class="name">${this.cardName(c)}</div>
       ${kind ? `<div class="kind">${kind}</div>` : ''}
-      <div class="desc">${this.descriptionHtml(c)}</div>${c.adjust ? `<div class="card-bar-note">${c.adjust.min}~${c.adjust.max}${c.adjust.unit}</div>` : ''}${this.keysHtml(c)}${extra}`;
+      <div class="desc">${this.descriptionHtml(c)}</div>${this.keysHtml(c)}${extra}`;
   },
 
   /* ------------------------------------------------------------------ */
@@ -256,29 +248,30 @@ const UI = {
     if (this._last.deck !== key) {
       this._last.deck = key;
       this._last.run = null;
+      this._last.cd = null;
       const slots = deck.slots.map((s, i) => {
-        const over = SkillDeck.overCost(s);
         const cls = SkillDeck.runnable(s) ? '' : ' empty';
-        const eff = this.slotCosts(s.cards);
         const minis = slotSections(s.cards).filter(sec => sec.ids.length)
-          .map(sec => sec.ids.map((id, k) => this.miniHtml(id, eff[sec.start + k])).join('')).join('<i class="dsep"></i>');
+          .map(sec => sec.ids.map(id => this.miniHtml(id)).join('')).join('<i class="dsep"></i>');
         return `<div class="dslot${cls}" data-i="${i}"><span class="no">${i + 1}</span>${minis}
-          <span class="dcost${over ? ' over' : ''}">${cardsCost(s.cards)}/${s.limit}</span><i class="heatbar"></i></div>`;
+          <span class="dcd">${this.iconHtml('uiTime', 12)}<b></b></span><i class="cdbar"></i></div>`;
       }).join('');
       const inv = deck.inventory.length ? this.statHtml('chest', '보관함', deck.inventory.length) : '';
-      const pts = deck.costPoints ? `<span class="pts">${this.statHtml('uiCost', '코스트 포인트', deck.costPoints)}</span>` : '';
-      this.deckEl.innerHTML = `${slots}<div class="dhint"><span><kbd>E</kbd> 편집</span>${inv}${pts}</div>`;
+      this.deckEl.innerHTML = `${slots}<div class="dhint"><span><kbd>E</kbd> 편집</span>${inv}</div>`;
     }
 
+    // 슬롯 현재 쿨타임: 남은 시간 / 전체 (0.1초 단위로 갱신)
     const els = this.deckEl.querySelectorAll('.dslot');
-    const heats = deck.slots.map(s => Math.round((s.heat || 0) * 100) / 100);
-    const heatKey = heats.join(',');
-    if (this._last.heat !== heatKey) {
-      this._last.heat = heatKey;
+    const cds = deck.slots.map(s => [Math.max(0, s.cd || 0), slotCooldown(s)]);
+    const cdKey = cds.map(([left, total]) => `${left.toFixed(1)}/${total}`).join(',');
+    if (this._last.cd !== cdKey) {
+      this._last.cd = cdKey;
       els.forEach((el, i) => {
-        el.style.setProperty('--heat', heats[i] / slotGaugeMax(deck.slots[i]));
-        el.classList.toggle('overheated', !SkillDeck.ready(deck.slots[i]));
-        el.title = `게이지 ${heats[i]}/${slotGaugeMax(deck.slots[i])} · 실행 +${gaugeText(slotHeatCost(deck.slots[i]))}(아군 대상당, 적군 ×2) · 초당 ${gaugeText(SLOT_HEAT_DECAY * slotCoolMultiplier(deck.slots[i]))} 감소(최대 초과분 초당 ${gaugeText(SLOT_HEAT_OVER_DECAY * slotCoolMultiplier(deck.slots[i]))})`;
+        const [left, total] = cds[i], frame = total <= FRAME_COOLDOWN + 1e-9;
+        el.style.setProperty('--cd', frame ? 0 : Math.min(1, left / total));
+        el.classList.toggle('cooling', left > 1e-8 && !frame);
+        el.querySelector('.dcd b').textContent = frame ? `=${FRAME_COOLDOWN}` : `${left.toFixed(1)}/${cooldownText(total)}`;
+        el.title = `슬롯 ${i + 1} 쿨타임 ${frame ? `매 프레임 (=${FRAME_COOLDOWN})` : `${cooldownText(total)}초 · 남은 시간 ${left.toFixed(1)}초`}`;
       });
     }
 
@@ -335,16 +328,7 @@ const UI = {
       case 'entity-card-add':
       case 'entity-slot-reset':
         break;
-      case 'slot-expand':
-        if (g.player.deck.expandSlot()) this.editSel = g.player.deck.slots.length - 1;
-        this.refreshEditor();
-        break;
-      case 'limit-up':
-        if (g.player.deck.raiseLimit(Number(data.slot))) this.editSel = Number(data.slot);
-        this.refreshEditor();
-        break;
       case 'pick': this.pickLevelUp(Number(data.idx)); break;
-      case 'reroll': this.refreshLevelUp(); break;
       case 'slot-up':
       case 'slot-down': {
         const i = Number(data.slot), dir = action === 'slot-up' ? -1 : 1;
@@ -403,7 +387,7 @@ const UI = {
       const list = ofType(ids, 'action').filter((id) => CARDS[id].group === g.id);
       return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
     }).join('');
-    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['event', '이벤트 카드']].map(([type, label]) => {
+    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['artifact', '아티팩트 카드']].map(([type, label]) => {
       const list = ofType(variants, type);
       return list.length ? `<div class="section-title">${label} <span class="muted">· ${list.length}장</span></div>${grid(list)}` : '';
     }).join('');
@@ -412,8 +396,9 @@ const UI = {
       ${grid(ofType(ids, 'target'))}
       <h3 class="codex-h">행동 카드 <span class="muted">· ${ofType(ids, 'action').length}장</span></h3>
       ${actions}
-      <h3 class="codex-h">이벤트 카드 <span class="muted">· ${ofType(ids, 'event').length}장</span></h3>
-      ${grid(ofType(ids, 'event'))}
+      <h3 class="codex-h">아티팩트 카드 <span class="muted">· ${ofType(ids, 'artifact').length}장</span></h3>
+      <p class="sub">슬롯 안의 조건에 제약을 거는 카드입니다. 제약을 지키는 대신 슬롯 쿨타임을 바꿉니다.</p>
+      ${grid(ofType(ids, 'artifact'))}
       <h3 class="codex-h">개체 변형 카드 <span class="muted">· ${variants.length}장</span></h3>
       <p class="sub">개체 도감의 슬롯에만 있는, 개체별 수치가 적용된 카드입니다.</p>
       ${variantSections}`;
@@ -425,7 +410,7 @@ const UI = {
     for (const e of this.codexEntities()) {
       const o = e.owner;
       const slots = e.cat === 'player' ? o.deck.slots : o.slots || [];
-      for (const slot of slots) for (const id of slot.cards) if (!base.has(id) && CARDS[id] && !CARDS[id].adjust && !CARDS[id].variantOf) ids.add(id);
+      for (const slot of slots) for (const id of slot.cards) if (!base.has(id) && CARDS[id] && !CARDS[id].variantOf) ids.add(id);
     }
     return [...ids];
   },
@@ -541,7 +526,7 @@ const UI = {
     switch (e.cat) {
       case 'player':
         add('자석 범위', o.stats.magnet, 'magnet');
-        add('슬롯', `${o.deck.slots.length} / ${MAX_SLOTS}`, 'uiCost');
+        add('슬롯', o.deck.slots.length, 'uiTime');
         break;
       case 'boss': case 'elite': case 'enemy':
         break;
@@ -570,17 +555,17 @@ const UI = {
       const tip = `[${CARD_TYPES[c.type].label}] ${c.name} — ${c.desc}`.replace(/"/g, '&quot;').replace(/</g, '&lt;');
       return `<span class="cx-card t-${c.type}" tabindex="0" title="${tip}">${this.iconHtml(id, 16)}${this.cardName(c)}</span>`;
     };
-    // 이벤트 → 대상 → 행동 칸을 순서대로 보여 준다.
+    // 아티팩트 → 대상 → 행동 칸을 순서대로 보여 준다.
     const chain = (cards) => slotSections(cards).map(sec => `<span class="cx-sec cx-sec-${sec.id}"><i class="cx-sec-label">${sec.label}</i>${
       sec.ids.length ? sec.ids.map(chip).join('') : '<span class="muted">—</span>'}</span>`).join('<i class="cx-arrow">›</i>');
     const row = (i, meta, cards) => `<div class="cx-slot"><span class="cx-slot-no">${i + 1}</span>
       <div>${meta.length ? `<div class="cx-slot-meta">${meta.join(' · ')}</div>` : ''}<div class="cx-chain">${chain(cards)}</div></div></div>`;
     if (e.cat === 'player') {
-      const rows = o.deck.slots.map((s, i) => row(i, [`코스트 ${cardsCost(s.cards)} / ${s.limit}`], s.cards)).join('');
+      const rows = o.deck.slots.map((s, i) => row(i, [`쿨타임 ${cooldownText(slotCooldown(s))}초`], s.cards)).join('');
       return `<div class="cx-slots"><div class="cx-slots-h">시작 슬롯 ${o.deck.slots.length}개</div>${rows}</div>`;
     }
     // 플레이어가 아닌 개체의 카드 슬롯은 닫힌 상태로 시작한다.
-    const rows = (o.slots || []).map((slot, i) => row(i, [], slot.cards)).join('');
+    const rows = (o.slots || []).map((slot, i) => row(i, [`쿨타임 ${cooldownText(slotCooldown(slot))}초`], slot.cards)).join('');
     return `<details class="cx-slots slot-toggle"><summary class="cx-slots-h">카드 슬롯 ${(o.slots || []).length}개</summary>${rows}</details>`;
   },
 
@@ -600,17 +585,14 @@ const UI = {
   /* ------------------------------------------------------------------ */
   /* 레벨업                                                              */
   /* ------------------------------------------------------------------ */
-  showLevelUp(player, choices, notes, leveled, onPick, onRefresh) {
-    this.levelUpBack = () => this.showLevelUp(player, choices, notes, leveled, onPick, onRefresh);
+  showLevelUp(player, choices, notes, leveled, onPick) {
+    this.levelUpBack = () => this.showLevelUp(player, choices, notes, leveled, onPick);
     this._pick = (i) => {
       const c = choices[i];
       if (!c) return;
       this._pick = null;
-      this._refresh = null;
       onPick(c);
     };
-    this._refresh = onRefresh;
-    const deck = player.deck;
     const cards = choices.map((id, i) => `<button class="bigcard t-${CARDS[id].type} pickable" data-act="pick" data-idx="${i}">
         ${this.bigCardHtml(id)}<kbd class="hint">${i + 1}</kbd></button>`).join('');
     const growth = notes.length ? `<div class="growth">${notes.map((n) => `<span>${n}</span>`).join('')}</div>` : '';
@@ -619,48 +601,23 @@ const UI = {
         <h2>${leveled ? `레벨 업! <span class="muted">Lv ${player.level}</span>` : '보상'}</h2>
         ${growth}
         <div class="cards">${cards}</div>
-        <button class="btn reroll" data-act="reroll" ${deck.costPoints > 0 ? '' : 'disabled'}>
-          ${this.iconHtml('uiReroll', 16)}새로고침 <span class="price" title="코스트 포인트 1 소모 (보유 ${deck.costPoints})">1${this.iconHtml('uiCost', 16)}<span class="muted">/ ${deck.costPoints}</span></span> <kbd>R</kbd></button>
-        <button class="btn reroll" data-act="editor">카드 편집 <kbd>E</kbd></button>
+        <button class="btn levelup-edit" data-act="editor">카드 편집 <kbd>E</kbd></button>
       </div>`, 'levelup');
   },
 
   pickLevelUp(i) { if (this.mode === 'levelup' && this._pick) this._pick(i); },
-  refreshLevelUp() { if (this.mode === 'levelup' && this._refresh) this._refresh(); },
 
   /* ------------------------------------------------------------------ */
   /* 카드 편집기                                                          */
   /* ------------------------------------------------------------------ */
-  /** 슬롯 하나를 조건 · 대상 · 행동 카드 슬롯으로 나눠 그린다. zone 이 있으면 각 칸이 드롭 영역이 된다. */
+  /** 슬롯 하나를 아티팩트 · 대상 · 행동 카드 슬롯으로 나눠 그린다. zone 이 있으면 각 칸이 드롭 영역이 된다. */
   slotSectionsHtml(cards, card, zone) {
     return `<div class="slot-sections">${slotSections(cards).map(sec => {
       const body = sec.ids.map((id, k) => `${card(id, sec.start + k)}`).join('');
       const attrs = zone ? ` class="slot-cards dropzone" data-zone="slot" data-slot="${zone.slot}" data-section="${sec.type}" data-end="${sec.start + sec.ids.length}"` : ' class="slot-cards"';
       return `<div class="slot-section sec-${sec.id}"><div class="slot-section-h" style="color:${CARD_TYPES[sec.type].color}">${sec.label} 카드 슬롯</div>
-        <div${attrs}>${body}${zone ? '<div class="cell">+</div>' : body ? '' : `<span class="muted">${sec.type === 'event' ? '매 프레임 실행' : '비어 있음'}</span>`}</div></div>`;
+        <div${attrs}>${body}${zone ? '<div class="cell">+</div>' : body ? '' : `<span class="muted">${sec.type === 'artifact' ? '제약 없음' : '비어 있음'}</span>`}</div></div>`;
     }).join('')}</div>`;
-  },
-
-  costMeterHtml(deck, si) {
-    const { limit } = deck.slots[si], used = cardsCost(deck.slots[si].cards);
-    const canRaise = deck.costPoints > 0 && limit < MAX_SLOT_LIMIT;
-    const plus = canRaise ? `<button class="plus" data-act="limit-up" data-slot="${si}" title="코스트 포인트 1로 제한 +1">+1</button>` : '';
-    return `<div class="costmeter${used > limit ? ' over' : ''}"><span>${plus}${used}<small>/${limit}</small></span></div>`;
-  },
-
-  slotInfoHtml(slot, pv) {
-    if (!slot.cards.length) return '<span class="muted">비어 있음 — 실행 시 건너뜁니다</span>';
-    if (!SkillDeck.hasAction(slot)) return '<span class="warn">행동 카드가 없어 실행 시 건너뜁니다</span>';
-    const over = SkillDeck.overCost(slot)
-      ? `<span class="warn">⚠ 코스트 초과 (${cardsCost(slot.cards)} / ${slot.limit}) — 실행 시 건너뜁니다</span>` : '';
-    const steps = pv.steps.map((s) => {
-      const who = s.chain
-        ? s.chain.map((id, k) => `<b class="c-${CARDS[id].type}">${CARDS[id].name}</b>`).join(' › ')
-        : '<b class="c-target">?</b>';
-      return `<span class="step${s.ok ? '' : ' bad'}">${who} → <b class="${s.filter ? 'c-filter' : 'c-action'}">${CARDS[s.action].name}</b></span>`;
-    }).join('');
-    const warns = pv.warns.map((w) => `<span class="warn">⚠ ${w}</span>`).join('');
-    return `${over}${steps}<span class="muted">실행 시 게이지 +${gaugeText(pv.heat)}(아군 대상당, 적군 ×2) · 최대 ${slotGaugeMax(slot)} · 초당 ${gaugeText(SLOT_HEAT_DECAY * slotCoolMultiplier(slot))} 감소(초과분 초당 ${gaugeText(SLOT_HEAT_OVER_DECAY * slotCoolMultiplier(slot))})</span>${warns}`;
   },
 
   editorEntities(g) {
@@ -686,7 +643,7 @@ const UI = {
       entitySlot(owner, kind);
       const name = this.entityName(owner, kind);
       const card = id => `<div class="entity-card">${this.cardHtml(id, '').replace('draggable="true"', 'draggable="false"')}</div>`;
-      const slots = owner.slots.map(slot => `<div class="entity-slot-section">${this.slotSectionsHtml(slot.cards, card)}<div class="slot-heat" role="meter" aria-label="슬롯 게이지" aria-valuemin="0" aria-valuemax="${slotGaugeMax(slot)}" aria-valuenow="${gaugeText(slot.heat || 0)}"><i style="width:${Math.min(1, (slot.heat || 0) / slotGaugeMax(slot)) * 100}%"></i><span>게이지 ${gaugeText(slot.heat || 0)}/${slotGaugeMax(slot)}</span></div></div>`).join('');
+      const slots = owner.slots.map(slot => `<div class="entity-slot-section">${this.slotSectionsHtml(slot.cards, card)}${this.slotCooldownHtml(slot)}</div>`).join('');
       // 개체의 카드 슬롯은 닫힌 상태가 기본이며, 연 상태는 편집기를 다시 그려도 유지한다.
       const open = (this.openEntitySlots ||= new WeakSet()).has(owner) ? ' open' : '';
       return `<div class="slot-row entity-slot entity-group"><div class="section-title">${name || owner.kind} #${oi + 1} <span class="muted">(${Math.round(owner.x)}, ${Math.round(owner.y)}) · 슬롯 ${owner.slots.length}${Number.isFinite(entityStats(owner).lifetime) && Number.isFinite(owner.life) ? ` · ${owner.life.toFixed(1)}초` : ''}</span></div>${this.entityStatsHtml(owner, true)}
@@ -698,17 +655,15 @@ const UI = {
   },
 
   showEditor(g) {
-    const deck = g.player.deck, stats = g.player.stats;
+    const deck = g.player.deck;
     if (this.editSel >= deck.slots.length) this.editSel = 0;
 
     const rows = deck.slots.map((slot, si) => {
-      const eff = this.slotCosts(slot.cards);
-      const card = (id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`, eff[ci]);
+      const card = (id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`);
       return `
         <div class="slot-row card-slot-only${si === this.editSel ? ' sel' : ''}" data-slot="${si}">
           ${this.slotSectionsHtml(slot.cards, card, { slot: si })}
-          ${this.costMeterHtml(deck, si)}
-          <div class="slot-heat" role="meter" aria-label="슬롯 게이지" aria-valuemin="0" aria-valuemax="${slotGaugeMax(slot)}" aria-valuenow="${gaugeText(slot.heat || 0)}"><i style="width:${Math.min(1, (slot.heat || 0) / slotGaugeMax(slot)) * 100}%"></i><span>게이지 ${gaugeText(slot.heat || 0)}/${slotGaugeMax(slot)} · 실행 +${gaugeText(slotHeatCost(slot))}</span></div>
+          ${this.slotCooldownHtml(slot)}
         </div>`;
     }).join('');
 
@@ -723,15 +678,8 @@ const UI = {
         <div class="editor-workspace">
         <section class="panel editor-slot-pane" aria-label="슬롯">
         <h2>카드 편집</h2>
-        <div class="section-title">슬롯 <span class="muted">· 오른쪽 카드를 맞는 칸으로 드래그</span></div>
-        <div class="points${deck.costPoints ? ' has' : ''}">${this.statHtml('uiCost', '코스트 포인트', deck.costPoints)}
-          <span class="muted">슬롯 오른쪽 <b>+1</b> 로 제한 코스트 올리기</span></div>
-        ${this.entityStatsHtml(g.player, false)}<div class="slots">${rows}
-          <button class="slot-expand" data-act="slot-expand" ${deck.costPoints < SLOT_EXPAND_COST || deck.slots.length >= MAX_SLOTS ? 'disabled' : ''} aria-label="슬롯 확장 (${SLOT_EXPAND_COST}포인트)">
-            <span class="slot-expand-plus" aria-hidden="true">+</span>
-            <span>${deck.slots.length >= MAX_SLOTS ? '슬롯 최대' : `슬롯 확장 <span class="price">${SLOT_EXPAND_COST}${this.iconHtml('uiCost', 16)}</span>`}</span>
-          </button>
-        </div>
+        <div class="section-title">슬롯 ${deck.slots.length}개 <span class="muted">· 오른쪽 카드를 맞는 칸으로 드래그 · 쿨타임은 기본 ${BASE_COOLDOWN}초에서 카드 연산을 배치 순서대로 적용</span></div>
+        ${this.entityStatsHtml(g.player, false)}<div class="slots">${rows}</div>
         </section>
         <aside class="panel editor-inventory-pane" aria-label="보관함">
         <h2>보관함 <span class="muted">${deck.inventory.length}장</span></h2>
@@ -740,7 +688,7 @@ const UI = {
         <div class="legend">
           <span><i style="background:${CARD_TYPES.target.color}"></i>대상 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
-          <span><i style="background:${CARD_TYPES.event.color}"></i>이벤트 카드</span>
+          <span><i style="background:${CARD_TYPES.artifact.color}"></i>아티팩트 카드</span>
         </div>
         </aside>
         </div>
@@ -885,25 +833,8 @@ const UI = {
       this.applyMove(from, to);
     });
 
-    // 카드 안의 숫자 입력: 입력을 마치면(Enter·포커스 이동) 값을 반영하고 코스트 표시를 다시 그린다.
-    ov.addEventListener('pointerdown', e => {
-      const bar = this.mode === 'editor' && e.target.closest('.card-bar');
-      if (bar) bar.closest('.pcard').draggable = false;
-    });
-    ov.addEventListener('pointerup', () => ov.querySelectorAll('.pcard[draggable="false"][data-src]').forEach(el => { el.draggable = true; }));
-    ov.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && e.target.matches?.('.card-bar input')) e.target.blur();
-    });
-    ov.addEventListener('change', e => {
-      const input = this.mode === 'editor' && e.target.closest?.('.card-bar input');
-      if (!input) return;
-      const value = Number(input.value);
-      if (input.value !== '' && Number.isFinite(value)) this.game.player.deck.tuneCard(this.cardRef(input.closest('.pcard')), value);
-      this.refreshEditor();
-    });
-
     ov.addEventListener('click', (e) => {
-      if (this.mode !== 'editor' || e.target.closest('.card-bar')) return;
+      if (this.mode !== 'editor') return;
       const card = e.target.closest('.pcard[data-src]');
       if (card) {
         const ref = this.cardRef(card);
@@ -919,11 +850,8 @@ const UI = {
   /* 일시정지 / 종료                                                       */
   /* ------------------------------------------------------------------ */
   statsHtml(p) {
-    const d = p.deck;
-    const next = d.slots.length >= MAX_SLOTS ? '최대' : `확장 <span class="price">${SLOT_EXPAND_COST}${this.iconHtml('uiCost', 16)}</span>`;
     return `<div class="stats-row">
-      <span class="stat" title="슬롯"><span class="muted">슬롯</span><b>${d.slots.length} / ${MAX_SLOTS}</b><small class="muted">${next}</small></span>
-      ${this.statHtml('uiCost', '코스트 포인트', d.costPoints)}
+      <span class="stat" title="슬롯"><span class="muted">슬롯</span><b>${p.deck.slots.length}</b></span>
       ${this.statHtml('uiHp', '체력', `${Math.ceil(p.hp)} / ${p.stats.maxHp}`)}
     </div>`;
   },
@@ -931,7 +859,7 @@ const UI = {
   deckSummaryHtml(deck) {
     return `<ul class="skill-list">${deck.slots.map((s, i) => `<li><b class="li-no">${i + 1}</b>${
       s.cards.length ? s.cards.map((id) => this.miniHtml(id)).join('') : '<span class="muted">비어 있음</span>'}
-      <span class="muted" style="margin-left:auto">${cardsCost(s.cards)}/${s.limit}</span></li>`).join('')}</ul>`;
+      <span class="muted" style="margin-left:auto">${this.iconHtml('uiTime', 16)}${cooldownText(slotCooldown(s))}초</span></li>`).join('')}</ul>`;
   },
 
   showPause(g) {

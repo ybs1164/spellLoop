@@ -1,0 +1,23 @@
+﻿timestamp,build,generation,evaluated,unique,best_dps,best_survival_sec,best_clear_rate,best_cost,mean_dps,mean_survival_sec,best_combo,best_ids
+2026-10-08T17:08:44,291df9b1cd,0,30,30,1481.8,175.6,0.0,19,64.9,92.9,설치물 | 적 | 소용돌이 | 관통탄 | 결계 | 빙결,objects|enemies|vortex|lance|ward|frost
+2026-10-08T17:18:09,291df9b1cd,1,54,30,1481.8,175.6,0.0,19,213.0,97.7,설치물 | 적 | 소용돌이 | 관통탄 | 결계 | 빙결,objects|enemies|vortex|lance|ward|frost
+2026-10-08T17:25:15,291df9b1cd,2,81,30,1938.9,257.9,0.0,22,442.2,99.5,체력 절반 초과 | 행동 완료 시 | 이동 완료 시 | 설치물 | 적 | 소용돌이 | 관통탄 | 결계 | 빙결,ifHealthy|on_complete|on_moved|objects|enemies|vortex|lance|ward|frost
+2026-10-08T17:44:58,291df9b1cd,3,108,30,2720.6,409.6,0.0,20,576.0,118.4,체력 절반 초과 | 행동 완료 시 | 적이 근처일 때 | 설치물 | 적 | 소용돌이 | 관통탄 | 레이저 | 빙결,ifHealthy|on_complete|ifEnemyNear|objects|enemies|vortex|lance|laser|frost
+2026-10-08T23:58:23,291df9b1cd,4,133,30,2720.6,409.6,0.0,20,694.3,141.7,체력 절반 초과 | 행동 완료 시 | 적이 근처일 때 | 설치물 | 적 | 소용돌이 | 관통탄 | 레이저 | 빙결,ifHealthy|on_complete|ifEnemyNear|objects|enemies|vortex|lance|laser|frost
+2026-10-09T00:08:15,291df9b1cd,5,158,30,3225.9,236.0,0.0,18,1086.3,176.6,설치물 | 적 | 관통탄 | 철갑 | 레이저 | 회전 칼날,objects|enemies|lance|armor|laser|blades
+2026-10-09T00:15:55,291df9b1cd,6,182,30,3267.2,384.0,0.0,17,1104.6,170.6,체력 절반 초과 | 행동 완료 시 | 이동 완료 시 | 적 | 유도탄 | 소용돌이 | 관통탄 | 레이저,ifHealthy|on_complete|on_moved|enemies|homing|vortex|lance|laser
+2026-10-09T00:25:47,291df9b1cd,7,209,30,4426.6,600.0,0.0,17,1345.9,186.2,체력 절반 초과 | 행동 완료 시 | 이동 완료 시 | 적 | 흡혈 | 소용돌이 | 관통탄 | 레이저,ifHealthy|on_complete|on_moved|enemies|drain|vortex|lance|laser
+2026-10-09T00:34:29,291df9b1cd,8,234,30,5095.7,575.0,0.0,12,1156.2,166.1,타격 시 | 행동 완료 시 | 처치 시 | 획득 시 | 행동 주체 | 참격 | 마탄 | 부메랑 | 레이저,on_hit|on_complete|on_kill|on_collect|eventOwner|slash|bolt|boomerang|laser
+2026-10-09T00:40:54,291df9b1cd,9,259,30,5492.9,600.0,0.0,21,1420.5,188.6,체력 절반 초과 | 행동 완료 시 | 이동 완료 시 | 마무리 대상 | 적 | 흡혈 | 소용돌이 | 관통탄 | 회전 칼날,ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades
+2026-10-09T00:50:16,291df9b1cd,10,284,30,5492.9,600.0,0.0,21,1324.9,196.8,체력 절반 초과 | 행동 완료 시 | 이동 완료 시 | 마무리 대상 | 적 | 흡혈 | 소용돌이 | 관통탄 | 회전 칼날,ifHealthy|on_complete|on_moved|woundedEnemies|enemies|drain|vortex|lance|blades
+2026-10-09T01:02:20,291df9b1cd,11,309,30,5759.4,600.0,0.0,21,2018.0,255.5,체력 절반 초과 | 행동 완료 시 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 관통탄 | 회전 칼날,ifHealthy|on_complete|ifNear|objects|enemies|drain|vortex|lance|blades
+2026-10-09T01:16:26,291df9b1cd,12,335,30,6004.9,583.5,0.0,18,1734.3,226.4,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T01:31:43,291df9b1cd,13,361,30,6004.9,583.5,0.0,18,1813.7,235.1,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T01:47:44,291df9b1cd,14,386,30,6004.9,583.5,0.0,18,1731.6,254.1,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T02:01:08,291df9b1cd,15,411,30,6004.9,583.5,0.0,18,1670.9,234.4,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T02:17:48,291df9b1cd,16,436,30,6004.9,583.5,0.0,18,1685.3,250.7,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T02:30:55,291df9b1cd,17,462,30,6004.9,583.5,0.0,18,1852.3,261.9,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T02:45:07,291df9b1cd,18,488,30,6004.9,583.5,0.0,18,1379.0,199.8,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T03:02:51,291df9b1cd,19,514,30,6004.9,583.5,0.0,18,1506.9,204.8,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T03:15:18,291df9b1cd,20,539,30,6004.9,583.5,0.0,18,1136.5,174.5,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades
+2026-10-09T03:25:45,291df9b1cd,21,566,30,6004.9,583.5,0.0,18,639.1,140.2,체력 절반 초과 | 가까울 때 | 설치물 | 적 | 흡혈 | 소용돌이 | 회전 칼날,ifHealthy|ifNear|objects|enemies|drain|vortex|blades

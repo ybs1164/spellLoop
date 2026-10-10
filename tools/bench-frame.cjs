@@ -17,6 +17,19 @@ const scenarios = {
     for (let i = 0; i < 400; i++) g.spawnEnemy(['grunt', 'runner', 'grunt', 'necro', 'grunt', 'pyro', 'runner', 'hexer', 'grunt', 'brute'][i % 10]);
     for (let i = 0; i < 300; i++) g.dropGem(g.player.x + rand(-900, 900), g.player.y + rand(-900, 900), 1);
   },
+  // 설치물·아군 상한 해제 스트레스: BENCH_STRUCTS(기본 1000)개를 깔고 탄막·적을 함께 돌린다.
+  structs: g => {
+    const n = Number(process_env.BENCH_STRUCTS || 1000);
+    // BENCH_NOALL=1 이면 「전체」 연사 슬롯을 빼고 충돌 비용만 본다.
+    g.player.deck.slots.push({ limit: 9, cards: ['nearestEnemy', 'bolt'], cd: 0, cast: null });
+    if (!process_env.BENCH_NOALL) g.player.deck.slots.push({ limit: 9, cards: ['all', 'scatter'], cd: 0, cast: null });
+    for (let i = 0; i < 200; i++) g.spawnEnemy(['grunt', 'runner', 'necro', 'pyro'][i % 4]);
+    for (let i = 0; i < n; i++) {
+      const spread = Number(process_env.BENCH_SPREAD || 1);   // 1 = 화면 안, 6 = 화면 밖까지 넓게
+      const at = { x: g.player.x + rand(-700, 700) * spread, y: g.player.y + rand(-500, 500) * spread };
+      if (i % 3 === 0) g.summonAlly('knight', at); else g.place(['mine', 'turret', 'decoy', 'orb'][i % 4], at);
+    }
+  },
   decoy: g => {
     g.player.deck.slots.push({ limit: 9, cards: ['ahead', 'decoy'], cd: 0, cast: null }, { limit: 9, cards: ['nearestEnemy', 'decoy'], cd: 0, cast: null });
     for (let i = 0; i < 200; i++) g.spawnEnemy(['grunt', 'runner', 'necro', 'pyro'][i % 4]);

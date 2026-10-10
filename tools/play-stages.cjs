@@ -15,22 +15,19 @@ function edit(g) {
   for (const id of d.inventory.slice()) {
     if (!preferred.includes(id)) continue;
     const target = ['heal', 'shield'].includes(id) ? 'self' : 'nearestEnemy';
-    let s = d.slots.find(s => s.cards[0] === target);
-    if (s && s.cards.length >= 4) {
-      const worst = s.cards.slice(1).sort((a,b)=>preferred.indexOf(b)-preferred.indexOf(a))[0];
+    let s = d.slots.find(s => s.cards.includes(target) && !s.cards.includes('inputMove'));
+    const actions = s ? s.cards.filter(c => CARDS[c].type === 'action') : [];
+    if (s && actions.length >= 3) {
+      const worst = actions.sort((a,b)=>preferred.indexOf(b)-preferred.indexOf(a))[0];
       if(preferred.indexOf(id)>=preferred.indexOf(worst))continue;
       d.move({src:'slot',slot:d.slots.indexOf(s),idx:s.cards.indexOf(worst)}, {dest:'inv'});
     }
-    if (!s && d.inventory.includes(target) && d.expandSlot()) {
-      s = d.slots.at(-1);
-      d.move({src:'inv', idx:d.inventory.indexOf(target)}, {dest:'slot',slot:d.slots.indexOf(s)});
+    if (!s && d.inventory.includes(target)) {
+      s = d.slots.find(s => !s.cards.length);
+      if (s) d.move({src:'inv', idx:d.inventory.indexOf(target)}, {dest:'slot',slot:d.slots.indexOf(s)});
     }
     if (!s) continue;
-    while (cardsCost([...s.cards,id]) > s.limit && d.costPoints > 0) {
-      if (!d.raiseLimit(d.slots.indexOf(s))) break;
-    }
-    if (cardsCost([...s.cards,id]) <= s.limit)
-      d.move({src:'inv',idx:d.inventory.indexOf(id)}, {dest:'slot',slot:d.slots.indexOf(s)});
+    d.move({src:'inv',idx:d.inventory.indexOf(id)}, {dest:'slot',slot:d.slots.indexOf(s)});
   }
 }
 function steer(g) {
@@ -63,13 +60,13 @@ for(let seed=1;seed<=Number(${JSON.stringify(process.env.PLAY_SEEDS || '3')});se
   if(checkpoint){
     const row=checkpoint[0];
     const level=row.stages.at(-1).level;
-    // Older reports retain the earned cards; reconstruct a legal minimum budget.
-    const slots=row.deck.map(cards=>({cards,limit:Math.max(START_SLOT_LIMIT,cardsCost(cards))}));
-    const spent=slots.reduce((n,s)=>n+s.limit-START_SLOT_LIMIT,0);
-    const saved=row.checkpoint || {level,xp:0,xpNext:xpForLevel(level),slots,inventory:[],costPoints:5+level-1-spent};
-    if(saved.costPoints<0 || saved.slots.some(s=>!SkillDeck.runnable(s)))throw new Error('Illegal checkpoint budget');
+    // Older reports may hold removed cards (costs, intervals, event cards); keep the rest and fill the fixed slots.
+    const saved=row.checkpoint || {level,xp:0,xpNext:xpForLevel(level),slots:row.deck.map(cards=>({cards})),inventory:[]};
+    const legacy=saved.slots.map(s=>s.cards.filter(id=>CARDS[id])).map(cards=>cards.includes('inputMove')&&!cards.includes('artifactBoots')?['artifactBoots',...cards]:cards);
+    legacy.sort((a,b)=>b.includes('inputMove')-a.includes('inputMove'));
+    const slots=Array.from({length:MAX_SLOTS},(_,i)=>({cards:sortSlotCards(legacy[i]||[]),cd:0,cast:null}));
     Object.assign(g.player,{level:saved.level,xp:saved.xp,xpNext:saved.xpNext});
-    Object.assign(g.player.deck,{slots:saved.slots.map(s=>({...s,cd:0,cast:null})),inventory:saved.inventory.slice(),costPoints:saved.costPoints});
+    Object.assign(g.player.deck,{slots,inventory:saved.inventory.filter(id=>CARDS[id])});
   }
   g.openLevelUp=()=>{
     while(g.pendingLevelUps>0){
@@ -90,7 +87,7 @@ for(let seed=1;seed<=Number(${JSON.stringify(process.env.PLAY_SEEDS || '3')});se
   }
   stages.push({stage:g.stage.id,seconds:Math.round(g.stageTime()),hp:Math.round(g.player.hp),level:g.player.level});
   const d=g.player.deck;
-  const row={seed,route:route.map(i=>STAGES[i].id),state:g.state,seconds:Math.round(g.time),kills:g.kills,peak,stages,deck:d.slots.map(s=>s.cards),checkpoint:{level:g.player.level,xp:g.player.xp,xpNext:g.player.xpNext,slots:d.slots.map(s=>({limit:s.limit,cards:s.cards})),inventory:d.inventory,costPoints:d.costPoints}};
+  const row={seed,route:route.map(i=>STAGES[i].id),state:g.state,seconds:Math.round(g.time),kills:g.kills,peak,stages,deck:d.slots.map(s=>s.cards),checkpoint:{level:g.player.level,xp:g.player.xp,xpNext:g.player.xpNext,slots:d.slots.map(s=>({cards:s.cards})),inventory:d.inventory}};
   results.push(row); console.log(JSON.stringify(row));
 }
 `)(console, new Proxy({}, {get:()=>0}), results, Object.create(Math));

@@ -1,0 +1,70 @@
+10:34:18 all|split seed=1222356006: node worker exited (code 134): <--- Last few GCs --->
+
+[14360:000001DB72ED5000]   340995 ms: Mark-Compact 4052.3 (4139.6) -> 4039.1 (4142.3) MB, pooled: 0 MB, 6562.77 / 0.00 ms  (average mu = 0.675, current mu = 0.226) allocation failure; scavenge might not succeed
+[14360:000001DB72ED5000]   354720 ms: Mark-Compact 4054.9 (4142.3) -> 4041.1 (4144.1) MB, pooled: 0 MB, 13582.56 / 0.00 ms  (average mu = 0.396, current mu = 0.010) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF6163B20AD node::SetCppgcReference+17245
+ 2: 00007FF61631A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF616E9A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF616E87096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF616CD6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF616CD39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF616CE9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF616CE9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF616CFA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF6169C348B v8::internal::Version::GetString+434795
+11: 000001DB1FEAD4BA
+10:34:49 all|split seed=288545019: node worker exited (code 134): <--- Last few GCs --->
+
+[14756:000001962DA13000]   372882 ms: Mark-Compact 4054.4 (4141.1) -> 4040.6 (4143.1) MB, pooled: 0 MB, 10922.02 / 0.00 ms  (average mu = 0.460, current mu = 0.012) allocation failure; scavenge might not succeed
+[14756:000001962DA13000]   385744 ms: Mark-Compact 4056.4 (4143.1) -> 4042.6 (4145.1) MB, pooled: 0 MB, 12594.42 / 0.00 ms  (average mu = 0.269, current mu = 0.021) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF6163B20AD node::SetCppgcReference+17245
+ 2: 00007FF61631A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF616E9A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF616E87096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF616CD6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF616CD39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF616CE9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF616CE9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF616CFA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF6169C348B v8::internal::Version::GetString+434795
+11: 000001964DA6D4BA
+22:03:58 all|mine seed=511025151: node worker exited (code 2147483651): #
+# Fatal process out of memory: Zone
+#
+----- Native stack trace -----
+
+ 1: 00007FF6163B20AD 
+ 2: 00007FF6162962CF 
+ 3: 00007FF6174616E6 
+ 4: 00007FF616E86EA1 
+ 5: 00007FF616958ECB 
+ 6: 00007FF6166E58B0 
+ 7: 00007FF6175B441C 
+ 8: 00007FF6175C093A 
+ 9: 00007FF6175C0A2B 
+10: 00007FF6178A1492 
+11: 00007FF6175852F2 
+12: 00007FF61757FB1C 
+13: 00007FF61757934A 
+14: 00007FF616E037E4 
+15: 00007FF616DBCFFF 
+16: 00007FF61708B995 
+17: 00007FF616298B59 
+18: 00007FF616412323 
+19: 00007FF617B7066E 
+20: 00007FF95493CD87 BaseThreadInitThunk+23
+21: 00007FF9557ECAEC

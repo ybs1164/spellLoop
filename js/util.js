@@ -50,35 +50,61 @@ class EventBus {
   clear() { this.handlers = {}; }
 }
 
-/** 균일 격자 공간 해시. 중심점 기준으로 넣고 반경으로 조회한다. */
+/**
+ * 균일 격자 공간 해시. 중심점 기준으로 넣고 반경으로 조회한다.
+ * Map·셀 배열 대신 고정 크기 체인 테이블(타입 배열)을 쓴다: 칸 좌표를 슬롯으로 접고, 슬롯마다 삽입 순서대로 연결 목록을 둔다.
+ * 다른 칸이 같은 슬롯에 접혀도 조회 때 칸 좌표를 비교해 걸러내므로, 결과와 순서(칸 → 삽입 순)는 Map 방식과 같다.
+ */
+const HASH_SLOTS = 8192;
 class SpatialHash {
   constructor(cellSize) {
     this.cs = cellSize;
-    this.cells = new Map();
-    this.stamp = 0;
+    this.stamp = 1;
+    this.n = 0;
+    this.items = [];
+    this.head = new Int32Array(HASH_SLOTS);
+    this.tail = new Int32Array(HASH_SLOTS);
+    this.slotStamp = new Int32Array(HASH_SLOTS);
+    this.next = new Int32Array(256);
+    this.cx = new Int32Array(256);
+    this.cy = new Int32Array(256);
   }
-  /** 셀 배열은 버리지 않고 표식만 바꿔 재사용한다. 오래된 셀이 쌓이면 정리한다. */
   clear() {
     this.stamp++;
-    if (this.cells.size > 4096) for (const [k, cell] of this.cells) if (cell.stamp !== this.stamp - 1) this.cells.delete(k);
+    this.n = 0;
+    this.items.length = 0;
   }
   key(cx, cy) { return (cx + 50000) * 100000 + (cy + 50000); }
   insert(e) {
-    const k = this.key(Math.floor(e.x / this.cs), Math.floor(e.y / this.cs));
-    let cell = this.cells.get(k);
-    if (!cell) { cell = []; cell.stamp = this.stamp; this.cells.set(k, cell); }
-    else if (cell.stamp !== this.stamp) { cell.length = 0; cell.stamp = this.stamp; }
-    cell.push(e);
+    const cs = this.cs, cx = Math.floor(e.x / cs) | 0, cy = Math.floor(e.y / cs) | 0, i = this.n++;
+    if (i >= this.next.length) this.grow();
+    this.items[i] = e;
+    this.cx[i] = cx; this.cy[i] = cy; this.next[i] = -1;
+    const slot = (Math.imul(cx, 73856093) ^ Math.imul(cy, 19349663)) & (HASH_SLOTS - 1);
+    if (this.slotStamp[slot] !== this.stamp) { this.slotStamp[slot] = this.stamp; this.head[slot] = i; }
+    else this.next[this.tail[slot]] = i;
+    this.tail[slot] = i;
+  }
+  grow() {
+    const size = this.next.length * 2;
+    for (const name of ['next', 'cx', 'cy']) { const bigger = new Int32Array(size); bigger.set(this[name]); this[name] = bigger; }
   }
   query(x, y, r, out) {
     out.length = 0;
-    const cs = this.cs;
-    const x0 = Math.floor((x - r) / cs), x1 = Math.floor((x + r) / cs);
-    const y0 = Math.floor((y - r) / cs), y1 = Math.floor((y + r) / cs);
+    return this.queryInto(x, y, r, out);
+  }
+  /** query 와 같되 out 을 비우지 않고 뒤에 덧붙인다. */
+  queryInto(x, y, r, out) {
+    if (!this.n) return out;
+    const cs = this.cs, stamp = this.stamp, slotStamp = this.slotStamp, head = this.head, next = this.next, CX = this.cx, CY = this.cy, items = this.items;
+    const x0 = Math.floor((x - r) / cs) | 0, x1 = Math.floor((x + r) / cs) | 0;
+    const y0 = Math.floor((y - r) / cs) | 0, y1 = Math.floor((y + r) / cs) | 0;
     for (let cx = x0; cx <= x1; cx++) {
+      const hx = Math.imul(cx, 73856093);
       for (let cy = y0; cy <= y1; cy++) {
-        const cell = this.cells.get(this.key(cx, cy));
-        if (cell && cell.stamp === this.stamp) for (let i = 0; i < cell.length; i++) out.push(cell[i]);
+        const slot = (hx ^ Math.imul(cy, 19349663)) & (HASH_SLOTS - 1);
+        if (slotStamp[slot] !== stamp) continue;
+        for (let i = head[slot]; i >= 0; i = next[i]) if (CX[i] === cx && CY[i] === cy) out.push(items[i]);
       }
     }
     return out;

@@ -25,28 +25,28 @@ const root = path.resolve(__dirname, '..');
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.evaluate(()=>{
       game.start();
-      game.player.deck.slots=[{limit:15,cards:['on_hit','nearestEnemy','bolt','chain','explode'],heat:82}];
-      game.player.deck.inventory=['on_hurt','on_death','heal','self'];
+      game.player.deck.slots=[{cards:['artifactRing','artifactHourglass','nearestEnemy','bolt','chain','explode'],cd:0.4}];
+      game.player.deck.inventory=['artifactThorns','artifactChalice','heal','self'];
       game.player.deck.changed(); game.openEditor();
     });
-    assert.equal(await page.locator('[data-section="event"]').count(),1);
+    assert.equal(await page.locator('[data-section="artifact"]').count(),1);
     const card=page.locator('[data-src="inv"][data-idx="0"]');
     await card.click();
-    assert.equal(await page.locator('[data-section="event"] .pcard').count(),2);
-    assert.equal(await page.locator('[data-section="event"] .cell').count(),1);
+    assert.equal(await page.locator('[data-section="artifact"] .pcard').count(),2);
+    assert.equal(await page.locator('[data-section="artifact"] .cell').count(),1);
     assert.equal(await page.locator('.action-link').count(),0);
-    assert.match(await page.locator('.slot-heat').first().textContent(),/82/);
+    assert.match(await page.locator('.slot-cd').first().textContent(),/0\.4/);
     const paused=await page.evaluate(()=>{
       for(let i=0;i<60;i++) game.update(1/60);
-      return game.player.deck.slots[0].heat;
+      return game.player.deck.slots[0].cd;
     });
-    assert.equal(paused,82,'editing pauses heat decay');
+    assert.equal(paused,0.4,'editing pauses the cooldown');
     const screenshot=path.join(os.tmpdir(),'codingvs-event-editor.png');
     await page.screenshot({path:screenshot,fullPage:true});
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'mobile page has no horizontal overflow');
     await page.evaluate(()=>{
-      game.closeEditor(); game.player.deck.slots=[{limit:15,cards:['nearestEnemy','bolt','chain'],heat:0}];
+      game.closeEditor(); game.player.deck.slots=[{cards:['nearestEnemy','bolt','chain'],cd:0}];
       game.player.deck.changed(); game.player.takeDamage=()=>{};
       for(const type of Object.keys(ENEMY_TYPES)) game.spawnEnemy(type,{x:200,y:0});
       for(let i=0;i<120;i++) game.update(1/60);
@@ -55,6 +55,6 @@ const root = path.resolve(__dirname, '..');
     assert.ok(await page.locator('.entity-slot-section').count()>0);
     await page.evaluate(()=>UI.showCodex('cards'));
     assert.deepEqual(errors,[]);
-    console.log(JSON.stringify({result:'PASS',checks:'multiple event click, heat display, pause, mobile overflow, all enemy types, inspector and codex',screenshot}));
+    console.log(JSON.stringify({result:'PASS',checks:'multiple artifact click, cooldown display, pause, mobile overflow, all enemy types, inspector and codex',screenshot}));
   } finally { await browser?.close(); await new Promise(r=>server.close(r)); }
 })().catch(e=>{console.error(e);process.exitCode=1;});

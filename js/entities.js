@@ -136,7 +136,7 @@ class Player {
     // 능력치는 레벨업으로 오르지 않는다. 버프 카드가 켜져 있는 동안만 바뀐다 (refreshStats).
     this.stats = {
       maxHp: 100, magnet: 90,
-      might: 1, heatRecovery: 1, area: 1, duration: 1, moveSpeed: 1, armor: 0, xpGain: 1,
+      might: 1, cooldownRate: 1, area: 1, duration: 1, moveSpeed: 1, armor: 0, xpGain: 1,
     };
     this.hp = this.stats.maxHp;
     entityStats(this);
@@ -162,7 +162,7 @@ class Player {
   refreshStats() {
     const s = this.stats;
     s.might = this.has('rage') ? 1.5 : 1;
-    s.heatRecovery = this.has('focus') ? 1 / 0.65 : 1;
+    s.cooldownRate = this.has('focus') ? 1 / 0.65 : 1;
     s.area = this.has('amplify') ? 1.4 : 1;
     s.duration = this.has('prolong') ? 1.5 : 1;
     s.moveSpeed = this.has('haste') ? 1.4 : 1;
@@ -285,6 +285,8 @@ class Player {
 /* ======================================================================
  * Enemy
  * ==================================================================== */
+// Enemy.update 가 슬롯에 넘기는 문맥. 슬롯 묶음이 시작하자마자 chase 만 읽어 가므로 하나를 재사용해도 안전하다.
+const ENEMY_CONTEXT = { chase: null };
 class Enemy {
   constructor(type, x, y, hpMul, dmgMul = 1) {
     const def = ENEMY_TYPES[type];
@@ -339,6 +341,7 @@ class Enemy {
     this.attackPeriod = undefined; this.summonPeriod = undefined; this.supportPeriod = undefined; this.reach = undefined; this.gimmick = undefined;
     this.cardBuffs = undefined; this.cardScales = undefined; this.cardMove = undefined; this.cardPower = undefined;
     this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
+    this._si = 0;        // 겹침 해소(separateEnemies)용 배열 번호
     this._body = null;   // 그리기용 몸체 합성 묶음 (Sprites.bodyFamily)
     entitySlot(this, "enemy");
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);
@@ -346,7 +349,8 @@ class Enemy {
 
   /** chase: 쫓아갈 대상 (보통 플레이어, 미끼가 있으면 미끼) */
   update(dt, chase, game) {
-    entitySlot(this, "enemy").update(dt, game, { chase });
+    ENEMY_CONTEXT.chase = chase;
+    entitySlot(this, "enemy").update(dt, game, ENEMY_CONTEXT);
   }
 
   cardTick(dt, chase, game) {
@@ -755,11 +759,8 @@ class Projectile {
     }
     const guiding = this.slot.effect('homing');
     if (guiding) {
-      if (this._guidingEffect !== guiding || !this.homing) {
-        this.homing = game.nearestEnemies(this.x, this.y, 1, guiding.range)[0] || null;
-        this._guidingEffect = guiding;
-      }
-      if (this.homing?.dead) this.homing = game.nearestEnemies(this.x, this.y, 1, guiding.range)[0] || null;
+      // 유도 효과는 슬롯이 프레임마다 다시 켜므로 매 프레임 가장 가까운 적을 다시 고른다.
+      this.homing = game.nearestEnemies(this.x, this.y, 1, guiding.range)[0] || null;
       if (this.homing) {
         const sp = Math.hypot(this.vx, this.vy);
         const want = Math.atan2(this.homing.y - this.y, this.homing.x - this.x);
@@ -866,11 +867,9 @@ class Pickup {
         for (const pk of game.pickups) if (pk.kind === 'gem') entityStats(pk).reach = Infinity;
         break;
       case 'chest':
-        // 보물 상자: 카드 선택 1회 + 코스트 포인트 1
-        p.deck.costPoints++;
-        p.deck.changed();
+        // 보물 상자: 카드 선택 1회
         game.pendingLevelUps++;
-        game.showBanner('보물 상자! 코스트 포인트 +1', '#ffd166');
+        game.showBanner('보물 상자!', '#ffd166');
         break;
     }
   }

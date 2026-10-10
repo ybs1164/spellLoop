@@ -15,10 +15,11 @@ vm.runInContext(`
   const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, a + ' != ' + b);
   const p = game.player;
   assert.equal(p.deck.fixedSlots, undefined);
-  assert.equal(p.deck.slots.length, 3);
-  assert.deepEqual(p.deck.slots[2].cards, ['self', 'inputMove']);
-  for (const i of [0, 1]) assert.equal(CARDS[p.deck.slots[i].cards[0]].interval, 1);
-  p.deck.slots = [p.deck.slots[2]]; p.deck.timer = 100;
+  assert.equal(p.deck.slots.length, MAX_SLOTS);
+  assert.deepEqual(p.deck.slots[0].cards, ['artifactBoots', 'self', 'inputMove']);
+  assert.equal(slotCooldown(p.deck.slots[0]), FRAME_COOLDOWN, 'movement runs every frame');
+  for (const i of [1, 2]) assert.ok(slotCooldown(p.deck.slots[i]) > FRAME_COOLDOWN);
+  p.deck.slots = [p.deck.slots[0]]; p.deck.timer = 100;
   Input.keys.add('ArrowRight'); p.update(0.1, game); close(p.x, 17);
   Input.keys.add('ArrowDown'); p.update(0.1, game);
   close(p.x, 17 + 17 / Math.sqrt(2)); close(p.y, 17 / Math.sqrt(2));
@@ -62,7 +63,7 @@ vm.runInContext(`
   for (const [kind, source, list] of sources) {
     source.slot.cards = ['entitySelf', entityConfiguredCard('heal', { continuous: true })]; source.slot.changed();
     source.combatStats.knockbackResistance = 0.3;
-    source.slots[0].heat = 41.5;
+    source.slots[0].cd = 0.415;
     const target = { kind, [TARGET_KINDS[kind].key]: source };
     game.split(target);
     const copy = game[list].at(-1);
@@ -70,15 +71,15 @@ vm.runInContext(`
     assert.deepEqual(copy.slots.map(s => s.cards), source.slots.map(s => s.cards));
     close(copy.combatStats.knockbackResistance, 0.3);
     assert.notEqual(copy.slots[0], source.slots[0]);
-    close(copy.slots[0].heat, 41.5);
-    copy.slots[0].heat = 0; close(source.slots[0].heat, 41.5);
+    close(copy.slots[0].cd, 0.415);
+    copy.slots[0].cd = 0; close(source.slots[0].cd, 0.415);
     copy.slots[0].cards.push('shield'); assert.equal(source.slots[0].cards.length, 2);
     if (copy.combatStats.maxHp > 0) {
       copy.hp = 1; copy.update(0.01, kind === 'enemy' ? p : game, ...(kind === 'enemy' ? [game] : []));
       assert.ok(copy.hp > 1, kind + ' executes inherited custom action');
     }
   }
-  p.deck.slots = [{ cards: ['self', 'inputMove'], heat: 0 }, { cards: ['self', 'heal'], heat: 0 }];
+  p.deck.slots = [{ cards: ['self', 'inputMove'], cd: 0 }, { cards: ['self', 'heal'], cd: 0 }];
   game.split({ kind: 'self' });
   const clone = game.allies.at(-1);
   assert.deepEqual(clone.slots.map(s => s.cards), [['entitySelf', 'inputMove'], ['entitySelf', 'heal']]);
@@ -88,22 +89,22 @@ vm.runInContext(`
   assert.equal(clone.max, ALLY_LIFE); Input.keys.clear();
   // 실제 아군 갱신처럼 새로 추가된 분신도 순회해도 복제가 끝나야 한다.
   game.allies = [];
-  p.deck.slots = [{ cards: ['self', 'inputMove'], heat: 0 }, { cards: ['self', 'split'], heat: 0 }];
+  p.deck.slots = [{ cards: ['self', 'inputMove'], cd: 0 }, { cards: ['self', 'split'], cd: 0 }];
   game.split({ kind: 'self' });
   const splitParent = game.allies[0];
   splitParent.update(0.01, game);
   assert.equal(game.allies.length, 2);
   const splitChild = game.allies[1];
-  const inheritedHeat = splitParent.slots[1].heat;
-  assert.ok(inheritedHeat > 0);
-  close(splitChild.slots[1].heat, inheritedHeat);
+  const inheritedCd = splitParent.slots[1].cd;
+  assert.ok(inheritedCd > 0);
+  close(splitChild.slots[1].cd, inheritedCd);
   assert.notEqual(splitChild.slots[1], splitParent.slots[1]);
-  splitChild.slots[1].heat = SLOT_HEAT_MAX; splitChild.slots[1].overheated = true;
+  splitChild.slots[1].cd = 5;
   const cloneCount = game.allies.length;
   splitChild.update(0.01, game);
-  assert.equal(game.allies.length, cloneCount, 'a full gauge stops the inherited split');
-  splitChild.slots[1].heat = SLOT_HEAT_MAX - 0.5; splitChild.update(6, game);
-  assert.ok(game.allies.length > cloneCount, 'inherited split runs again after the gauge recovers');
+  assert.equal(game.allies.length, cloneCount, 'a cooling slot stops the inherited split');
+  splitChild.slots[1].cd = 0.5; splitChild.update(6, game);
+  assert.ok(game.allies.length > cloneCount, 'inherited split runs again after the cooldown');
   const victim = new Enemy('grunt', 800, 0, 100);
   game.enemies = [victim]; game.rebuildHash();
   const attached = game.addZone('poison', victim, { kind: 'enemy', e: victim });

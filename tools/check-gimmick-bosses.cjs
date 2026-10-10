@@ -33,12 +33,12 @@ vm.runInContext(`
   assert.equal(mother.hp, mother.maxHp * 0.6);
   healSlot.update(1, game, { deferTick: true });
   assert.equal(mother.hp, mother.maxHp * 0.6, 'healing respects recovery window');
-  assert.ok(healSlot.cards.some(id => CARDS[id].interval != null), 'recipe period is the slot event card');
+  assert.equal(slotCooldown(healSlot), 12, 'recipe period is the heal card cooldown');
   assert.equal(entityStats(mother).supportPeriod, 12);
-  healSlot.cards = healSlot.cards.filter(id => CARDS[id].interval == null);
+  healSlot.cards = healSlot.cards.map(id => cardBaseId(id) === 'heal' ? cooldownCard('heal', '=0.016') : id);
   healSlot.changed();
   healSlot.update(0.01, game, { deferTick: true });
-  assert.ok(Math.abs(mother.hp - mother.maxHp * 0.7) < 1e-9, 'removing the period event card lets the action repeat');
+  assert.ok(Math.abs(mother.hp - mother.maxHp * 0.7) < 1e-9, 'an every-frame cooldown lets the action repeat');
   healSlot.update(0.01, game, { deferTick: true });
   assert.ok(Math.abs(mother.hp - mother.maxHp * 0.8) < 1e-9, 'without a period the gauge alone limits repeats');
   const oracle = new Enemy('bindingOracle', 0, 0, 1);

@@ -49,10 +49,10 @@ globalThis.PlayLog = (() => {
   const event = (type, a = null, b = null, txt = null) => row('event', [type, int(a), int(b), text(txt)]);
   function entityFields(o) {
     const stats = entityStats(o);
-    const slots = (o.deck ? o.deck.slots : o.slots || []).map(s => `${s.limit ?? ''}:${s.cards.join('+')}`).join('|');
+    const slots = (o.deck ? o.deck.slots : o.slots || []).map(s => `${cooldownText(slotCooldown(s))}:${s.cards.join('+')}`).join('|');
     return [ref(o), text(o.type || o.kind || o.constructor?.name, 40), text(o.team, 40), int(o.level),
       ENTITY_STAT_NAMES.map(key => num(stats[key])), slots, pairs(o.buffs), pairs(o.directStates),
-      o.deck?.inventory?.join(',') ?? null, num(o.deck?.costPoints)];
+      o.deck?.inventory?.join(',') ?? null];
   }
   const position = o => row('pos', [ref(o), num(o.x, 1), num(o.y, 1), num(o.hp, 1), num(o.shield, 1), num(o.life, 1), !!o.dead]);
   // Definition rows are written at spawn and again only when the definition changes.
@@ -192,11 +192,11 @@ globalThis.PlayLog = (() => {
       const player = g.player, id = ref(player);
       if (run && player && known.has(id)) known.set(id, observe(player, known.get(id), false));
     };
-    for (const name of ['act', 'applyMove', 'pickLevelUp', 'refreshLevelUp']) {
+    for (const name of ['act', 'applyMove', 'pickLevelUp']) {
       wrap(UI, name, args => event(`ui_${name}`, null, null, safe(() => json(args))), rebuilt);
     }
     wrap(UI, 'showLevelUp', args => event('reward_choices', args[3], null, safe(() => json(args[1]))));
-    for (const name of ['addCard', 'move', 'moveSlot', 'expandSlot', 'raiseLimit', 'spendRefresh']) {
+    for (const name of ['addCard', 'move', 'moveSlot']) {
       wrap(SkillDeck.prototype, name, null, function (args, result) { event(`deck_${name}`, null, result, safe(() => json(args))); rebuilt(); });
     }
     const keys = new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','Tab','Escape','Digit1','Digit2','Digit3','Digit4','Digit5']);

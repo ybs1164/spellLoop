@@ -6,7 +6,7 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 vm.runInContext(`
-  const slotInterval = (owner, base) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)).cards.map(id => CARDS[id]).find(c => c.eventKind === 'interval')?.interval;
+  const slotInterval = (owner, base) => slotCooldown(owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)));
   const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-7, actual + ' != ' + expected);
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);

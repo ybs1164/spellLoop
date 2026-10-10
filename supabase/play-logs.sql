@@ -37,9 +37,9 @@ create table public.play_entity (
   op "char" not null,          -- 'S' 생성, 'C' 변경
   eid int not null, kind text, team text, level smallint,
   stats real[],                -- play_entity_v 의 컬럼 순서(ENTITY_STAT_NAMES)
-  slots text,                  -- '제한:카드+카드|제한:카드' 슬롯 순서대로
+  slots text,                  -- '쿨타임:카드+카드|쿨타임:카드' 슬롯 순서대로
   buffs text, states text,     -- 'name=남은시간,name'
-  inventory text, cost_points real,
+  inventory text,
   primary key (run_id, seq)
 );
 
@@ -95,7 +95,7 @@ select run_id, seq, t, op, eid, kind, team, level,
   stats[9] keep_distance, stats[10] xp_reward, stats[11] shot_speed, stats[12] shot_count,
   stats[13] summon_count, stats[14] defense, stats[15] shot_power, stats[16] reach,
   stats[17] attack_period, stats[18] summon_period, stats[19] support_period, stats[20] pierce,
-  stats[21] max_hp, slots, buffs, states, inventory, cost_points
+  stats[21] max_hp, slots, buffs, states, inventory
 from public.play_entity;
 
 -- 카드 실행 1회 = 1행.
@@ -148,12 +148,12 @@ begin
   from jsonb_array_elements(rows->'event') e join public.play_run r on r.run = (e->>0)::uuid
   on conflict do nothing;
 
-  insert into public.play_entity(run_id, seq, t, op, eid, kind, team, level, stats, slots, buffs, states, inventory, cost_points)
+  insert into public.play_entity(run_id, seq, t, op, eid, kind, team, level, stats, slots, buffs, states, inventory)
   select r.id, (e->>1)::int, (e->>2)::real, (e->>3)::"char", (e->>4)::int, left(e->>5, 40), left(e->>6, 40),
     (e->>7)::smallint,
     case when jsonb_typeof(e->8) = 'array'
       then array(select v::real from jsonb_array_elements_text(e->8) with ordinality s(v, i) order by i) end,
-    left(e->>9, 400), left(e->>10, 200), left(e->>11, 200), left(e->>12, 600), (e->>13)::real
+    left(e->>9, 400), left(e->>10, 200), left(e->>11, 200), left(e->>12, 600)
   from jsonb_array_elements(rows->'entity') e join public.play_run r on r.run = (e->>0)::uuid
   on conflict do nothing;
 

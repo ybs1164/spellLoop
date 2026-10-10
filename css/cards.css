@@ -9,10 +9,10 @@
 }
 .t-target { --c: var(--target); }
 .t-action { --c: var(--action); }
-.t-event { --c: var(--filter); }
+.t-artifact { --c: var(--filter); }
 b.c-target { color: var(--target); }
 b.c-action { color: var(--action); }
-b.c-event { color: var(--filter); }
+b.c-artifact { color: var(--filter); }
 
 /* ---------- 작은 카드 (HUD / 목록) ---------- */
 .mini {
@@ -43,14 +43,15 @@ b.c-event { color: var(--filter); }
   font-size: 10px; font-weight: 700; line-height: 15px;
   background: var(--ink); border: 2px solid var(--line);
 }
-/* 슬롯 게이지: 슬롯 아래쪽 막대가 남은 비율만큼 (--heat 0~1) */
-.dslot .heatbar {
+/* 슬롯 쿨타임: 슬롯 아래쪽 막대가 남은 비율만큼 (--cd 0~1) */
+.dslot .cdbar {
   position: absolute; left: 0; bottom: -2px; height: 3px;
-  width: calc(var(--heat, 0) * 100%); background: var(--muted);
+  width: calc(var(--cd, 0) * 100%); background: #8be9ff;
 }
-.dslot.overheated .mini { filter: brightness(.6); }
-.dslot .dcost { margin-left: 3px; font-size: 10px; color: var(--muted); }
-.dslot .dcost.over { color: #ff6b6b; font-weight: 700; }
+.dslot.cooling .mini { filter: brightness(.6); }
+.dslot .dcd { display: inline-flex; align-items: center; gap: 2px; margin-left: 3px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dslot .dcd b { font-weight: 700; color: var(--text); }
+.dslot.cooling .dcd b { color: #8be9ff; }
 .dhint {
   display: flex; align-items: center; gap: 12px; min-height: 36px;
   padding: 5px 10px; font-size: 12px; color: var(--muted);
@@ -77,20 +78,14 @@ b.c-event { color: var(--filter); }
 .pcard .nm { line-height: 1.15; word-break: keep-all; }
 .pcard:has(.card-stats) { height: auto; min-height: 100px; }
 .pcard .card-stats { font-size: 10px; font-weight: 400; color: var(--muted); }
-.pcard .cost, .bigcard .cost {
-  position: absolute; top: -8px; left: 50%; transform: translateX(-50%); display: grid; place-items: center;
-  width: 22px; height: 22px; font-size: 12px; font-weight: 700; color: #0b0e15;
-  background: #8be9ff; border: 3px solid #0b0e15;
-  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .2);
-  /* 모서리 한 칸을 계단식으로 깎은 도트 배지 (둥근 원 대신) */
-  clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px),
-    calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px);
+/* 카드 좌측 상단 배지: 슬롯 쿨타임 연산 */
+.card-cd {
+  position: absolute; top: -9px; left: -6px; z-index: 1; display: inline-flex; align-items: center; gap: 2px;
+  height: 20px; padding: 0 5px 0 3px; font-size: 11px; font-weight: 700; color: #8be9ff; font-variant-numeric: tabular-nums;
+  background: #0b0e15; border: 2px solid #8be9ff; box-shadow: 2px 2px 0 rgba(0, 0, 0, .55);
 }
+.bigcard .card-cd { top: -12px; left: -8px; height: 26px; padding: 0 7px 0 4px; font-size: 14px; }
 .pcard.dragging { opacity: .35; }
-.pcard:has(.card-bar) { height: auto; min-height: 100px; }
-.pcard .card-bar { display: flex; align-items: center; justify-content: center; gap: 2px; font-size: 10px; font-weight: 400; color: var(--muted); cursor: text; }
-.pcard .card-bar input { width: 44px; padding: 1px 2px; font: inherit; font-size: 11px; font-weight: 700; text-align: center; color: var(--text); background: #0b0e15; border: 1px solid var(--c); }
-.bigcard .card-bar-note { margin-top: 6px; font-size: 11px; color: var(--c); }
 /* ---------- 큰 카드 (도감 / 레벨업) ---------- */
 .bigcards { display: grid; gap: 20px 18px; margin-top: 16px; padding: 0 4px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .bigcard {
@@ -103,7 +98,6 @@ b.c-event { color: var(--filter); }
   border: 3px solid var(--c);
   box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35), 0 5px 0 color-mix(in srgb, var(--c) 30%, #000);
 }
-.bigcard .cost { width: 28px; height: 28px; font-size: 15px; top: -12px; }
 .bigcard .ribbon {
   position: absolute; top: 6px; right: 6px; padding: 1px 6px;
   font-size: 10px; font-weight: 700; color: #0b0e15; background: var(--c);
@@ -157,7 +151,6 @@ b.c-event { color: var(--filter); }
 @media (max-width: 1000px) {
   .player-editor .slot-sections { grid-template-columns: 1fr; }
   .player-editor .slot-row.card-slot-only { grid-template-columns: minmax(0, 1fr); }
-  .player-editor .card-slot-only .costmeter { grid-column: 1; }
 }
 @media (max-width: 620px) {
   .editor-slot-pane > .sub { display: none; }
@@ -176,16 +169,6 @@ b.c-event { color: var(--filter); }
   box-shadow: 4px 4px 0 rgba(0, 0, 0, .35);
 }
 .slot-row.sel { border-color: var(--accent); background: #15202d; }
-.slot-expand {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  width: 100%; min-height: 140px; margin-top: 12px; padding: 12px;
-  font: inherit; font-size: 13px; color: var(--muted); background: #141926;
-  border: 3px dashed var(--line); cursor: pointer;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, .35);
-}
-.slot-expand-plus { font-size: 36px; line-height: 1; }
-.slot-expand:hover:not(:disabled), .slot-expand:focus-visible { border-color: var(--accent); color: var(--accent); background: #15202d; }
-.slot-expand:disabled { opacity: .45; cursor: default; }
 .slot-head { display: flex; flex-direction: column; align-items: center; gap: 2px; grid-row: span 2; }
 .slot-no { font-size: 18px; font-weight: 700; }
 .icon-btn {
@@ -206,10 +189,6 @@ b.c-event { color: var(--filter); }
   display: grid; place-items: center; width: 74px; height: 100px;
   color: var(--line); font-size: 22px; border: 3px dashed var(--line);
 }
-.costmeter { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; min-width: 88px; }
-.costmeter span { font-size: 22px; font-weight: 700; color: #8be9ff; text-shadow: var(--tshadow); }
-.costmeter small { font-size: 13px; color: var(--muted); }
-.costmeter.over span { color: #ff6b6b; }
 .slot-info { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted); }
 .slot-info .step { color: var(--text); }
 .slot-info .step.bad { text-decoration: line-through; opacity: .6; }
@@ -220,7 +199,6 @@ b.c-event { color: var(--filter); }
 
 @media (max-width: 620px) {
   .slot-row { grid-template-columns: 30px 1fr; }
-  .costmeter { grid-column: 2; flex-direction: row; align-items: center; }
   .slot-info { grid-column: 1 / 3; }
 }
 
@@ -231,18 +209,8 @@ b.c-event { color: var(--filter); }
 }
 .growth > span:not(.muted) { padding: 3px 9px; color: #0b0e15; font-weight: 700; background: #8be9ff; box-shadow: 3px 3px 0 rgba(0, 0, 0, .45); }
 .growth b { color: #8be9ff; }
-.points { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 14px; padding: 8px 12px; font-size: 13px; background: #141926; border: 3px solid var(--line); }
-.points b { color: #8be9ff; }
-.points.has { border-color: #8be9ff; }
-.costmeter .plus {
-  margin-right: 8px; padding: 2px 6px; vertical-align: 4px;
-  font: 700 12px Galmuri11, sans-serif; color: #0b0e15; cursor: pointer;
-  background: #8be9ff; border: 2px solid #0b0e15;
-  animation: pulse .6s steps(1) infinite alternate;
-}
 /* 번짐 대신 두 단계로 깜빡이는 도트 외곽 */
 @keyframes pulse { to { box-shadow: 0 0 0 3px rgba(139, 233, 255, .6); } }
-.dhint .pts { color: #8be9ff; font-weight: 700; }
 h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 
 /* ---------- 버프 표시줄 ---------- */
@@ -258,8 +226,6 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 
 .codex-note { font-size: 12px; text-align: center; }
 .codex-example .pcard { width: 66px; }
-.btn.reroll { margin-top: 16px; }
-.btn.reroll:disabled { opacity: .45; cursor: default; border-color: var(--line); }
 
 
 /* ---------- 던전 기믹 (도감) ---------- */
@@ -309,8 +275,8 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .entity-slot-flow { color: var(--muted); overflow-wrap: anywhere; }
 
 /* Display only the card row inside each slot. */
-.slot-row.card-slot-only { grid-template-columns: 1fr auto; }
-.slot-row.card-slot-only .costmeter { align-self: center; padding-right: 4px; }
+.slot-row.card-slot-only { grid-template-columns: 1fr; }
+.btn.levelup-edit { margin-top: 16px; }
 
 /* ---------- 아이콘 + 값 ---------- */
 .stat, .price { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
@@ -343,7 +309,6 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .panel.editor .editor-msg + div, .panel.editor .slots + div { margin-top: 16px; }
 @media (max-width: 620px) {
   .slot-row.card-slot-only { grid-template-columns: 1fr; }
-  .slot-row.card-slot-only .costmeter { grid-column: 1; justify-content: flex-end; }
 }
 
 /* ---------- 도감: 개체 ---------- */
@@ -408,7 +373,7 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .slot-section .slot-cards { min-height: 0; padding: 6px 2px 4px; gap: 8px; }
 .slot-section .slot-cards.dropzone { min-height: 104px; }
 .slot-section .slot-cards .cell { flex: 1 0 60px; width: auto; }
-.slot-section.sec-event .slot-cards .cell, .slot-section.sec-target .slot-cards .cell { flex: 0 0 74px; }
+.slot-section.sec-artifact .slot-cards .cell, .slot-section.sec-target .slot-cards .cell { flex: 0 0 74px; }
 .entity-slot .slot-section .slot-cards { margin: 0; }
 .fixed-slot { display: block; cursor: default; }
 @media (max-width: 720px) {
@@ -420,11 +385,11 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .dsep { display: inline-block; width: 2px; height: 14px; margin: 0 3px; background: var(--line); vertical-align: middle; }
 .cx-sec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 .cx-sec-label { font-style: normal; font-size: 10px; color: var(--muted); margin-right: 2px; }
-.cx-sec-event .cx-sec-label { color: #8fb8ff; }
+.cx-sec-artifact .cx-sec-label { color: #8fb8ff; }
 .cx-sec-target .cx-sec-label { color: #ffd166; }
 .cx-sec-action .cx-sec-label { color: #ff7a8a; }
 
-.dslot.overheated .heatbar { background: #ff6b6b; }
-.slot-heat { position: relative; grid-column: 1 / -1; height: 22px; background: #141d2b; overflow: hidden; border: 1px solid var(--line); }
-.slot-heat > i { position: absolute; inset: 0 auto 0 0; background: #a6572d; }
-.slot-heat > span { position: relative; padding: 0 8px; font-size: 11px; }
+.slot-cd { position: relative; grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; min-height: 24px; background: #141d2b; overflow: hidden; border: 1px solid var(--line); }
+.slot-cd > i { position: absolute; inset: 0 auto 0 0; background: #24506a; }
+.slot-cd > span { position: relative; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; font-size: 11px; font-variant-numeric: tabular-nums; }
+.slot-cd > .warn { position: relative; font-size: 11px; }

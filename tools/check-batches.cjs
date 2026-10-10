@@ -14,14 +14,14 @@ get(`
   CARDS.record = { type: 'action', cost: 1, delay: 0.2, accepts: ALL_KINDS, run: ts => ts.forEach(t => hits.push({ id: t.id, at: clock, mul: multiplier })) };
   const run = cards => {
     hits.length = 0; clock = 0; targets.forEach(t => { t.dead = false; });
-    deck.timer = 0; deck.slots = [{ limit: 15, cards, heat: 0, cast: null }];
+    deck.timer = 0; deck.slots = [{ cards, cd: 0, cast: null }];
     clock += 0.01; deck.update(0.01, game, player);
   };
   run(['group', 'record']);
 `);
 assert.equal(get('hits.length'), 3);
 assert.equal(get('new Set(hits.map(h => h.at)).size'), 1, 'all targets fire in the same frame');
-assert.ok(Math.abs(get('deck.slots[0].heat') - 3) < 1e-9, 'one execution adds heat by unit x target weight x action gauge');
-get('targets[1].dead = true; hits.length = 0; deck.slots[0].heat = 0; deck.update(0.01, game, player);');
+assert.ok(Math.abs(get('deck.slots[0].cd') - 1) < 1e-9, 'one execution starts the base 1s slot cooldown once for all targets');
+get('targets[1].dead = true; hits.length = 0; deck.slots[0].cd = 0; deck.update(0.01, game, player);');
 assert.equal(get('hits.length'), 2, 'dead targets are skipped');
-console.log('Simultaneous target and heat checks passed.');
+console.log('Simultaneous target and cooldown checks passed.');

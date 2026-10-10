@@ -6,7 +6,7 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 vm.runInContext(`
-  const slotInterval = (owner, base) => owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)).cards.map(id => CARDS[id]).find(c => c.eventKind === 'interval')?.interval;
+  const slotInterval = (owner, base) => slotCooldown(owner.slots.find(slot => slot.cards.some(id => cardBaseId(id) === base)));
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
   game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
@@ -45,7 +45,7 @@ vm.runInContext(`
   assert.ok(game.enemies.slice(1).every(e => e.type === 'ghost' && entityStats(e).xpReward === 0));
   const grunt = new Enemy('grunt', 100, 0, 1);
   const transferredSummon = entityConfiguredCard(lich.slot.cards.find(id => cardBaseId(id) === 'summon'), { n: 3 });
-  grunt.slot.cards = ['self', entityChainCard('interval', 6), transferredSummon]; grunt.slot.changed();
+  grunt.slot.cards = ['self', transferredSummon]; grunt.slot.changed();
   game.enemies = [grunt]; grunt.update(0.01, game.player, game);
   assert.equal(game.enemies.length, 2, 'transferred summon reads the receiving owner summon count state');
   assert.equal(game.enemies[1].type, 'ghost', 'transferred summon keeps its card type');
@@ -65,7 +65,7 @@ vm.runInContext(`
   const archer = new Ally('archer', 0, 0);
   archer.kind = 'knight'; archer.def = { ...archer.def, damage: 999, attackCd: 999 };
   const target = new Enemy('brute', 30, 0, 1);
-  game.enemies = [target]; game.projectiles = []; archer.slots.forEach(s => { s.heat = 0; s.eventClock = null; });
+  game.enemies = [target]; game.projectiles = []; archer.slots.forEach(s => { s.cd = 0; });
   archer.update(0.01, game);
   assert.equal(game.projectiles.length, 1, 'attack mode comes from the card, not the ally kind');
   assert.equal(game.projectiles[0].slot.effect('entityHit').damage, 10);
@@ -134,7 +134,7 @@ vm.runInContext(`
     const e = new Enemy(type, 100, 0, 1);
     for (const id of e.slot.cards) {
       assert.ok(!/자신의.*따라|설정에 따라/.test(CARDS[id].desc), id + ' has an explicit effect');
-      assert.ok(iconIndex(id) >= 0 && CARDS[id].cost > 0);
+      assert.ok(iconIndex(id) >= 0 && !('cost' in CARDS[id]) && cooldownOpText(CARDS[id]));
     }
   }
 `, context);

@@ -12,7 +12,8 @@ vm.runInContext(`
   const bolt = entityActionConfig(bastion, 'bolt');
   assert.equal(bolt.speed, 150); assert.equal(bolt.n, 8);
   assert.equal(entityActionConfig(necro, 'summon').n, 3); assert.equal(entityActionConfig(lich, 'summon').n, 6);
-  assert.equal(cardOf(necro, 'summon'), cardOf(lich, 'summon'), 'summon count lives in the summonCount state');
+  assert.equal(JSON.stringify(CARDS[cardOf(necro, 'summon')].effect), JSON.stringify(CARDS[cardOf(lich, 'summon')].effect), 'summon count lives in the summonCount state');
+  assert.equal(slotCooldown(necro.slots.find(s => s.cards.includes(cardOf(necro, 'summon')))), 6, 'summon period is the card cooldown');
   assert.equal(cardOf(new Enemy('hexer', 0, 0, 1), 'entityKeep'), cardOf(new Enemy('shaman', 0, 0, 1), 'entityKeep'));
   assert.equal(cardOf(new Enemy('grunt', 0, 0, 1), 'spawnOrb'), cardOf(new Enemy('brute', 0, 0, 1), 'spawnOrb'), 'gem reward lives in the xp state');
   assert.equal(cardOf(necro, 'spawnOrb'), cardOf(new Enemy('grunt', 0, 0, 1), 'spawnOrb'), 'reward card no longer copies summon settings');
@@ -40,11 +41,11 @@ vm.runInContext(`
   assert.equal(entityStats(mother).summonPeriod, 9); assert.equal(entityStats(mother).supportPeriod, 12);
   assert.equal(entityStats(tyrant).attackPeriod, 4); assert.equal(entityStats(tyrant).summonPeriod, 12);
   assert.equal(entityStats(oracle).reach, 170); assert.equal(entityStats(knight).reach, 26); assert.equal(entityStats(turret).reach, 420);
-  const intervals = o => o.slots.flatMap(s => s.cards).map(id => CARDS[id].interval).filter(v => v != null);
-  for (const [o, expected] of [[mother, [9, 12]], [tyrant, [4, 12]]]) for (const v of expected) assert.ok(intervals(o).includes(v), 'periods are interval event cards: ' + v);
-  for (const o of [knight, archer, turret]) assert.ok(o.slots.every(s => s.cards.filter(id => CARDS[id].eventKind === 'interval' || CARDS[id].eventKind === 'enter').length <= 1), 'one event card per slot');
+  const intervals = o => o.slots.map(slotCooldown);
+  for (const [o, expected] of [[mother, [9, 12]], [tyrant, [4, 12]]]) for (const v of expected) assert.ok(intervals(o).includes(v), 'periods are slot cooldowns: ' + v);
+  for (const o of [knight, archer, turret]) assert.ok(o.slots.every(s => s.cards.filter(id => CARDS[id].eventKind === 'enter').length <= 1), 'one trigger artifact per slot');
   assert.equal(entityStats(bastion).shotPower, 10); assert.equal(entityActionConfig(bastion, 'bolt').damageStat, 'shotPower');
-  assert.equal(cardOf(bastion, 'bolt'), cardOf(oracle, 'bolt'), 'single and ring shots share one card');
+  assert.equal(JSON.stringify(CARDS[cardOf(bastion, 'bolt')].effect), JSON.stringify(CARDS[cardOf(oracle, 'bolt')].effect), 'single and ring shots share one effect (periods differ by card cooldown)');
   const slime = createZone('slime', player, { x: 0, y: 0 }, null), abyss = createZone('abyss', player, { x: 0, y: 0 }, null);
   assert.equal(entityStats(slime).attackPower, 5); assert.equal(entityStats(abyss).attackPower, 8);
   // 공용 카드: 충돌 피해·공전·철갑·소용돌이·결계는 기본 카드를 그대로 쓴다.
@@ -58,9 +59,9 @@ vm.runInContext(`
   game.burst = game.addText = game.addFx = game.circleFx = () => {};
   game.player.x = 5000;
   const step = (zone, enemy) => { game.enemies = [enemy]; game.rebuildHash(); game.zones = [zone]; game.updateZones(0.1); };
-  const vortex = game.addZone('vortex', { x: 0, y: 0 }); assert.equal(cardOf(vortex, 'vortex'), 'vortex');
+  const vortex = game.addZone('vortex', { x: 0, y: 0 }); assert.equal(cardOf(vortex, 'vortex'), cooldownCard('vortex', '=0.016'));
   const pulled = new Enemy('grunt', 100, 0, 1); step(vortex, pulled); assert.ok(pulled.x < 100, 'vortex zone pulls every frame');
-  const ward = game.addZone('ward', { x: 0, y: 0 }); assert.equal(cardOf(ward, 'ward'), 'ward');
+  const ward = game.addZone('ward', { x: 0, y: 0 }); assert.equal(cardOf(ward, 'ward'), cooldownCard('ward', '=0.016'));
   const pushed = new Enemy('grunt', 50, 0, 1); step(ward, pushed); assert.ok(pushed.x > 50, 'ward zone pushes every frame');
   const spinning = game.addZone('blades', { x: 0, y: 0 }), spin = spinning.spin;
   step(spinning, new Enemy('grunt', 900, 0, 1)); assert.ok(spinning.spin > spin, 'orbit reads the base card effect');

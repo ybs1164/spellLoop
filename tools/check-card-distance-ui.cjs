@@ -24,7 +24,6 @@ vm.runInContext(`
   assert.ok(UI.cardStatsText(CARDS.entityDecoy).includes('350'));
   assert.ok(!/반경 \\d/.test(UI.cardDescription(CARDS.explode)));
   assert.ok(UI.cardStatsText(CARDS.explode).includes('100'));
-  assert.equal(UI.cardName(CARDS[entityChainCard('interval', 2)]), '주기 2초');
   assert.equal(owner.slot.effect('entityKeep').distance, 260, 'gameplay resolves the distance from the owner state');
 `, context);
-console.log('Card distance UI: editor, large cards, codex, state-backed distance, filters, unchanged intervals and gameplay passed.');
+console.log('Card distance UI: editor, large cards, codex, state-backed distance, filters and gameplay passed.');
