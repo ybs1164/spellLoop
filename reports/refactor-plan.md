@@ -107,3 +107,17 @@ js/
 | 6 | 낮음 | 링크 확인 |
 
 권장 진행: 0 → 1 → 2 → 3 → 4 순서로, 3단계는 `sim/actions` 계열별로 여러 커밋. 5단계는 워커 채택 여부 결정 후.
+
+## 진행 결과
+
+모든 단계를 적용했고 `node tools/run-all-checks.cjs` 가 기준선과 같다(전 `check-*` 종료 코드·출력, `bench-frame` 상태 지문, `play-stages` 결과).
+
+- **계획과 다르게 한 것**
+  - 도구 로딩은 `tools/lib/load-game.cjs` 대신 `tools/lib/js-bundles.cjs`(그룹 이름 `js/cards.js` 등을 manifest 그룹 연결본으로 읽게 하는 `fs` 후크)로 했다. 기존 도구 본문을 건드리지 않고 한 줄만 추가한다. `balanceTest/slot_balance_test.py` 도 같은 방식으로 맞췄다.
+  - 파일 분할 중 로드 시점 호이스팅 문제(`deepFrozen`)를 찾아 `cards/frozen.js` 로 분리했고, 이를 잡는 `tools/check-load-order.cjs` 를 추가했다.
+  - 튜닝 상수는 `TUNING` 객체로 바꾸지 않고 `sim/tuning.js` 로 옮기기만 했다(핫패스 전역 상수 접근 유지).
+  - 행동 `ACTIONS` 레지스트리는 하지 않았다. 행동은 `sim/actions-*.js` 의 `Game` 메서드로 묶였고 `CARD_EFFECTS` 목록이 위임 대상을 정한다.
+  - `tools/` 는 하위 폴더로 나누지 않았다(문서·파이썬이 경로를 참조). 분류는 `tools/README.md`, 실행은 `package.json` 스크립트.
+  - `reports/` 는 자동 플레이 산출물만 `generated/` 로 옮겼다. 밸런스 도구가 `reports/` 에 직접 쓰므로 그대로 둔다.
+- **워커**: 몽키패치를 `Game.driver` 훅(`start`/`update`)으로 바꿨고 스냅샷 형식 상수는 `worker/protocol.js` 로 모았다. 채택 여부는 별도 결정(`check-worker-sim.cjs` 는 playwright 가 있는 환경에서 실행).
+- 구조 설명은 `docs/ARCHITECTURE.md`.

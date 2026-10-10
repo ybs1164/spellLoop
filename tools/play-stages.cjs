@@ -92,4 +92,4 @@ for(let seed=1;seed<=Number(${JSON.stringify(process.env.PLAY_SEEDS || '3')});se
   results.push(row); console.log(JSON.stringify(row));
 }
 `)(console, new Proxy({}, {get:()=>0}), results, Object.create(Math));
-fs.writeFileSync(process.env.PLAY_REPORT || 'reports/stage-playthrough.json', JSON.stringify(results, null, 2)+'\n');
+fs.writeFileSync(process.env.PLAY_REPORT || 'reports/generated/stage-playthrough.json', JSON.stringify(results, null, 2)+'\n');

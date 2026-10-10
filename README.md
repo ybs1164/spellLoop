@@ -6,7 +6,7 @@
 
 **카드를 쌓아 나만의 주문을 조립하고, 몬스터 무리에서 살아남는 로그라이크 서바이벌**
 
-[▶ 지금 플레이](https://ybs1164.github.io/spellLoop/) · [상세 규칙](docs/MECHANICS.md)
+[▶ 지금 플레이](https://ybs1164.github.io/spellLoop/) · [상세 규칙](docs/MECHANICS.md) · [구조](docs/ARCHITECTURE.md)
 
 ![title](docs/title.png)
 

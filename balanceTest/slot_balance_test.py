@@ -55,6 +55,7 @@ JS_FILES = ['util', 'input', 'cards', 'entities', 'stages', 'upgrades', 'icons',
 WORKER_JS = r"""
 const fs = require('node:fs'), path = require('node:path'), readline = require('node:readline');
 const root = process.argv[2];
+require(path.join(root, 'tools', 'lib', 'js-bundles.cjs'));   // js/<그룹>.js 를 manifest 그룹 연결본으로 읽게 한다
 const sources = %FILES%.map(n => fs.readFileSync(path.join(root, 'js', n + '.js'), 'utf8')).join('\n');
 const quiet = { log() {}, info() {}, warn() {}, debug() {}, error: (...a) => process.stderr.write(a.join(' ') + '\n') };
 const api = {};
@@ -236,11 +237,17 @@ def section_range(args, kind: str) -> tuple[int, int]:
     return (max(lo, 1), max(hi, 1)) if kind == 'action' else (lo, hi)
 
 
+def js_source_files() -> list[str]:
+    """JS_FILES 그룹에 속한 실제 소스 파일 (js/manifest.js 기준, js/ 아래 상대 경로)."""
+    code = "const {manifest}=require('./tools/lib/js-bundles.cjs');console.log(JSON.stringify(" + json.dumps(JS_FILES) + ".flatMap(g=>manifest.groups[g])))"
+    return json.loads(subprocess.run([NODE, '-e', code], cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+
+
 def build_id() -> tuple[str, str]:
     """build = 게임 소스 해시 (커밋 안 한 수치 조정도 구분), git = 커밋 해시(+dirty)."""
     h = hashlib.sha1()
-    for name in JS_FILES:
-        h.update((ROOT / 'js' / f'{name}.js').read_bytes())
+    for rel in js_source_files():
+        h.update((ROOT / 'js' / rel).read_bytes())
     try:
         rev = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT, capture_output=True, text=True).stdout.strip()
         dirty = subprocess.run(['git', 'status', '--porcelain', '--', 'js'], cwd=ROOT, capture_output=True, text=True).stdout.strip()

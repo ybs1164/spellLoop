@@ -35,10 +35,10 @@ globalThis.JS_MANIFEST = (() => {
     ],
     'log-config': ['log/log-config.js'],
     'play-log': ['log/play-log.js'],
-    'sim-bridge': ['worker/sim-bridge.js'],
+    'sim-bridge': ['worker/protocol.js', 'worker/sim-bridge.js'],
     main: ['main.js'],
   };
   const main = Object.values(groups).flat();
   const NOT_IN_WORKER = new Set([...groups.pixel, ...groups['log-config'], ...groups['play-log'], ...groups['sim-bridge'], ...groups.main]);
-  return { groups, main, worker: main.filter(p => !NOT_IN_WORKER.has(p)) };
+  return { groups, main, worker: [...main.filter(p => !NOT_IN_WORKER.has(p)), 'worker/protocol.js'] };
 })();

@@ -34,6 +34,7 @@ class Game {
   /* 상태 전환                                                           */
   /* ------------------------------------------------------------------ */
   start(route = rollStageRoute()) {
+    if (this.driver) return this.driver.start(this, route);   // 시뮬레이션을 워커가 도는 실험 모드 (js/worker/sim-bridge.js)
     this.events.clear();
     this.player = new Player(0, 0);
     this.enemies = [];
@@ -191,6 +192,7 @@ class Game {
   /* 메인 업데이트                                                        */
   /* ------------------------------------------------------------------ */
   update(dt) {
+    if (this.driver && this.state !== 'title') return this.driver.update(this, dt);
     this.clock += dt;
     if (UI.mode === 'codex') {
       if (Input.consume('Escape')) UI.closeCodex();

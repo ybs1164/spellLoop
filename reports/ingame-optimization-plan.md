@@ -151,7 +151,7 @@ CPU 프로파일(적 152 + 기본 덱) 자체 시간 상위:
 
 ## 검증
 
-- **벤치마크 도구 추가**: `tools/bench-frame.cjs` — 고정 시드로 위 4가지 상황 + 3단계 체크포인트(`reports/stage3-grown-checkpoint.json`)를 돌려 평균·p95(ms)를 출력. 단계마다 전후 수치를 이 문서에 기록한다.
+- **벤치마크 도구 추가**: `tools/bench-frame.cjs` — 고정 시드로 위 4가지 상황 + 3단계 체크포인트(`reports/generated/stage3-grown-checkpoint.json`)를 돌려 평균·p95(ms)를 출력. 단계마다 전후 수치를 이 문서에 기록한다.
 - **동작 동일성**: 1~3단계는 결과가 바뀌면 안 된다. `Math.random` 호출 순서를 보존하고, 고정 시드 `node tools/play-stages.cjs` 결과(`reports/stage-playthrough.json`)가 변경 전과 동일한지 비교한다.
 - **기존 검사**: `tools/check-*.cjs` 전부 통과.
 - **브라우저**: 디버그 오버레이(예: F3)로 `step`/`render` ms와 개체 수를 표시하고 Chrome Performance 패널로 렌더 비용을 확인한다.

@@ -17,6 +17,7 @@
   "check-event-ui.cjs": "skipped:playwright",
   "check-explicit-actions.cjs": "1:d1e72b66ca",
   "check-gimmick-bosses.cjs": "1:9847e29e3c",
+  "check-load-order.cjs": "0:5956da9475",
   "check-mechanic-migrations.cjs": "0:709ab40aa6",
   "check-mine-sequence.cjs": "0:5f9852f330",
   "check-play-logs.cjs": "skipped:playwright",

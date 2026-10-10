@@ -2,16 +2,15 @@
 
 /*
  * 시뮬레이션 워커 (실험): Game 의 시뮬레이션만 돌리고, 화면에 보이는 것만 스냅샷으로 메인 스레드에 보낸다.
- * 메인은 같은 Game.render 와 개체 draw 를 그대로 쓰는 복제 개체(js/sim-bridge.js)로 그린다.
+ * 메인은 같은 Game.render 와 개체 draw 를 그대로 쓰는 복제 개체(js/worker/sim-bridge.js)로 그린다.
  * http(s) 에서만 동작한다 (file:// 에서는 워커를 만들 수 없어 메인 스레드 시뮬레이션으로 돌아간다).
  */
 importScripts('../manifest.js');
 importScripts(...JS_MANIFEST.worker.map(p => '../' + p));   // 로드 목록은 js/manifest.js 한 곳에서 관리한다
 
 UI.hideOverlay = UI.showHud = UI.showEnd = UI.updateRewards = () => {};
-for (const m of ['shake', 'showBanner']) { /* 배너·흔들림은 시뮬레이션 상태라 그대로 둔다 */ }
 
-const ENEMY_STRIDE = 20;
+
 const ENEMY_TYPE_IDS = Object.keys(ENEMY_TYPES);
 const typeIndex = Object.fromEntries(ENEMY_TYPE_IDS.map((id, i) => [id, i]));
 const VIEW_MARGIN = 160;   // 화면 밖으로 이만큼까지 같이 보낸다 (흔들림·큰 스프라이트·보간 여유)

@@ -1,0 +1,14 @@
+{
+  "name": "amagos",
+  "private": true,
+  "description": "카드를 쌓아 주문을 조립하는 로그라이크 서바이벌 (브라우저 게임, 빌드 도구 없음)",
+  "scripts": {
+    "serve": "node tools/serve.cjs 8123",
+    "build:index": "node tools/build-index.cjs",
+    "check": "node tools/check-load-order.cjs && node tools/build-index.cjs --check",
+    "check:all": "node tools/run-all-checks.cjs",
+    "check:save-baseline": "node tools/run-all-checks.cjs --save",
+    "bench": "node tools/bench-frame.cjs",
+    "play": "node tools/play-stages.cjs"
+  }
+}

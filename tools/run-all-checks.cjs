@@ -8,7 +8,7 @@ const { spawnSync } = require('node:child_process');
 const root = path.join(__dirname, '..');
 const baselineFile = path.join(__dirname, 'baseline.json');
 const hash = text => crypto.createHash('sha1').update(text).digest('hex').slice(0, 10);
-const run = (script, args = []) => spawnSync(process.execPath, [path.join('tools', script), ...args], { cwd: root, encoding: 'utf8', timeout: 600000, maxBuffer: 1 << 26 });
+const run = (script, args = []) => spawnSync(process.execPath, [path.join('tools', script), ...args], { cwd: root, env: { ...process.env, PLAY_REPORT: path.join(require('node:os').tmpdir(), 'amagos-playthrough.json') }, encoding: 'utf8', timeout: 600000, maxBuffer: 1 << 26 });
 /** 스택 줄 번호처럼 리팩터링으로 바뀌는 부분은 지우고 비교한다. */
 const normalize = text => text.split('\n').filter(l => !/^\s+at /.test(l)).map(l => l.replace(/\bjs\/[\w./-]+:\d+/g, 'js/*:N').replace(/\d+(\.\d+)?ms/g, 'Nms')).join('\n');
 

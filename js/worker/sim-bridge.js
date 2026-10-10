@@ -7,7 +7,7 @@
  */
 const SimBridge = {
   PROTOS: { Placed, Ally, Projectile, Pickup, Player, SkillDeck },
-  ENEMY_STRIDE: 20,
+  ENEMY_STRIDE,
 
   supported() {
     return typeof Worker !== 'undefined' && /^https?:$/.test(location.protocol) && new URLSearchParams(location.search).has('worker');
@@ -33,41 +33,45 @@ const SimBridge = {
     };
     bridge.worker.onerror = e => console.error('sim worker', e.message, e.filename, e.lineno);
     bridge.stats = { snapshots: 0, applyMs: 0 };
-    const original = { start: game.start, update: game.update };
+    game.driver = bridge;
     game.sim = bridge;
-    game.start = function (route = rollStageRoute()) {
-      this.events.clear();
-      this.route = route;
-      this.state = 'playing';
-      this.player = null;
-      bridge.gen++;
-      bridge.latest = null;
-      bridge.ended = false;
-      UI.hideOverlay();
-      UI.showHud(true);
-      bridge.worker.postMessage({ type: 'start', gen: bridge.gen, route, w: this.w, h: this.h, debug: new URLSearchParams(location.search).has('debug') });
-    };
-    game.update = function (dt) {
-      if (this.state === 'title') return original.update.call(this, dt);
-      this.clock += dt;
-      bridge.sendKeys();
-      const snap = bridge.latest;
-      if (snap) {
-        bridge.latest = null;
-        const t = performance.now();
-        bridge.apply(snap);
-        bridge.stats.applyMs += (performance.now() - t - bridge.stats.applyMs) * 0.1;
-      }
-      if (this.player) UI.updateHud(this);
-      if ((this.state === 'gameover' || this.state === 'victory') && !bridge.ended) {
-        bridge.ended = true;
-        UI.showEnd(this, this.state === 'victory');
-      }
-      if ((this.state === 'gameover' || this.state === 'victory') && Input.consume('Enter')) this.start();
-      Input.endFrame();
-    };
     window.addEventListener('resize', () => bridge.worker.postMessage({ type: 'resize', w: game.w, h: game.h }));
     return bridge;
+  },
+
+  /** Game.start 대신 불린다: 워커에 새 판을 시작시키고 화면을 전투 상태로 바꾼다. */
+  start(game, route = rollStageRoute()) {
+    game.events.clear();
+    game.route = route;
+    game.state = 'playing';
+    game.player = null;
+    this.gen++;
+    this.latest = null;
+    this.ended = false;
+    UI.hideOverlay();
+    UI.showHud(true);
+    this.worker.postMessage({ type: 'start', gen: this.gen, route, w: game.w, h: game.h, debug: new URLSearchParams(location.search).has('debug') });
+  },
+
+  /** Game.update 대신 불린다 (타이틀 화면 제외): 최신 스냅샷을 적용하고 HUD·종료 화면만 갱신한다. */
+  update(game, dt) {
+    game.clock += dt;
+    this.sendKeys();
+    const snap = this.latest;
+    if (snap) {
+      this.latest = null;
+      const t = performance.now();
+      this.apply(snap);
+      this.stats.applyMs += (performance.now() - t - this.stats.applyMs) * 0.1;
+    }
+    if (game.player) UI.updateHud(game);
+    const over = game.state === 'gameover' || game.state === 'victory';
+    if (over && !this.ended) {
+      this.ended = true;
+      UI.showEnd(game, game.state === 'victory');
+    }
+    if (over && Input.consume('Enter')) game.start();
+    Input.endFrame();
   },
 
   sendKeys() {

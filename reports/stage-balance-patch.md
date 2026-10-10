@@ -9,6 +9,6 @@
 
 검증: `node tools/check-stage-pressure.cjs`는 모든 8개 맵의 실제 개체 예산, 보스전 빈도 감소, 단계 전환을 검사한다. 보스 진행, 개체 기믹, 팀 판정, 적 피해 검사도 통과했다.
 
-자동 플레이 기록은 `stage-playthrough.json`과 `stage*-checkpoint.json`에 저장한다. 체크포인트 실험은 해당 단계에서 체력 100으로 새로 시작하는 독립 실험이며 연속 클리어가 아니다. 초기 덱 및 표식 위주의 덱으로 진행한 2·3단계 실험은 사망했으며, 연속 3단계 클리어는 아직 검증되지 않았다.
+자동 플레이 기록은 `reports/generated/stage-playthrough.json`과 `reports/generated/stage*-checkpoint.json`에 저장한다. 체크포인트 실험은 해당 단계에서 체력 100으로 새로 시작하는 독립 실험이며 연속 클리어가 아니다. 초기 덱 및 표식 위주의 덱으로 진행한 2·3단계 실험은 사망했으며, 연속 3단계 클리어는 아직 검증되지 않았다.
 
 재현: `node tools/play-stages.cjs`; PowerShell에서 `PLAY_SEEDS`, `PLAY_SECONDS`, `PLAY_STAGE`(STAGES 인덱스), `PLAY_CHECKPOINT`(이전 JSON), `PLAY_REPORT` 환경 변수로 실험 범위를 지정할 수 있다.
