@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 // Runs the real combat loop with legal rewards, deck edits and steering inputs.
 const fs = require('node:fs');
 const results = [];

@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 // NODE_PATH=<directory containing playwright> node tools/check-play-logs.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

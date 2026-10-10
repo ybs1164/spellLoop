@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 // NODE_PATH=<directory containing playwright> node tools/check-event-ui.cjs
 const fs = require('node:fs');
 const http = require('node:http');

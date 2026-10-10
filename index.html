@@ -22,20 +22,63 @@
   <a id="community" href="https://discord.gg/a9qbwygpcp" target="_blank" rel="noopener noreferrer">💬 커뮤니티 · 피드백/버그 제보 (Discord)</a>
 
   <!-- 모듈 없이 file:// 로도 열리도록 classic script 순서 로드 -->
-  <script src="js/util.js"></script>
-  <script src="js/pixel.js"></script>
-  <script src="js/input.js"></script>
-  <script src="js/icons.js"></script>
-  <script src="js/cards.js"></script>
-  <script src="js/sprites.js"></script>
-  <script src="js/entities.js"></script>
-  <script src="js/stages.js"></script>
-  <script src="js/upgrades.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/log-config.js"></script>
-  <script src="js/play-log.js"></script>
-  <script src="js/sim-bridge.js"></script>
+  <!-- scripts:begin (node tools/build-index.cjs 로 생성) -->
+  <script src="js/core/util.js"></script>
+  <script src="js/core/pixel.js"></script>
+  <script src="js/core/input.js"></script>
+  <script src="js/core/icons.js"></script>
+  <script src="js/cards/slot-sections.js"></script>
+  <script src="js/cards/targets.js"></script>
+  <script src="js/data/card-defs.js"></script>
+  <script src="js/data/card-ratios.js"></script>
+  <script src="js/cards/skill-deck.js"></script>
+  <script src="js/cards/entity-cards.js"></script>
+  <script src="js/cards/entity-stats.js"></script>
+  <script src="js/cards/frozen.js"></script>
+  <script src="js/cards/entity-behavior.js"></script>
+  <script src="js/cards/entity-configured.js"></script>
+  <script src="js/cards/entity-gimmicks.js"></script>
+  <script src="js/cards/entity-slot.js"></script>
+  <script src="js/cards/cooldown.js"></script>
+  <script src="js/cards/slot-rules.js"></script>
+  <script src="js/cards/slot-runtime.js"></script>
+  <script src="js/cards/slot-events.js"></script>
+  <script src="js/core/sprites.js"></script>
+  <script src="js/entities/types.js"></script>
+  <script src="js/entities/player.js"></script>
+  <script src="js/entities/enemy.js"></script>
+  <script src="js/entities/ally.js"></script>
+  <script src="js/entities/placed.js"></script>
+  <script src="js/entities/projectile.js"></script>
+  <script src="js/entities/pickup.js"></script>
+  <script src="js/data/stages.js"></script>
+  <script src="js/data/upgrades.js"></script>
+  <script src="js/ui/ui.js"></script>
+  <script src="js/ui/hud.js"></script>
+  <script src="js/ui/card-html.js"></script>
+  <script src="js/ui/codex.js"></script>
+  <script src="js/ui/editor.js"></script>
+  <script src="js/ui/overlay.js"></script>
+  <script src="js/sim/tuning.js"></script>
+  <script src="js/sim/game.js"></script>
+  <script src="js/sim/spawn.js"></script>
+  <script src="js/sim/spatial.js"></script>
+  <script src="js/sim/projectiles.js"></script>
+  <script src="js/sim/card-env.js"></script>
+  <script src="js/sim/decoy.js"></script>
+  <script src="js/sim/damage.js"></script>
+  <script src="js/sim/actions-attack.js"></script>
+  <script src="js/sim/actions-status.js"></script>
+  <script src="js/sim/actions-move.js"></script>
+  <script src="js/sim/actions-summon.js"></script>
+  <script src="js/sim/zones.js"></script>
+  <script src="js/sim/fx.js"></script>
+  <script src="js/sim/hazards.js"></script>
+  <script src="js/render/render.js"></script>
+  <script src="js/log/log-config.js"></script>
+  <script src="js/log/play-log.js"></script>
+  <script src="js/worker/sim-bridge.js"></script>
   <script src="js/main.js"></script>
+    <!-- scripts:end -->
 </body>
 </html>

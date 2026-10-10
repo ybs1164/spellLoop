@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const context = vm.createContext({ TD: new Proxy({}, { get: () => 0 }) });

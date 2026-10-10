@@ -113,3 +113,10 @@ class SpatialHash {
 
 /** 두 각도의 부호 있는 차이 (-π ~ π) */
 const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
+/** source 클래스의 메서드(생성자 제외)를 target 클래스의 프로토타입에 붙인다. 큰 클래스를 파일별로 나누는 데 쓴다. */
+function mixin(target, source) {
+  for (const key of Reflect.ownKeys(source.prototype)) {
+    if (key !== 'constructor') Object.defineProperty(target.prototype, key, Object.getOwnPropertyDescriptor(source.prototype, key));
+  }
+}

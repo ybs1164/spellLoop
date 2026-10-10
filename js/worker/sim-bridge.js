@@ -2,7 +2,7 @@
 
 /*
  * 시뮬레이션 워커 브리지 (실험, `?worker=1` + http(s) 에서만).
- * 워커(js/sim-worker.js)가 보낸 스냅샷으로 복제 개체를 만들어 Game.render 와 개체 draw 를 그대로 쓴다.
+ * 워커(js/worker/sim-worker.js)가 보낸 스냅샷으로 복제 개체를 만들어 Game.render 와 개체 draw 를 그대로 쓴다.
  * 아직 지원하지 않는 것: 레벨업·편집기·일시정지 화면 (워커가 레벨업을 자동으로 넘긴다), 카드 편집.
  */
 const SimBridge = {
@@ -26,7 +26,7 @@ const SimBridge = {
     bridge.bothSlot = { has: id => id === 'entityGuard' || id === 'armor' };
     bridge.noSlot = { has: () => false };
     bridge.keysSent = '';
-    bridge.worker = new Worker('js/sim-worker.js');
+    bridge.worker = new Worker('js/worker/sim-worker.js');
     bridge.worker.onmessage = ({ data }) => {
       if (data.type === 'snap') { if (data.gen === bridge.gen) bridge.latest = data; bridge.worker.postMessage({ type: 'ack' }); }
       else if (data.type === 'debug') bridge.debugResult = data.result;

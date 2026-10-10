@@ -5,7 +5,8 @@
  * 메인은 같은 Game.render 와 개체 draw 를 그대로 쓰는 복제 개체(js/sim-bridge.js)로 그린다.
  * http(s) 에서만 동작한다 (file:// 에서는 워커를 만들 수 없어 메인 스레드 시뮬레이션으로 돌아간다).
  */
-importScripts('util.js', 'input.js', 'cards.js', 'sprites.js', 'entities.js', 'stages.js', 'upgrades.js', 'icons.js', 'ui.js', 'game.js');
+importScripts('../manifest.js');
+importScripts(...JS_MANIFEST.worker.map(p => '../' + p));   // 로드 목록은 js/manifest.js 한 곳에서 관리한다
 
 UI.hideOverlay = UI.showHud = UI.showEnd = UI.updateRewards = () => {};
 for (const m of ['shake', 'showBanner']) { /* 배너·흔들림은 시뮬레이션 상태라 그대로 둔다 */ }

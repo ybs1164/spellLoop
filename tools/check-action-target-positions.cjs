@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 ﻿const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');

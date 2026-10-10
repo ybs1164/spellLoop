@@ -1,3 +1,4 @@
+require('./lib/js-bundles.cjs');
 // Measures Game.step cost per frame on fixed-seed scenarios and prints a state fingerprint.
 // 사용: node tools/bench-frame.cjs [시나리오...]   (BENCH_FRAMES=프레임 수, BENCH_SPIKES=ms 스파이크 원인 출력, stage0~stage7 은 이름으로 지정할 때만 실행)
 const fs = require('node:fs');
