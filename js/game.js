@@ -1,22 +1,41 @@
 'use strict';
 
-const MAX_ENEMIES = 400;
+const MAX_ENEMIES = Infinity;   // 상한 해제 (스트레스 테스트 중)
 const CLEAR_DELAY = 2;   // 마지막 보스가 쓰러지고 클리어 화면까지
-const MAX_HAZARDS = 200;
+const MAX_HAZARDS = Infinity;
 const SWARM_INTERVAL = 60;
 // 이펙트 상한: 넘치면 가장 오래된 것부터 지운다
-const MAX_FX = 250;
-const MAX_TEXTS = 150;
-const MAX_PARTICLES = 600;
+const MAX_FX = Infinity;
+const MAX_TEXTS = Infinity;
+const MAX_PARTICLES = Infinity;
 // 분열 상한: 분열로 늘어나는 개체 수 (복제가 다시 분열하며 기하급수로 늘어나 멈추는 것을 막는다)
-const SPLIT_CAPS = { enemy: ['enemies', MAX_ENEMIES], self: ['allies', 120], ally: ['allies', 120], object: ['objects', 120], zone: ['zones', 120], shot: ['projectiles', 400], gem: ['pickups', 400], pickup: ['pickups', 400] };
+const SPLIT_CAPS = { enemy: ['enemies', MAX_ENEMIES], self: ['allies', Infinity], ally: ['allies', Infinity], object: ['objects', Infinity], zone: ['zones', Infinity], shot: ['projectiles', Infinity], gem: ['pickups', Infinity], pickup: ['pickups', Infinity] };
+
+// 프레임당 생성 예산: 개체 수 상한을 풀어도 한 프레임에 몰리는 생성 작업량은 막는다 (SLOT_EVENT_BUDGET 과 같은 방식).
+// 투사체는 넘친 것을 대기열에 두었다 다음 프레임부터 이어서 만들고, 소환·분열로 늘어나는 적은 넘친 것을 만들지 않는다.
+const SHOT_SPAWN_BUDGET = 600;
+const SHOT_QUEUE_MAX = 20000;
+const ENEMY_SPAWN_BUDGET = 80;
 
 // 종류별 장판·설치물 상한: 「전체」 대상이 자기가 만든 장판·설치물 위에 또 만들며 끝없이 늘어나는 것을 막는다.
 // 넘치면 같은 종류에서 가장 오래된 것이 끝난다.
-const MAX_ZONES_PER_KIND = 150;
+const MAX_ZONES_PER_KIND = Infinity;
 const MAX_OBJECTS_PER_KIND = Infinity;   // 설치물 상한 해제 (스트레스 테스트 중)
 const MAX_STRUCT_RADIUS = 64;            // 설치물·아군 최대 반지름 여유분 (해시 조회용)
+const SEPARATE_SLACK = 6;   // 겹침 해소의 해시 조회 여유 (기본값. 밀림이 커지면 늘어난다)
 const FAR_SHOT_VIEWS = 1.5;   // 화면 긴 변의 몇 배 밖부터 먼 투사체로 보는가
+const FAR_ENEMY_MARGIN = 120;  // 화면 가장자리에서 이 값 넘게 벗어난 적은 아직 화면에 나오기 전이라 드물게 갱신한다
+const FAR_ENEMY_PERIOD = 3;    // 먼 적의 갱신 주기 (프레임). 모인 시간을 한꺼번에 넘긴다
+const SEPARATE_BUDGET = 1000;  // 프레임당 스스로 밀려나는 적 수의 상한. 넘으면 적을 돌려 가며 처리한 만큼 겹침이 천천히 풀린다
+const SEPARATE_SCAN_CAP = 120;  // 과밀 때 적 하나가 겹침 해소에서 훑는 이웃 수 상한
+const ENEMY_UPDATE_BUDGET = 3000;  // 프레임당 갱신하는 적 수의 기준. 적이 이보다 많으면 주기를 늘려 돌려 가며 갱신한다 (모인 시간을 한꺼번에 넘긴다)
+const CROWD_DRAW_CELL = 30;      // 과밀 때 적 그리기 격자 한 칸의 크기 (px)
+const CROWD_DRAW_PER_CELL = 1;   // 과밀 때 한 칸에 그리는 적 수의 상한
+const CROWD_HAZARD_DRAW = 200;    // 과밀 때 그리는 적 탄 수 (최근 것부터)
+const CROWD_FX_DRAW = 60;         // 과밀 때 그리는 이펙트 수 (최근 것부터)
+const CROWD_PARTICLE_DRAW = 500;  // 과밀 때 그리는 파티클 수 (최근 것부터)
+const ENEMY_MAX_PERIOD = 8;       // 과밀 시 갱신 주기의 상한 (프레임)
+const ENEMY_NEAR_RANGE = 260;     // 플레이어에서 이 거리 안의 적은 과밀이어도 매 프레임 갱신한다
 const FAR_SHOT_PERIOD = 4;    // 먼 투사체의 갱신 주기 (프레임)
 // 유인이 없을 때의 플레이어 대상. 읽기 전용이라 하나를 공유한다 (복사해서 쓰는 호출부만 있다).
 const SELF_TARGET = Object.freeze({ kind: 'self' });
@@ -107,6 +126,9 @@ class Game {
     window.addEventListener('resize', () => this.resize());
   }
 
+  /** 적이 갱신 상한보다 많은가 (워커 모드에서는 워커의 실제 적 수) */
+  get crowded() { return (this._enemyCount ?? this.enemies.length) > ENEMY_UPDATE_BUDGET; }
+
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     // 미리 구운 도장·타일은 화면 배율 해상도로 만들므로 배율이 바뀌면 다시 굽는다
@@ -139,9 +161,13 @@ class Game {
     this.time = 0;
     this.kills = 0;
     this.spawnAcc = 0;
+    this._shotQueue = []; this._shotQueueHead = 0;
     this.route = route;      // 단계별 STAGES 번호
     this.enterStage(0, false);
     this.pendingLevelUps = 0;
+    this.rewards = [];       // 아직 고르지 않은 보상 목록
+    this.rewardKinds = [];   // pendingLevelUps 와 같은 순서의 보상 종류
+    UI.updateRewards(this);
     this.barrelCd = 4;
     this.levelNotes = [];    // 다음 레벨업 창에 보여줄 성장 알림 (슬롯 추가)
     this.leveledUp = false;  // 다음 카드 선택 창이 레벨업인지 (아니면 보물 상자 보상)
@@ -242,20 +268,28 @@ class Game {
   /** 레벨이 오를 때마다 카드 선택 1회 */
   onLevelUp(level) {
     this.leveledUp = true;
+    (this.rewardKinds ??= []).push('level');
     this.pendingLevelUps++;
   }
 
+  /** 쌓인 보상을 일시정지 없이 우측 상단 목록에 올린다. 선택은 목록에서 언제든 한다. */
   openLevelUp() {
-    this.state = 'levelup';
-    const notes = this.levelNotes, leveled = this.leveledUp;
-    this.levelNotes = [];
-    this.leveledUp = false;
-    UI.showLevelUp(this.player, rollRewards(this.player, REWARD_CHOICES), notes, leveled, (r) => {
-      applyReward(this.player, r, this);
+    while (this.pendingLevelUps > 0) {
       this.pendingLevelUps--;
-      if (this.pendingLevelUps > 0) this.openLevelUp();
-      else this.resume();
-    });
+      const kind = this.rewardKinds?.shift() ?? 'chest';
+      (this.rewards ??= []).push({ kind, level: this.player.level, notes: this.levelNotes, choices: rollRewards(this.player, REWARD_CHOICES) });
+      this.levelNotes = [];
+    }
+    this.leveledUp = false;
+    UI.updateRewards(this);
+  }
+
+  claimReward(entry, i) {
+    const id = entry.choices[i];
+    if (!id) return;
+    this.rewards.splice(this.rewards.indexOf(entry), 1);
+    applyReward(this.player, id, this);
+    UI.updateRewards(this);
   }
 
   endRun(victory) {
@@ -287,13 +321,21 @@ class Game {
       case 'playing':
         if (Input.consume('Escape') || Input.consume('KeyP')) { this.pause(); break; }
         if (Input.consume('KeyE') || Input.consume('Tab')) { this.openEditor(); break; }
+        if (Input.consume('KeyR')) { UI.toggleReward(); break; }
         this.step(dt);
+        break;
+      case 'reward':
+        // 보상 선택 중에는 게임이 멈춘다
+        if (Input.consume('KeyR') || Input.consume('Escape')) UI.toggleReward();
+        else for (let i = 0; i < REWARD_CHOICES; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickReward(i);
         break;
       case 'paused':
         if (Input.consume('Escape') || Input.consume('KeyP')) this.resume();
         else if (Input.consume('KeyE') || Input.consume('Tab')) this.openEditor();
         break;
       case 'editor':
+        if (Input.consume('KeyR') && !document.activeElement?.matches?.('input, textarea, select')) UI.toggleReward();
+        else if (UI.rewardOpen) for (let i = 0; i < REWARD_CHOICES; i++) if (Input.consume(`Digit${i + 1}`)) UI.pickReward(i);
         if (Input.consume('Escape') || Input.consume('KeyE') || Input.consume('Tab')) this.closeEditor();
         break;
       case 'inspector':
@@ -318,17 +360,36 @@ class Game {
     this.time += dt;
     this._decoyStamp = (this._decoyStamp | 0) + 1;
     this._eventBudget = SLOT_EVENT_BUDGET;
+    this._shotBudget = SHOT_SPAWN_BUDGET;
+    this._enemyBudget = ENEMY_SPAWN_BUDGET;
+    this.drainShotQueue();
     const p = this.player;
 
     this.updateSpawns(dt);
     this.updateBarrels(dt);
     this.updateTargetBuffs(dt);
     p.update(dt, this);
-    for (const e of this.enemies) {
+    const enemies = this.enemies, enemyTick = this._enemyTick = (this._enemyTick | 0) + 1;
+    const lodX = this.w / 2 + FAR_ENEMY_MARGIN, lodY = this.h / 2 + FAR_ENEMY_MARGIN;
+    const crowdPeriod = Math.min(ENEMY_MAX_PERIOD, Math.ceil(enemies.length / ENEMY_UPDATE_BUDGET));
+    for (let i = 0; i < enemies.length; i++) {
+      const e = enemies[i];
+      // 화면 밖 먼 적은 FAR_ENEMY_PERIOD 프레임에 한 번, 모인 시간만큼 한꺼번에 갱신한다 (보스는 제외).
+      let step = dt, period = 1;
+      if (!e.boss) {
+        const dx = Math.abs(e.x - p.x), dy = Math.abs(e.y - p.y);
+        if (dx > lodX || dy > lodY) period = Math.max(FAR_ENEMY_PERIOD, crowdPeriod);
+        else if (crowdPeriod > 1) period = dx > ENEMY_NEAR_RANGE || dy > ENEMY_NEAR_RANGE ? crowdPeriod : Math.min(2, crowdPeriod);
+      }
+      if (period > 1) {
+        e._lodDt += dt;
+        if ((enemyTick + i) % period) continue;
+        step = e._lodDt; e._lodDt = 0;
+      } else if (e._lodDt) { step += e._lodDt; e._lodDt = 0; }
       // 슬롯의 「플레이어」 대상도 같은 값을 쓰므로, 이 적이 움직이기 전에 한 번만 구해 둔다.
       const redirect = this._redirectValue = this.findRedirect(e);
       this._redirectUnit = e;
-      e.update(dt, this.targetObj(redirect), this);
+      e.update(step, this.targetObj(redirect), this);
     }
     this._redirectUnit = null; this._redirectValue = null;
 
@@ -464,7 +525,10 @@ class Game {
   /* ------------------------------------------------------------------ */
   rebuildHash() {
     this.hash.clear();
-    for (const e of this.enemies) if (!e.dead) this.hash.insert(e);
+    this._reach = MAX_ENEMY_RADIUS;   // 적 조회 반경 여유 (과밀일 때 separateEnemies 가 실제 값으로 줄인다)
+    let teams = 0;
+    for (const e of this.enemies) if (!e.dead) { this.hash.insert(e); teams |= teamBit(e.team ?? 'friendly'); }
+    this._enemyTeams = teams;   // 해시에 든 적 팀 비트 합 (해시 안의 적은 이번 프레임 도중 팀이 바뀌지 않는다)
   }
 
   /**
@@ -476,40 +540,65 @@ class Game {
     let buf = this._sep;
     if (!buf || buf.x.length < n) {
       const size = Math.max(n, 2 * (buf?.x.length || 256));
-      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size) };
+      buf = this._sep = { x: new Float64Array(size), y: new Float64Array(size), r: new Float64Array(size), w: new Float64Array(size), at: new Int32Array(size) };
     }
-    const X = buf.x, Y = buf.y, R = buf.r;
+    const X = buf.x, Y = buf.y, R = buf.r, W = buf.w, AT = buf.at;
     // rebuildHash 직후라 지금 좌표가 해시에 넣은 좌표와 같다. 해시의 칸 연결 목록(살아 있는 적, 배열 순서)을 그대로 이웃 목록으로 쓴다.
-    for (let i = 0; i < n; i++) { const e = list[i]; X[i] = e.x; Y[i] = e.y; R[i] = e.radius; e._si = i; }
+    // 해시 항목 k 는 k 번째 살아 있는 적이므로, 적 객체를 읽지 않고 AT[k] 로 배열 번호를 얻는다.
+    let maxR = 0, k = 0;
+    // 화면 밖 먼 적(갱신이 드문 적)은 스스로 밀려나지 않는다 (W = -1). 이웃으로는 그대로 남아 가까운 적을 밀어낸다.
+    const p = this.player, lodX = this.w / 2 + FAR_ENEMY_MARGIN, lodY = this.h / 2 + FAR_ENEMY_MARGIN;
+    // 적이 상한보다 많으면 stride 번째마다 한 마리씩만 스스로 밀려나게 한다 (나머지는 W = -1, 이웃으로만 남는다). 상한 이하면 전부 처리한다.
+    const stride = n > ENEMY_UPDATE_BUDGET ? Math.ceil(n / SEPARATE_BUDGET) : 1, phase = (this._enemyTick | 0) % stride;
+    for (let i = 0; i < n; i++) {
+      const e = list[i], r = e.radius;
+      X[i] = e.x; Y[i] = e.y; R[i] = r;
+      W[i] = e.boss ? 0.05 : (i + phase) % stride || Math.abs(e.x - p.x) > lodX || Math.abs(e.y - p.y) > lodY ? -1 : 0.5;
+      if (!e.dead) { AT[k++] = i; if (r > maxR) maxR = r; }
+    }
     if (!hash.n) return;
-    const items = hash.items, next = hash.next, head = hash.head, slotStamp = hash.slotStamp, stamp = hash.stamp, CX = hash.cx, CY = hash.cy;
+    // 겹칠 수 있는 이웃은 반지름 합 이내뿐이다: 해시 조회 범위를 이번 프레임의 가장 큰 반지름까지만 잡는다
+    // (MAX_ENEMY_RADIUS 는 증폭된 보스 같은 최악의 경우라, 작은 적이 대부분일 때 훑는 칸이 몇 배 많았다).
+    const next = hash.next, head = hash.head, slotStamp = hash.slotStamp, stamp = hash.stamp, CX = hash.cx, CY = hash.cy;
+    // 앞서 처리한 적이 밀려난 만큼 그 적의 해시 칸은 지금 좌표와 어긋난다: 지금까지 밀린 최대 거리의 두 배(자기 이동분 포함)를 여유로 더한다.
+    let shift2 = 0, slack = SEPARATE_SLACK;
+    const scanCap = stride > 1 ? SEPARATE_SCAN_CAP : Infinity;
     for (let ai = 0; ai < n; ai++) {
-      const reach = R[ai] + MAX_ENEMY_RADIUS, wa = list[ai].boss ? 0.05 : 0.5;
-      const x0 = Math.floor((X[ai] - reach) / cs), x1 = Math.floor((X[ai] + reach) / cs);
-      const y0 = Math.floor((Y[ai] - reach) / cs), y1 = Math.floor((Y[ai] + reach) / cs);
-      for (let cx = x0; cx <= x1; cx++) {
+      const xa = X[ai], ya = Y[ai], ra = R[ai], wa = W[ai];
+      if (wa < 0) continue;
+      const reach = Math.min(ra + maxR + slack, ra + MAX_ENEMY_RADIUS);
+      const x0 = Math.floor((xa - reach) / cs), x1 = Math.floor((xa + reach) / cs);
+      const y0 = Math.floor((ya - reach) / cs), y1 = Math.floor((ya + reach) / cs);
+      let ax = xa, ay = ya, seen = 0;
+      scan: for (let cx = x0; cx <= x1; cx++) {
         const hx = Math.imul(cx, 73856093);
         for (let cy = y0; cy <= y1; cy++) {
           const slot = (hx ^ Math.imul(cy, 19349663)) & (HASH_SLOTS - 1);
           if (slotStamp[slot] !== stamp) continue;
           for (let k = head[slot]; k >= 0; k = next[k]) {
             if (CX[k] !== cx || CY[k] !== cy) continue;
-            const bi = items[k]._si;
+            if (++seen > scanCap) break scan;   // 과밀 때 한 적이 훑는 이웃 수 상한 (밀집한 더미 속 하나가 수백 마리를 훑지 않게)
+            const bi = AT[k];
             if (bi === ai) continue;
-            const dx = X[ai] - X[bi], dy = Y[ai] - Y[bi];
-            const min = R[ai] + R[bi];
+            const dx = ax - X[bi], dy = ay - Y[bi];
+            const min = ra + R[bi];
             const d2 = dx * dx + dy * dy;
             if (d2 >= min * min) continue;
-            if (d2 === 0) { X[ai] += rand(-1, 1); continue; }
+            if (d2 === 0) { ax += rand(-1, 1); continue; }
             const d = Math.sqrt(d2);
             const push = ((min - d) / d) * wa;   // 쌍마다 양쪽이 각자 절반씩 밀려남
-            X[ai] += dx * push;
-            Y[ai] += dy * push;
+            ax += dx * push;
+            ay += dy * push;
           }
         }
       }
+      X[ai] = ax; Y[ai] = ay;
+      const mx = ax - xa, my = ay - ya, m2 = mx * mx + my * my;
+      if (m2 > shift2) { shift2 = m2; slack = Math.min(MAX_ENEMY_RADIUS, SEPARATE_SLACK + 2 * Math.sqrt(m2)); }
     }
     for (let i = 0; i < n; i++) { const e = list[i]; e.x = X[i]; e.y = Y[i]; }
+    // 과밀(적이 갱신 상한보다 많음)이면 이후 충돌 조회 반경을 이번 프레임 최대 반지름 + 밀린 거리 + 여유로 줄인다 (보통 때는 그대로 최악값).
+    if (n > ENEMY_UPDATE_BUDGET) this._reach = Math.min(MAX_ENEMY_RADIUS, maxR + Math.sqrt(shift2) + 24);
   }
 
   /** (x, y) 반경 r 안의 살아 있는 적 수 (공간 해시 기준, skip 제외) */
@@ -567,8 +656,13 @@ class Game {
         pr.update(acc, this);
       } else {
         pr._lodSkip = false;
-        pr.update((pr._lodDt || 0) + dt, this);
+        const step = (pr._lodDt || 0) + dt;
         pr._lodDt = 0;
+        // 잠든 투사체는 Projectile.update → 슬롯 갱신 층을 건너뛰고 바로 움직인다 (EntitySlots.update 의 휴면 경로와 같다).
+        const slot = pr.slot;
+        if (slot._sleep > 0 && !pr.dead && pr._slotSpawned && slot.napCheck(step, this)) {
+          if (tickEntityLifetime(pr, step, this)) slot.napRun(step, this, undefined);
+        } else pr.update(step, this);
       }
     }
   }
@@ -578,10 +672,18 @@ class Game {
     for (const pr of this.projectiles) if (!pr._lodSkip) this.collideShot(pr);
   }
 
+  /** 해시 안의 적 중 이 탄의 충돌 팀 규칙에 맞는 팀이 하나라도 있는가 (없으면 적 조회를 통째로 건너뛴다. entityCanHit 의 팀 판정과 같다) */
+  enemiesHittable(source, hit) {
+    const teams = this._enemyTeams, sourceBit = teamBit(source.team ?? 'friendly'), rule = hit.hitTeamRule;
+    if (rule === undefined || rule === 'opposing') return (teams & ~sourceBit) !== 0;
+    if (rule === 'same') return (teams & sourceBit) !== 0;
+    return (teams & (HIT_RULE_MASKS[rule] ?? ~sourceBit)) !== 0;
+  }
+
   collideEnemyPoints(source, hit, points, consume, projectileEvent = false) {
     for (const point of points) {
       if (hit.repeatCd != null) point.hitTimes ??= new WeakMap();
-      const near = this.hash.query(point.x, point.y, point.radius + MAX_ENEMY_RADIUS, this._near);
+      const near = this.hash.query(point.x, point.y, point.radius + this._reach, this._near);
       for (const e of near) {
         if (!entityCanHit(source, e, hit) || dist2(point.x, point.y, e.x, e.y) > (point.radius + e.radius) ** 2) continue;
         if (hit.repeatCd != null ? (point.hitTimes.get(e) || 0) > hit.time : source.hitSet.has(e)) continue;
@@ -606,13 +708,15 @@ class Game {
     const hitSet = s.hitSet ||= new Set();
     const radius = s.radius ?? s.r;
     const damage = hit.damage;
-    if (hit.repeatCd != null) {
+    if (!this.enemiesHittable(s, hit)) {
+      // 맞을 수 있는 팀의 적이 없다
+    } else if (hit.repeatCd != null) {
       const consume = target => { hitSet.add(target); if (--s.pierce < 0) s.dead = true; };
       this.collideEnemyPoints(s, hit, [{ x: s.x, y: s.y, radius }], consume, true);
     } else {
       // 대상별 재타격 간격이 없는 탄은 점 목록·재타격 표를 만들지 않고 바로 훑는다 (collideEnemyPoints 와 같은 순서·판정).
       // 거리·재타격 검사가 싸므로 먼저 하고, 팀 규칙은 겹친 것에만 본다 (모두 부수 효과 없는 판정이라 결과는 같다).
-      const near = this.hash.query(s.x, s.y, radius + MAX_ENEMY_RADIUS, this._near);
+      const near = this.hash.query(s.x, s.y, radius + this._reach, this._near);
       for (let i = 0; i < near.length; i++) {
         const e = near[i], rr = radius + e.radius;
         if (dist2(s.x, s.y, e.x, e.y) > rr * rr || hitSet.has(e) || !entityCanHit(s, e, hit)) continue;
@@ -656,7 +760,7 @@ class Game {
       if (o.dead) continue;
       o.contactCd = Math.max(0, (o.contactCd || 0) - dt);
       if (o.contactCd > 0) continue;
-      const near = this.hash.query(o.x, o.y, o.radius + MAX_ENEMY_RADIUS, this._near);
+      const near = this.hash.query(o.x, o.y, o.radius + this._reach, this._near);
       let damage = 0;
       for (const e of near) {
         if (e.dead || e.directFrozen || e.freezeT > 0 || e.fearT > 0 || !entitySlot(e, 'enemy').has('entityHit')) continue;
@@ -672,7 +776,7 @@ class Game {
 
   collidePlayer() {
     const p = this.player;
-    const near = this.hash.query(p.x, p.y, p.radius + MAX_ENEMY_RADIUS, this._near);
+    const near = this.hash.query(p.x, p.y, p.radius + this._reach, this._near);
     for (const e of near) {
       if (e.dead || !entitySlot(e, 'enemy').has('entityHit')) continue;
       if (!entityCanHit(e, p, e.slot.effect('entityHit'))) continue;
@@ -960,8 +1064,30 @@ class Game {
     o.cardArmor = active('armor') ? this.actionValue('armor', 'armor', o) : 0;
   }
 
+  /**
+   * allTargets 와 같은 순서·같은 래퍼로 모으되, 직접 상태·화상·표식·카드 버프가 하나도 없는 개체는 뺀다.
+   * 그런 개체는 updateTargetBuffs 가 직접 얼림·이동 배율만 초기화하고 아무 일도 하지 않으므로 여기서 바로 처리한다.
+   */
+  buffTargets() {
+    const wraps = this._targetWraps ||= new WeakMap();
+    const out = [{ kind: 'self' }];
+    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
+      if (!list) continue;
+      for (const o of list) {
+        if (o.dead) continue;
+        if (!o.directStates && !o.directBurnStacks && !o.markStacks && !o.cardBuffs && (!o.burnStacks || o instanceof Enemy)) { o.directFrozen = false; o.directMove = 1; continue; }
+        let w = wraps.get(o);
+        if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
+        out.push(w);
+      }
+    }
+    return out;
+  }
+
   updateTargetBuffs(dt) {
-    for (const t of this.allTargets()) {
+    for (const t of this.buffTargets()) {
       const o = this.targetObj(t);
       const states = o.directStates || {};
       o.directFrozen = states.freeze > 0;
@@ -1031,7 +1157,7 @@ class Game {
   hitCircle(x, y, r, dmg, knock, each, elem) {
     // 호출 깊이마다 질의 배열을 재사용한다 (피해 → 사망 → 폭발처럼 안에서 다시 불릴 수 있다).
     const pool = this._hitPool ||= [], depth = this._hitDepth = (this._hitDepth || 0) + 1;
-    const near = this.hash.query(x, y, r + MAX_ENEMY_RADIUS, pool[depth] ||= []);
+    const near = this.hash.query(x, y, r + this._reach, pool[depth] ||= []);
     try {
       for (let i = 0; i < near.length; i++) {
         const e = near[i];
@@ -1070,7 +1196,27 @@ class Game {
 
   shoot(opts) {
     const p = this.actionOrigin || this.actionActor || this.player;
-    return this.spawnProjectile({ source: this.actionActor || p, x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts });
+    const full = { source: this.actionActor || p, x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts };
+    if (this._shotBudget === undefined) return this.spawnProjectile(full);   // step 밖(대역 game)에서는 예산이 없다
+    if (this._shotBudget > 0 && this._shotQueueHead >= this._shotQueue.length) { this._shotBudget--; return this.spawnProjectile(full); }
+    // 예산이 다 찼다: 지금의 위치·속도 그대로 대기열에 넣고 다음 프레임부터 이어서 만든다 (호출부는 반환값을 쓰지 않는다).
+    if (this._shotQueue.length - this._shotQueueHead < SHOT_QUEUE_MAX) this._shotQueue.push({ full, rule: this.actionHitTeamRule });
+    return null;
+  }
+
+  /** 지난 프레임에 넘친 투사체를 예산만큼 만든다 */
+  drainShotQueue() {
+    const q = this._shotQueue;
+    if (!q || this._shotQueueHead >= q.length) return;
+    const rule = this.actionHitTeamRule;
+    while (this._shotBudget > 0 && this._shotQueueHead < q.length) {
+      const entry = q[this._shotQueueHead]; q[this._shotQueueHead++] = null;
+      this._shotBudget--;
+      this.actionHitTeamRule = entry.rule;
+      this.spawnProjectile(entry.full);
+    }
+    this.actionHitTeamRule = rule;
+    if (this._shotQueueHead >= q.length) { q.length = 0; this._shotQueueHead = 0; }
   }
 
   /* ---------------- 기본 ---------------- */
@@ -1290,7 +1436,13 @@ class Game {
   }
 
   summonEntityReward(owner, effect) {
-    if (effect.kind === 'chest') {
+    if (effect.kind === 'chest' && owner.boss) {
+      // 보스 보상은 줍지 않아도 단계가 넘어가기 전에 바로 카드 선택 팝업으로 받는다
+      (this.rewardKinds ??= []).push('boss');
+      this.pendingLevelUps++;
+      this.shake(12);
+      this.showBanner('보스 보상!', '#ffd166');
+    } else if (effect.kind === 'chest') {
       this.pickups.push(new Pickup('chest', owner.x, owner.y)); this.shake(owner.boss ? 12 : 4);
     } else {
       const value = effect.value ?? entityStats(owner).xpReward;
@@ -1312,6 +1464,8 @@ class Game {
       const arr = lists[i] || [];
       let entry = scan.lists[i];
       if (!entry || entry.arr !== arr || entry.n > arr.length) entry = scan.lists[i] = { arr, n: 0, found: [] };
+      // 유인 카드를 가진 적 슬롯이 하나도 없으면 적 목록은 훑지 않는다 (적의 기본 카드에는 유인이 없다)
+      if (i === 0 && entityDecoyEnemySlots <= 0) { entry.n = arr.length; continue; }
       for (; entry.n < arr.length; entry.n++) if (slotMayHaveDecoy(arr[entry.n])) entry.found.push(arr[entry.n]);
     }
     return scan.lists;
@@ -1566,7 +1720,7 @@ class Game {
     if (settings?.continuous && dt != null) {
       const speed = entityStats(actor).knockback * settings.speedRatio;
       const radius = entityStats(actor).range;
-      const near = this.hash.query(o.x, o.y, radius + MAX_ENEMY_RADIUS, this._near);
+      const near = this.hash.query(o.x, o.y, radius + this._reach, this._near);
       for (const e of near) {
         if (e.dead || e === actor.follow) continue;
         const edge = radius + e.radius, dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy) || 1;
@@ -1659,6 +1813,7 @@ class Game {
     if (o.dead) return;
     const cap = SPLIT_CAPS[t.kind];
     if (cap && this[cap[0]].length >= cap[1]) return;
+    if (t.kind === 'enemy' && this._enemyBudget <= 0) return;
     const a = Math.random() * TAU, off = (o.radius || 12) + 18;
     const at = { x: o.x + Math.cos(a) * off, y: o.y + Math.sin(a) * off };
     let c = null;
@@ -1677,6 +1832,7 @@ class Game {
       case 'enemy':
         if (o.boss) return;
         o.hp /= 2;
+        this._enemyBudget--;
         c = this.spawnEnemy(o.type, at);
         c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
         c.kx = Math.cos(a) * 240; c.ky = Math.sin(a) * 240;
@@ -1968,7 +2124,10 @@ class Game {
   }
 
   drawFx(ctx) {
-    for (const f of this.fx) {
+    // 과밀이면 가장 최근 이펙트만 그린다
+    const fx = this.fx, from = this.crowded ? Math.max(0, fx.length - CROWD_FX_DRAW) : 0;
+    for (let fi = from; fi < fx.length; fi++) {
+      const f = fx[fi];
       if (!this.fxInView(f)) continue;
       const t = 1 - f.life / f.max;   // 0 → 1
       ctx.globalAlpha = Math.max(0, 1 - t * t);
@@ -2107,6 +2266,8 @@ class Game {
     if (settings.blockFear && hasTargetState(owner, 'fear')) return;
     if (settings.minions && this.enemies.length >= MAX_ENEMIES * 0.75) return;
     for (let i = 0; i < settings.n; i++) {
+      if (this._enemyBudget <= 0) break;
+      this._enemyBudget--;
       const a = i / settings.n * TAU + (settings.deathSplit ? 0 : rand(-0.3, 0.3));
       const d = settings.deathSplit ? owner.radius * 0.8 : owner.radius + 30;
       const child = this.spawnEnemy(settings.type, { x: at.x + Math.cos(a) * d, y: at.y + Math.sin(a) * d });
@@ -2146,7 +2307,9 @@ class Game {
   }
 
   drawHazards(ctx) {
-    for (const h of this.hazards) {
+    const hazards = this.hazards;
+    for (let hi = this.crowded ? Math.max(0, hazards.length - CROWD_HAZARD_DRAW) : 0; hi < hazards.length; hi++) {
+      const h = hazards[hi];
       if (!this.inView(h.x, h.y, 20)) continue;
 
       const s = h.r + Math.sin(this.clock * 20 + h.x) * 1.5;
@@ -2229,6 +2392,29 @@ class Game {
     return Math.abs(x - this.cam.x) < this.w / 2 + r && Math.abs(y - this.cam.y) < this.h / 2 + r;
   }
 
+  /**
+   * 과밀(적이 갱신 상한보다 많음) 때의 적 그리기: 화면을 격자로 나눠 한 칸에 CROWD_DRAW_PER_CELL 마리까지만 그린다.
+   * 겹쳐 쌓인 더미에서 가려지는 적을 건너뛰는 것이라 배열 순서대로 정해져 깜빡이지 않는다 (보스는 항상 그린다).
+   */
+  drawCrowd(ctx, pad) {
+    const cell = CROWD_DRAW_CELL, cols = Math.ceil((this.w + 160) / cell), rows = Math.ceil((this.h + 160) / cell), size = cols * rows;
+    let grid = this._crowdGrid;
+    if (!grid || grid.length < size) grid = this._crowdGrid = new Uint8Array(size); else grid.fill(0, 0, size);
+    const left = this.cam.x - this.w / 2 - 80, top = this.cam.y - this.h / 2 - 80;
+    for (const e of this.enemies) {
+      if (!this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + pad)) continue;
+      if (!e.boss) {
+        const cx = Math.floor((e.x - left) / cell), cy = Math.floor((e.y - top) / cell);
+        if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
+          const k = cy * cols + cx;
+          if (grid[k] >= CROWD_DRAW_PER_CELL) continue;
+          grid[k]++;
+        }
+      }
+      e.draw(ctx, this.clock, this);
+    }
+  }
+
   /** 이펙트가 그리는 범위가 화면(흔들림 포함)에 걸치는가. 여유를 넉넉히 둬 결과 화면은 같다. */
   fxInView(f) {
     const margin = this.shakeMag + 32;
@@ -2266,14 +2452,17 @@ class Game {
       for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(ctx);
       // 적이 실제로 그리는 범위(스프라이트·방패 r+24·머리 위 표시 r+18)만큼만 여유를 둔다
       const enemyPad = this.shakeMag + 2;
-      for (const e of this.enemies) if (this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + enemyPad)) e.draw(ctx, this.clock, this);
+      if (this.crowded) this.drawCrowd(ctx, enemyPad);
+      else for (const e of this.enemies) if (this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + enemyPad)) e.draw(ctx, this.clock, this);
       for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(ctx);
       if (this.state !== 'gameover') this.player.draw(ctx, this.clock);
       for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(ctx);
       this.drawHazards(ctx);
       this.drawFx(ctx);
 
-      for (const pt of this.particles) {
+      const particles = this.particles, crowded = this.crowded;
+      for (let pi = crowded ? Math.max(0, particles.length - CROWD_PARTICLE_DRAW) : 0; pi < particles.length; pi++) {
+        const pt = particles[pi];
         if (!this.inView(pt.x, pt.y, 16 + this.shakeMag)) continue;
         ctx.globalAlpha = Math.max(0, pt.life / pt.max);
         ctx.fillStyle = pt.color;
@@ -2425,3 +2614,7 @@ class Game {
     }
   }
 }
+
+// rebuildHash 를 거치지 않는 호출(검사 도구 등)을 위한 기본값: 최악의 반경, 모든 팀 가능
+Game.prototype._reach = MAX_ENEMY_RADIUS;
+Game.prototype._enemyTeams = -1;

@@ -11,6 +11,8 @@ const FRAMES = Number(process.env.RENDER_FRAMES || 300);
 const scenes = {
   crowd: `for (let i = 0; i < 400; i++) game.spawnEnemy(['grunt', 'runner', 'necro', 'pyro', 'hexer', 'brute'][i % 6], { x: game.player.x + rand(-700, 700), y: game.player.y + rand(-450, 450) });
     for (let i = 0; i < 300; i++) game.dropGem(game.player.x + rand(-700, 700), game.player.y + rand(-450, 450), 1);`,
+  // 과밀: 화면 안(과 주변)에 적 RENDER_ENEMIES(기본 3000) 마리가 겹쳐 쌓인 장면 (10000 개체 계획)
+  pile: `for (let i = 0; i < ${Number(process.env.RENDER_ENEMIES || 3000)}; i++) game.spawnEnemy(['grunt', 'runner', 'necro', 'pyro', 'hexer', 'brute'][i % 6], { x: game.player.x + rand(-500, 500), y: game.player.y + rand(-350, 350) });`,
   effects: `for (let i = 0; i < 150; i++) {
       const e = game.spawnEnemy(['grunt', 'pyro', 'hexer', 'emberling', 'imp'][i % 5], { x: game.player.x + rand(-600, 600), y: game.player.y + rand(-400, 400) });
       e.hp = e.maxHp = 1e6;
@@ -36,6 +38,7 @@ const scenes = {
   await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
   await page.waitForTimeout(500);
   for (const [name, setup] of Object.entries(scenes)) {
+    if (process.env.RENDER_ONLY && process.env.RENDER_ONLY !== name) continue;
     const result = await page.evaluate(({ setup, frames }) => {
       let rng = 7;
       Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);

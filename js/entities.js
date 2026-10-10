@@ -341,7 +341,8 @@ class Enemy {
     this.attackPeriod = undefined; this.summonPeriod = undefined; this.supportPeriod = undefined; this.reach = undefined; this.gimmick = undefined;
     this.cardBuffs = undefined; this.cardScales = undefined; this.cardMove = undefined; this.cardPower = undefined;
     this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
-    this._si = 0;        // 겹침 해소(separateEnemies)용 배열 번호
+    this._lodDt = 0;     // 화면 밖에서 건너뛴 시간 (Game.step 의 먼 적 갱신)
+    this._si = 0;       // 겹침 해소(separateEnemies)용 배열 번호
     this._body = null;   // 그리기용 몸체 합성 묶음 (Sprites.bodyFamily)
     entitySlot(this, "enemy");
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);

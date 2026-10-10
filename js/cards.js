@@ -112,7 +112,10 @@ function hasTargetState(o, state) {
     (state === 'burn' && !!o.traits?.includes('fire'));
 }
 function ownerCanAct(owner) {
-  return !hasTargetState(owner, 'freeze') && !hasTargetState(owner, 'fear');
+  // hasTargetState(owner, 'freeze') / 'fear' 를 펼친 것 (프레임마다 개체 수만큼 불리는 길목이다).
+  if (owner.freezeT > 0 || owner.fearT > 0 || owner.directFrozen) return false;
+  const d = owner.directStates;
+  return !(d && (d.freeze > 0 || d.fear > 0));
 }
 
 
@@ -1081,11 +1084,20 @@ CARDS.entityInSight = {
     const o = env.at(t), sight = entityStats(env.owner).sight;
     return dist2(env.owner.x, env.owner.y, o.x, o.y) <= sight ** 2;
   },
+  // 대상이 「플레이어」(유인 대상 변경 포함)뿐인 슬롯에서 test 와 같은 결과를 낸다
+  quick: (owner, game) => {
+    const o = game.targetObj(game.redirectedPlayerTarget(owner));
+    return dist2(owner.x, owner.y, o.x, o.y) <= entityStats(owner).sight ** 2;
+  },
+  quickTargets: 'self',
 };
 CARDS.entityPlayerInSight = {
   type: 'artifact', eventKind: 'state', entityOnly: true, weight: 0, icon: 'fNearEnemy',
   name: '플레이어 시야 내', desc: '플레이어가 슬롯 주인의 시야 상태 이내일 때만 뒤 행동을 실행한다.',
   gate: (ts, env) => dist2(env.owner.x, env.owner.y, env.game.player.x, env.game.player.y) <= entityStats(env.owner).sight ** 2,
+  // 대상 해석 없이 gate 와 같은 결과를 내는 판정 (막힌 슬롯을 환경 없이 건너뛰는 데 쓴다)
+  quick: (owner, game) => dist2(owner.x, owner.y, game.player.x, game.player.y) <= entityStats(owner).sight ** 2,
+  quickTargets: 'any',
 };
 // 사거리·팀·주기는 숫자를 가진 카드 대신 개체 상태를 읽는 공용 카드로 둔다.
 CARDS.entityInReach = {
@@ -1591,6 +1603,7 @@ function inheritEntitySlots(source, target, kind) {
   target.slots = (slots || []).map(slot => {
     const cards = slot.cards.map(id => source.deck && id === 'self' ? 'entitySelf' : id);
     const copy = new EntitySlot(target, kind, cards.slice());
+    source.slot?.wake?.();
     copy.cd = slot.cd || 0;
     copy.linked = slot.linked;
     copy.linkActor = slot.linkActor === source ? target : slot.linkActor;
@@ -1626,10 +1639,13 @@ const NO_TARGETS = Object.freeze([]);
 
 // 유인 카드가 들어 있는 슬롯 구성이 바뀔 때마다 증가한다 (Game 의 유인 후보 캐시 무효화).
 let entityDecoyEpoch = 0;
+// 유인 카드가 들어 있는 적 슬롯의 수 (사라진 개체의 슬롯은 세지 않는 쪽으로 틀리지 않고 남아 있는 쪽으로만 틀린다). 0 이면 적 목록은 훑을 필요가 없다.
+let entityDecoyEnemySlots = 0;
 function isDecoyCard(id) { return CARDS[id]?.mechanic === 'entityDecoy' || cardBaseId(id) === 'entityDecoy'; }
 function trackDecoySlot(slot, cards) {
   const may = cards.some(isDecoyCard);
   if (may || slot._mayDecoy) entityDecoyEpoch++;
+  if (slot.owner instanceof Enemy) entityDecoyEnemySlots += (may ? 1 : 0) - (slot._mayDecoy ? 1 : 0);
   slot._mayDecoy = may;
 }
 /** 이 개체의 슬롯이 유인 행동을 가질 수 있는가 (has('entityDecoy') 의 상위 집합) */
@@ -1692,7 +1708,16 @@ class EntitySlot {
   has(id) {
     if (id === 'entityZone') id = { abyss: 'vortex', vortex: 'vortex', poison: 'snipe', ward: 'ward', blades: 'entityHit' }[this.owner.kind];
     // Resolve the actual target chain for event/passive mechanics as well.
-    if (this.enabled) return !!(this.enabled.has(id) || (!CARDS[id]?.mechanic && this.cards.some(cardId => cardBaseId(cardId) === id) && !entityActionConfig(this.owner, id)?.passive && ownerCanAct(this.owner)));
+    if (this.enabled) {
+      if (this.enabled.has(id)) return true;
+      if (CARDS[id]?.mechanic) return false;
+      // 카드 목록에 그 행동 카드가 있는지는 카드 목록이 바뀔 때만 달라진다: 목록마다 한 번만 훑는다.
+      let memo = this._hasMemo;
+      if (!memo || memo.cards !== this.cards) memo = this._hasMemo = { cards: this.cards, found: new Map() };
+      let found = memo.found.get(id);
+      if (found === undefined) memo.found.set(id, found = this.cards.some(cardId => cardBaseId(cardId) === id));
+      return found && !entityActionConfig(this.owner, id)?.passive && ownerCanAct(this.owner);
+    }
     let own = false, player = false, filtered = false;
     for (const cardId of this.cards) {
       const card = CARDS[cardId];
@@ -1798,9 +1823,12 @@ class EntitySlots extends EntitySlot {
     this._captureStructural = false;
     if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length) return null;
     const analyses = [], stats = [], refs = [];
-    let needsRedirect = false;
+    let needsRedirect = false, cool = null;
     for (let i = 0; i < n; i++) {
       const slot = slots[i], analysis = slotAnalysis(slot);
+      // 쿨타임 중인 조건 슬롯은 쿨타임이 끝나기 전까지 쿨타임만 깎고 아무 일도 하지 않는다 (runEventSlot 의 조기 종료와 같다).
+      if (isCoolingSlot(slot, analysis)) { (cool ||= [])[i] = 1; analyses.push(analysis); continue; }
+      if (isBlockedSlot(slot, analysis, game)) { (cool ||= [])[i] = 2; analyses.push(analysis); continue; }
       if (slot.cd > 0) return null;
       analyses.push(analysis);
       if (isInertSlot(analysis)) continue;
@@ -1815,15 +1843,23 @@ class EntitySlots extends EntitySlot {
     for (const name of stats) refs.push(combat[name]);
     let rk, ro;
     if (needsRedirect) { const rv = game.redirectedPlayerTarget(owner); rk = rv.kind; ro = game.targetObj(rv); }
-    return { slots, n, analyses, stats, refs, canAct: ownerCanAct(owner), bits: featureBits(owner), needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
+    return { slots, n, analyses, stats, refs, canAct: ownerCanAct(owner), bits: featureBits(owner), cool, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
   }
-  fixedMatches(f, game) {
-    const owner = this.owner, slots = this.slots;
-    if (f.slots !== slots || slots.length !== f.n || owner.slots !== slots || owner.targetFeatures || owner.effectSlots?.length) return false;
+  fixedMatches(f, game, dt) {
+    const owner = this.owner, slots = this.slots, n = f.n;
+    if (f.slots !== slots || slots.length !== n || owner.slots !== slots || owner.targetFeatures || owner.effectSlots?.length) return false;
     if (ownerCanAct(owner) !== f.canAct || featureBits(owner) !== f.bits) return false;
-    for (let i = 0; i < f.n; i++) {
+    const analyses = f.analyses;
+    for (let i = 0; i < n; i++) {
       const slot = slots[i];
-      if (slot.cd > 0 || slotAnalysis(slot) !== f.analyses[i]) return false;
+      // slotAnalysis 의 캐시 적중 검사를 그 자리에서 한다 (카드 목록이 바뀌었으면 slotAnalysis 가 새로 만든다).
+      const cached = slot._analysis;
+      if ((cached && cached.cards === slot.cards ? cached : slotAnalysis(slot)) !== analyses[i]) return false;
+      // 쿨타임 슬롯은 이번 프레임을 깎고도 아직 쿨타임 중이어야 한다 (끝나면 조건을 다시 평가해야 하므로 느린 경로로 보낸다).
+      const mode = f.cool?.[i];
+      if (mode === 1) { if (!(slot.cd - dt * (owner.stats?.cooldownRate ?? owner.cardRate ?? 1) > 1e-8)) return false; }
+      else if (mode === 2) { if (!isBlockedSlot(slot, analyses[i], game)) return false; }
+      else if (slot.cd > 0) return false;
     }
     if (f.stats.length) {
       const combat = entityStats(owner);
@@ -1844,17 +1880,31 @@ class EntitySlots extends EntitySlot {
     }
     // 고정 슬롯만 가진 개체는 입력(행동 가능 여부·대상 조건·참조 스탯)이 지난 프레임과 같으면 같은 표를 그대로 쓴다.
     const fast = this._fast, chase = context.chase;
-    if (fast && this.enabled === fast.enabled && this.effects === fast.effects && this.fixedMatches(fast, game)) {
-      const slots = this.slots;
+    // 휴면: 직전 프레임들에서 표가 그대로였던 개체는 몇 프레임 동안 슬롯 검증·쿨타임 갱신을 건너뛰고 몸만 움직인다.
+    // 쿨타임·실행 횟수는 깨어날 때 모아서 반영한다 (쿨타임이 끝나기 직전 프레임과 외부 이벤트·상태 변화에서는 깨어난다).
+    if (this._sleep > 0 || this._sleepFrames) {
+      if (this._sleep > 0 && this.napCheck(dt, game)) { this.napRun(dt, game, chase); return; }
+      this.wake();
+    }
+    if (fast && this.enabled === fast.enabled && this.effects === fast.effects && this.fixedMatches(fast, game, dt)) {
+      const slots = this.slots, owner = this.owner;
+      let left = Infinity;
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
+        if (fast.cool?.[i] === 1) { tickSlotCooldown(slot, dt, owner); if (slot.cd < left) left = slot.cd; }
         if (fast.ran[i]) slot.runs = (slot.runs || 0) + 1;
         slot.enabled = fast.enabled; slot.effects = fast.effects;
       }
       this.tickOwner(dt, game, this.tickContext(chase), fast.enabled);
       flushSlotEvents(game);
+      // 표가 안정된 개체는 다음 프레임부터 잠든다. 쿨타임 중인 슬롯이 있으면 그 남은 시간을 넘기지 않는 만큼만.
+      if (!owner.dead && (this._stable = (this._stable | 0) + 1) >= SLEEP_AFTER) {
+        this._sleep = SLEEP_FRAMES; this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
+        this._sleepRate = owner.stats?.cooldownRate ?? owner.cardRate ?? 1;
+      }
       return;
     }
+    this._stable = 0;
     // 고정 슬롯이 아닌 개체(조건·쿨타임 슬롯을 가진 개체)는 매 프레임 표본을 다시 만들어 보아야 헛수고라 일정 프레임 건너뛴다.
     // 표본은 최적화 입력일 뿐이고 쓰기 전에 항상 fixedMatches 로 검증하므로, 늦게 만들어도 결과는 같다.
     let capture = null;
@@ -1886,6 +1936,49 @@ class EntitySlots extends EntitySlot {
     this.tickOwner(dt, game, this.tickContext(chase), enabled);
     flushSlotEvents(game);
   }
+  /** 이번 프레임도 잠든 채로 갱신해도 되는가 (부수 효과 없음). 표·행동 가능 여부·참조 스탯·막힌 슬롯의 조건이 지난 프레임과 같고 쿨타임이 끝나지 않아야 한다. */
+  napCheck(dt, game) {
+    const fast = this._fast, owner = this.owner;
+    if (!fast || this.enabled !== fast.enabled || this.effects !== fast.effects || owner.slots !== fast.slots || ownerCanAct(owner) !== fast.canAct
+      || owner.effectSlots?.length || !(this._sleepLeft - dt * this._sleepRate > 1e-8) || !this.sleepInputsSame(fast, game)) return false;
+    // 조건 때문에 막힌 슬롯은 fixedMatches 와 같이 매 프레임 조건을 본다: 풀렸으면 이 프레임부터 작동해야 한다.
+    if (fast.cool?.includes(2)) {
+      const slots = this.slots;
+      for (let i = 0; i < slots.length; i++) if (fast.cool[i] === 2 && !isBlockedSlot(slots[i], fast.analyses[i], game)) return false;
+    }
+    return true;
+  }
+  /** napCheck 를 통과한 프레임: 슬롯 갱신 없이 몸만 움직인다. 쿨타임·실행 횟수는 깨어날 때 반영한다. */
+  napRun(dt, game, chase) {
+    this._sleep--; this._sleepLeft -= dt * this._sleepRate; this._sleepDt += dt; this._sleepFrames++;
+    this.tickOwner(dt, game, this.tickContext(chase), this._fast.enabled);
+    if (game._slotEvents?.length) flushSlotEvents(game);
+  }
+  /** 잠들어 있는 동안에도 매 프레임 확인하는 입력: 참조 스탯과 유인 대상. 달라졌으면 깨어난다. */
+  sleepInputsSame(f, game) {
+    if (f.stats.length) {
+      const combat = entityStats(this.owner);
+      for (let i = 0; i < f.stats.length; i++) if (combat[f.stats[i]] !== f.refs[i]) return false;
+    }
+    if (f.needsRedirect) {
+      const rv = game.redirectedPlayerTarget(this.owner);
+      if (rv.kind !== f.rk || game.targetObj(rv) !== f.ro) return false;
+    }
+    return true;
+  }
+  /** 잠든 동안 미뤄 둔 쿨타임 감소와 실행 횟수를 반영하고 깨운다. */
+  wake() {
+    if (!this._sleep && !this._sleepFrames) return;
+    const f = this._fast, slots = this.slots;
+    if (f && this._sleepFrames) {
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        if (f.cool?.[i] === 1) slot.cd -= this._sleepDt * this._sleepRate;
+        if (f.ran?.[i]) slot.runs = (slot.runs || 0) + this._sleepFrames;
+      }
+    }
+    this._sleep = 0; this._sleepFrames = 0; this._sleepDt = 0;
+  }
   /** tickOwner 에 넘기는 문맥. 프레임마다 객체를 새로 만들지 않고 슬롯 묶음마다 하나를 재사용한다 (tickOwner 가 바로 쓰고 보관하지 않는다). */
   tickContext(chase) {
     const ctx = this._tickCtx ||= { chase: undefined, lifetimeTicked: true };
@@ -1897,6 +1990,9 @@ class EntitySlots extends EntitySlot {
 // 모든 슬롯은 쿨타임으로 작동한다. 쿨타임은 기본 1초에서 시작해 슬롯 카드의 쿨타임 연산(+, -, ×, =)을 배치 순서대로 적용한 값이다.
 // 결과가 FRAME_COOLDOWN 이하이면 매 프레임 작동한다.
 const BASE_COOLDOWN = 1;
+// 휴면: 표가 SLEEP_AFTER 프레임 연달아 같았던 개체는 한 번에 최대 SLEEP_FRAMES 프레임씩 슬롯 검증을 건너뛴다.
+const SLEEP_AFTER = 2;
+const SLEEP_FRAMES = 6;
 const FRAME_COOLDOWN = 0.016;
 // 카드별 쿨타임 연산. 대상이 많거나 효과가 큰 카드일수록 쿨타임을 늘린다.
 const CARD_COOLDOWNS = {
@@ -2097,7 +2193,9 @@ function slotAnalysis(slot) {
     selector: cards.map(id => CARDS[id]).find(c => c.hitTeamRule || c.summonMode),
     every: slotEveryFrame(slot),
     plan: undefined,
+    blockers: undefined,
   };
+  a.blockers = slotBlockers(a);
   return a;
 }
 
@@ -2109,6 +2207,33 @@ function slotAnalysis(slot) {
 /** 신호가 없는 프레임에는 아무것도 하지 않는 슬롯: 행동이 없거나, 진입이 아닌 발동 아티팩트(사망 시 등)로만 작동한다. */
 function isInertSlot(analysis) {
   return !analysis.ok || (analysis.triggers.length > 0 && !analysis.enters);
+}
+/**
+ * 막을 수 있는 조건 슬롯의 조건 카드들(quick 판정이 있는 카드). 발동 아티팩트가 없고, 대상이 슬롯 주인·플레이어뿐이며
+ * (대상 해석에 난수·부수 효과가 없다), 조건이 하나라도 거짓이면 runEventSlot 은 아무 일도 없이 끝난다. 해당 없으면 null.
+ */
+function slotBlockers(a) {
+  if (!a.ok || a.triggers.length || a.every || !a.conditions.length) return null;
+  let onlySelf = true;
+  for (const id of a.cards) {
+    const card = CARDS[id];
+    if (card.type !== 'target') continue;
+    if (id !== 'entitySelf' && id !== 'self') return null;
+    if (id !== 'self') onlySelf = false;
+  }
+  const out = a.conditions.filter(c => c.quick && (c.quickTargets === 'any' || onlySelf));
+  return out.length ? out : null;
+}
+/** 준비된(쿨타임 0) 조건 슬롯이 지금 조건 때문에 막혀 있는가 */
+function isBlockedSlot(slot, analysis, game) {
+  const b = analysis.blockers;
+  if (!b || slot.linked || !(slot.cd <= 0)) return false;
+  for (let i = 0; i < b.length; i++) if (!b[i].quick(slot.owner, game)) return true;
+  return false;
+}
+/** 쿨타임 중인 조건 슬롯: 발동 아티팩트가 없고 매 프레임 작동하지 않으며 쿨타임이 남은 슬롯 */
+function isCoolingSlot(slot, analysis) {
+  return analysis.ok && !slot.linked && !analysis.triggers.length && !analysis.every && slot.cd > 1e-8;
 }
 function fixedSlotPlan(slot) {
   const a = slotAnalysis(slot);
@@ -2366,6 +2491,7 @@ function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule)
 }
 
 function queueSlotEvent(game, owner, event) {
+  owner.slot?.wake?.();
   (game._slotEvents ||= []).push({ owner, event });
 }
 /** 슬롯 중 하나라도 이 종류의 발동 카드를 가졌는가 (목록을 새로 만들지 않고 훑는다). */

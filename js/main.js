@@ -5,6 +5,7 @@ const game = new Game(document.getElementById('game'));
 PlayLog.attach(game);
 Input.init();
 UI.init(game);
+if (SimBridge.supported()) SimBridge.attach(game);   // ?worker=1 (http/https): 시뮬레이션을 워커에서 돌린다
 UI.showTitle();
 
 document.addEventListener('visibilitychange', () => {

@@ -30,6 +30,29 @@ const scenarios = {
       if (i % 3 === 0) g.summonAlly('knight', at); else g.place(['mine', 'turret', 'decoy', 'orb'][i % 4], at);
     }
   },
+  // 상한 해제 스트레스: 적 BENCH_ENEMIES(기본 1200) + 탄막 덱. 투사체가 1000 넘게 쌓이는지 shots 로 확인한다.
+  swarm: g => {
+    g.player.deck.slots = [['nearestEnemy', 'homing'], ['all', 'scatter'], ['nearestEnemy', 'bolt'], ['nearestEnemy', 'boomerang'], ['shots', 'amplify']]
+      .map(cards => ({ limit: 9, cards, cd: 0, cast: null }));
+    for (let i = 0; i < Number(process_env.BENCH_ENEMIES || 1200); i++) g.spawnEnemy(['grunt', 'runner', 'necro', 'pyro', 'brute'][i % 5]);
+  },
+  // 상시 유지 스트레스: 매 프레임 적을 BENCH_ENEMIES(1200), 투사체를 BENCH_SHOTS(1200)개로 채운다 (적 체력 무한).
+  // BENCH_HOMING=1 이면 유도탄 비율을 높인다.
+  hold: g => {
+    const E = Number(process_env.BENCH_ENEMIES || 1200), S = Number(process_env.BENCH_SHOTS || 1200);
+    g.player.deck.slots = process_env.BENCH_DECK ? [['nearestEnemy', 'bolt']].map(cards => ({ limit: 9, cards, cd: 0, cast: null })) : [];
+    const step = g.step.bind(g), kinds = ['grunt', 'runner', 'necro', 'pyro', 'brute'];
+    g.step = dt => {
+      const p = g.player;
+      for (let i = g.enemies.length; i < E; i++) g.spawnEnemy(kinds[i % 5]);
+      for (const e of g.enemies) { e.hp = e.maxHp = 1e9; }
+      for (let i = g.projectiles.length; i < S; i++) {
+        const a = rand(0, TAU), sp = rand(150, 400);
+        g.shoot({ x: p.x + rand(-500, 500), y: p.y + rand(-400, 400), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, radius: 5, damage: 1, pierce: 3, life: 1.4, color: '#8be9ff' });
+      }
+      step(dt);
+    };
+  },
   decoy: g => {
     g.player.deck.slots.push({ limit: 9, cards: ['ahead', 'decoy'], cd: 0, cast: null }, { limit: 9, cards: ['nearestEnemy', 'decoy'], cd: 0, cast: null });
     for (let i = 0; i < 200; i++) g.spawnEnemy(['grunt', 'runner', 'necro', 'pyro'][i % 4]);
@@ -87,12 +110,19 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     for (const name of [...parts, ...CARD_EFFECTS]) wrap(g, name, name);
     for (const cls of [Enemy, Ally, Placed, Projectile, Pickup]) wrap(cls.prototype, 'update', cls.name + '.update');
   }
+  // BENCH_PART=메서드: 그 메서드의 프레임당 평균 시간·전체 대비 비율을 함께 출력한다.
+  let partMs = 0;
+  if (process_env.BENCH_PART) {
+    const part = process_env.BENCH_PART, f = g[part];
+    g[part] = function (...args) { const t = performance.now(); try { return f.apply(this, args); } finally { partMs += performance.now() - t; } };
+  }
   let over16 = 0, over33 = 0, worst = 0;
   const times = [];
   for (; tick < frames && g.state === 'playing'; tick++) {
     const t = performance.now();
     g.step(dt);
     const spent = performance.now() - t;
+    if (tick < Number(process_env.BENCH_WARMUP || 0)) continue;   // BENCH_WARMUP=프레임: 앞부분(개체가 차오르는 구간)은 통계에서 뺀다
     times.push(spent);
     if (spent > 1000 / 60) over16++;
     if (spent > 1000 / 30) over33++;
@@ -106,6 +136,7 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     if (process_env.BENCH_SLOW && spent > Number(process_env.BENCH_SLOW)) console.log('  slow frame', tick, spent.toFixed(0) + 'ms', 'enemies', g.enemies.length, 'shots', g.projectiles.length + g.hazards.length, 'zones', g.zones.length, 'objects', g.objects.length, 'allies', g.allies.length, 'pickups', g.pickups.length);
   }
   const avg = times.reduce((a, b) => a + b, 0) / times.length;
+  if (process_env.BENCH_PART) console.log('  ', process_env.BENCH_PART, (partMs / times.length).toFixed(2) + 'ms/frame', (partMs / times.reduce((a, b) => a + b, 0) * 100).toFixed(1) + '%');
   times.sort((a, b) => a - b);
   console.log(name.padEnd(8), 'avg', avg.toFixed(2).padStart(6) + 'ms', 'p95', times[Math.floor(times.length * 0.95)].toFixed(2).padStart(6) + 'ms',
     'max', worst.toFixed(1) + 'ms', '>16ms', over16, '>33ms', over33, 'frames', tick, 'enemies', g.enemies.length, 'pickups', g.pickups.length, 'shots', g.projectiles.length + g.hazards.length, 'objects', g.objects.length, 'fp', fingerprint(g));

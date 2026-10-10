@@ -58,6 +58,7 @@ const UI = {
     if (this._last.xp !== w) { this._last.xp = w; this.xpFill.style.width = w; }
     this.updateDeckHud(p.deck);
     this.updateBuffHud(p);
+    this.updateRewards(g);
   },
 
   /** 켜져 있는 버프: 아이콘 + 남은 초 */
@@ -603,6 +604,60 @@ const UI = {
         <div class="cards">${cards}</div>
         <button class="btn levelup-edit" data-act="editor">카드 편집 <kbd>E</kbd></button>
       </div>`, 'levelup');
+  },
+
+  /* 우측 상단 보상 목록: 일시정지 없이 클릭(또는 R, 1~5)으로 고른다 */
+  updateRewards(g) {
+    if (typeof document === 'undefined' || !this.overlay) return;
+    if (!this.rewardEl) {
+      this.rewardEl = document.createElement('div');
+      this.rewardEl.id = 'rewards';
+      document.body.append(this.rewardEl);
+      this.rewardEl.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-reward]');
+        if (!el) return;
+        const [kind, idx] = el.dataset.reward.split(':');
+        if (kind === 'open') this.toggleReward();
+        else this.pickReward(Number(idx));
+        this.updateRewards(this.game);
+      });
+    }
+    const list = g.state === 'title' || g.state === 'gameover' || g.state === 'victory' ? [] : g.rewards || [];
+    if (!list.includes(this.rewardOpen)) {
+      this.rewardOpen = null;
+      if (g.state === 'reward') g.state = 'playing';
+    }
+    const key = `${list.length}|${list.indexOf(this.rewardOpen)}|${this.rewardOpen?.choices.join(',')}`;
+    if (this._last.rewards === key) return;
+    this._last.rewards = key;
+    this.rewardEl.classList.toggle('hidden', !list.length);
+    const r = this.rewardOpen;
+    const body = r ? `<div class="reward-cards">${r.choices.map((id, i) => {
+      const c = CARDS[id];
+      return `<button class="reward-pick t-${c.type}" data-reward="pick:${i}">
+        <span class="art">${this.iconHtml(id, 32)}</span><span class="txt"><b>${this.cardName(c)}</b><small>${this.descriptionHtml(c)}</small></span>
+        <span class="reward-cd" title="슬롯 쿨타임">${this.iconHtml('uiTime', 12)}${cooldownOpText(c)}</span><kbd>${i + 1}</kbd></button>`;
+    }).join('')}</div>` : '';
+    this.rewardEl.innerHTML = `<div class="reward-item"><button class="reward-head" data-reward="open:0">🎁 보상 ${list.length}개 <kbd>R</kbd></button>${body}</div>`;
+  },
+
+  toggleReward() {
+    const list = this.game.rewards || [];
+    const g = this.game;
+    if (this.rewardOpen) {
+      this.rewardOpen = null;
+      if (g.state === 'reward') g.state = 'playing';
+    } else if (list.length) {
+      this.rewardOpen = list[0];
+      if (g.state === 'playing') g.state = 'reward';   // 선택하는 동안 일시정지
+    }
+    this.updateRewards(g);
+  },
+
+  pickReward(i) {
+    if (!this.rewardOpen) return;
+    this.game.claimReward(this.rewardOpen, i);
+    this.refreshEditor();
   },
 
   pickLevelUp(i) { if (this.mode === 'levelup' && this._pick) this._pick(i); },
