@@ -169,7 +169,7 @@ for (const [name, scenario] of Object.entries(scenarios)) {
     if (!obj && typeof f === "function") { const rec = { n: 0, ms: 0, depth: 0 }; counts.set(spec, rec); const w = function (...a) { rec.n++; if (rec.depth++) { try { return f.apply(this, a); } finally { rec.depth--; } } const t = performance.now(); try { return f.apply(this, a); } finally { rec.depth--; rec.ms += performance.now() - t; } }; eval(m + " = w"); continue; }
     if (typeof f !== 'function') continue;
     const rec = { n: 0, ms: 0, depth: 0 }; counts.set(spec, rec);
-    if (process_env.BENCH_COUNT_KIND) { const orig = f; obj[m] = function (...a) { const v = orig.apply(this, a); if (tick < warm) return v; const k = spec + '@' + (this.kind || this.constructor?.name) + (typeof v === 'boolean' ? ':' + v : ''); let r = counts.get(k); if (!r) counts.set(k, r = { n: 0, ms: 0, depth: 0 }); r.n++; return v; }; continue; }
+    if (process_env.BENCH_COUNT_KIND) { const orig = f; obj[m] = function (...a) { const t = performance.now(), v = orig.apply(this, a); if (tick < warm) return v; const k = spec + '@' + (process_env.BENCH_COUNT_KIND === 'type' ? this.type ?? this.kind : this.kind || this.constructor?.name) + (typeof v === 'boolean' ? ':' + v : ''); let r = counts.get(k); if (!r) counts.set(k, r = { n: 0, ms: 0, depth: 0 }); r.n++; r.ms += performance.now() - t; return v; }; continue; }
     obj[m] = function (...a) { if (tick < warm) return f.apply(this, a); rec.n++; if (rec.depth++) { try { return f.apply(this, a); } finally { rec.depth--; } } const t = performance.now(); try { return f.apply(this, a); } finally { rec.depth--; rec.ms += performance.now() - t; } };
   }
   // BENCH_PART=메서드: 그 메서드의 프레임당 평균 시간·전체 대비 비율을 함께 출력한다.

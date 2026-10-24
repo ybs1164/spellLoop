@@ -235,16 +235,21 @@ class EntitySlots extends EntitySlot {
     this._captureStructural = false;
     if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length) return null;
     const analyses = [], stats = [], refs = [], cver = this.version;
-    let needsRedirect = false, cool = null;
+    let needsRedirect = false, cool = null, deferred = false;
     for (let i = 0; i < n; i++) {
       const slot = slots[i], analysis = slotAnalysis(slot);
       // 쿨타임 중인 조건 슬롯은 쿨타임이 끝나기 전까지 쿨타임만 깎고 아무 일도 하지 않는다 (runEventSlot 의 조기 종료와 같다).
       if (isCoolingSlot(slot, analysis)) { (cool ||= [])[i] = 1; analyses.push(analysis); continue; }
       if (isBlockedSlot(slot, analysis, game)) { (cool ||= [])[i] = 2; analyses.push(analysis); continue; }
       if (slot.cd > 0) return null;
+      // 카드 이벤트 예산이 바닥나 미뤄질 준비된 조건 슬롯: runEventSlot 은 아무것도 바꾸지 않고 끝나므로(쿨타임 0 이라 깎을 것도 없다) 예산이 바닥난 동안은 표가 그대로다
+      if (isDeferredSlot(slot, analysis, game)) { (cool ||= [])[i] = 3; analyses.push(analysis); deferred = true; continue; }
       analyses.push(analysis);
       if (isInertSlot(analysis)) continue;
       const plan = fixedSlotPlan(slot);
+      // 준비된(쿨타임 0) 조건 슬롯은 이번 프레임에 작동하면 쿨타임 중이 되어 다음 프레임에는 표본을 만들 수 있다: 과밀 프레임에서는 구조 실패로 보고 건너뛰지 않는다
+      // (일찍 잠들면 쿨타임 누적 순서가 달라져 부동소수 결과가 바뀌므로 평소 장면은 그대로 둔다)
+      if (!plan && game._crowded && isCooledEventSlot(slot, analysis)) return null;
       if (!plan || plan.card.supports) { this._captureStructural = true; return null; }
       if (!plan.ownerOnly) needsRedirect = true;
       const ratios = plan.effect.statRatios;
@@ -255,7 +260,7 @@ class EntitySlots extends EntitySlot {
     for (const name of stats) refs.push(combat[name]);
     let rk, ro;
     if (needsRedirect) { const rv = game.redirectedPlayerTarget(owner); rk = rv.kind; ro = game.targetObj(rv); }
-    return { slots, n, cver, analyses: internArray(analyses), stats: internArray(stats), ids: internArray(stats.map(name => STAT_ID[name] ?? -1)), refs: internArray(refs), canAct: ownerCanAct(owner), bits: featureBits(owner), cool, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
+    return { slots, n, cver, analyses: internArray(analyses), stats: internArray(stats), ids: internArray(stats.map(name => STAT_ID[name] ?? -1)), refs: internArray(refs), canAct: ownerCanAct(owner), bits: featureBits(owner), cool, deferred, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
   }
   fixedMatches(f, game, dt) {
     const owner = this.owner, slots = this.slots, n = f.n;
@@ -270,6 +275,7 @@ class EntitySlots extends EntitySlot {
       const mode = f.cool?.[i];
       if (mode === 1) { if (!(slot.cd - dt * (owner.stats?.cooldownRate ?? owner.cardRate ?? 1) > 1e-8)) return false; }
       else if (mode === 2) { if (!isBlockedSlot(slot, analyses[i], game)) return false; }
+      else if (mode === 3) { if (!(game._cardBudget <= 0) || slot.cd > 0) return false; }
       else if (slot.cd > 0) return false;
     }
     if (f.stats.length && !statsMatch(owner, f)) return false;
@@ -280,7 +286,8 @@ class EntitySlots extends EntitySlot {
     return true;
   }
   update(dt, game, context = {}) {
-    if (this._soa) this.pullNap();
+    const wasSoa = this._soa;
+    if (wasSoa) this.pullNap();
     if (this.owner.dead) return;
     if (!tickEntityLifetime(this.owner, dt, game)) return;
     if (!this.owner._slotSpawned) {
@@ -292,7 +299,12 @@ class EntitySlots extends EntitySlot {
     // 휴면: 직전 프레임들에서 표가 그대로였던 개체는 몇 프레임 동안 슬롯 검증·쿨타임 갱신을 건너뛰고 몸만 움직인다.
     // 쿨타임·실행 횟수는 깨어날 때 모아서 반영한다 (쿨타임이 끝나기 직전 프레임과 외부 이벤트·상태 변화에서는 깨어난다).
     if (this._sleep > 0 || this._sleepFrames) {
-      if (this._sleep > 0 && this.napCheck(dt, game)) { this.napRun(dt, game, chase); return; }
+      if (this._sleep > 0 && this.napCheck(dt, game)) {
+        this.napRun(dt, game, chase);
+        // C 가 이번 턴만 넘긴(대기 이벤트 등) 잠든 적은 남은 수면을 다시 C 에 맡긴다 (안 그러면 깰 때까지 JS napTurn 으로 돈다)
+        if (wasSoa && this._sleep > 0) this.armNap(game, this._fast);
+        return;
+      }
       this.wake();
     }
     if (fast && this.enabled === fast.enabled && this.effects === fast.effects && this.fixedMatches(fast, game, dt)) {
@@ -300,15 +312,17 @@ class EntitySlots extends EntitySlot {
       let left = Infinity;
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
-        if (fast.cool?.[i] === 1) { tickSlotCooldown(slot, dt, owner); if (slot.cd < left) left = slot.cd; }
+        const mode = fast.cool?.[i];
+        if (mode === 1) { tickSlotCooldown(slot, dt, owner); if (slot.cd < left) left = slot.cd; }
+        else if (mode === 3) game._cardDeferred = (game._cardDeferred || 0) + 1;
         if (fast.ran[i]) slot.runs = (slot.runs || 0) + 1;
         slot.enabled = fast.enabled; slot.effects = fast.effects;
       }
       this.tickPooled(dt, game, chase, fast.enabled);
       flushSlotEvents(game);
-      // 표가 안정된 개체는 다음 프레임부터 잠든다. 쿨타임 중인 슬롯이 있으면 그 남은 시간을 넘기지 않는 만큼만.
-      if (!owner.dead && (this._stable = (this._stable | 0) + 1) >= (fast.cool ? SLEEP_AFTER : SLEEP_AFTER_IDLE)) {
-        this._sleep = fast.cool ? SLEEP_FRAMES : SLEEP_FRAMES_IDLE - (sleepIdleSeq++ % SLEEP_IDLE_SPREAD); this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
+      // 표가 안정된 개체는 다음 프레임부터 잠든다. 쿨타임 중인 슬롯이 있으면 그 남은 시간을 넘기지 않는 만큼만. 미룬 슬롯이 있으면 예산이 돌아오는 대로 작동해야 하므로 자지 않는다.
+      if (!owner.dead && !fast.deferred && (this._stable = (this._stable | 0) + 1) >= (fast.cool ? SLEEP_AFTER : SLEEP_AFTER_IDLE)) {
+        this._sleep = fast.cool ? (game._crowded ? SLEEP_FRAMES_CROWD : SLEEP_FRAMES) : SLEEP_FRAMES_IDLE - (sleepIdleSeq++ % SLEEP_IDLE_SPREAD); this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
         this._sleepRate = owner.stats?.cooldownRate ?? owner.cardRate ?? 1;
         // 자는 동안 쓰지 않는 표 버퍼는 놓는다 (오래 사는 개체마다 Set·Map 두 개를 덜 쥔다)
         const bufs = this._tables;
@@ -361,7 +375,7 @@ class EntitySlots extends EntitySlot {
   armNap(game, fast) {
     const owner = this.owner;
     if (this.kind === 'shot') return this.armShotNap(game, fast);
-    if (!WasmCore.on() || this.kind !== 'enemy' || owner._si === undefined || fast.version !== this.version) return;
+    if (!WasmCore.on() || this.kind !== 'enemy' || owner._si === undefined || owner.dead || fast.version !== this.version) return;
     if (owner.effectSlots != null || owner.burnEventEffects || owner.directStates || owner.markStacks || owner.baseSpeed != null || owner.stats) return;
     // 표본이 같으면 계획(스탯 비트·막힌 슬롯 종류·이동 인자)도 같다: 표본마다 한 번만 구한다
     let plan = fast._arm;
@@ -369,7 +383,7 @@ class EntitySlots extends EntitySlot {
     if (plan === null) return;
     if (plan.blocked && !(typeof owner.sight === 'number' && owner.sight === owner.sight)) return;
     const A = ESoA, si = owner._si;
-    A.napSleep[si] = this._sleep; A.napLeft[si] = this._sleepLeft; A.napRate[si] = this._sleepRate; A.napDt[si] = 0; A.napFrames[si] = 0;
+    A.napSleep[si] = this._sleep; A.napLeft[si] = this._sleepLeft; A.napRate[si] = this._sleepRate; A.napDt[si] = this._sleepDt; A.napFrames[si] = this._sleepFrames;
     A.napCan[si] = plan.can;
     A.napFlags[si] = plan.flags; A.napSpeed[si] = plan.speed; A.napKeep[si] = plan.keep; A.napMask[si] = plan.mask;
     A.napR0[si] = owner.damage; A.napR1[si] = owner.speed; A.napR2[si] = owner.maxHp; A.napR3[si] = owner.knockback ?? NaN;

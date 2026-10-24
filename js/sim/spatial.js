@@ -13,6 +13,7 @@ class GameSpatial {
 
   rebuildHashJs(list) {
     this._hashByWasm = false;
+    if (this._hashPrefix) this._hashPrefix.list = null;   // 해시 항목을 JS 판이 다시 채운다: rebuildHashWasm 의 앞부분 재사용을 끊는다
     this.hash.clear();
     this._reach = MAX_ENEMY_RADIUS;   // 적 조회 반경 여유 (과밀일 때 separateEnemies 가 실제 값으로 줄인다)
     let teams = 0;
@@ -24,8 +25,16 @@ class GameSpatial {
   rebuildHashWasm(list) {
     if (!WasmCore.syncOrd(list)) return false;
     const hash = this.hash, A = WasmCore.alive, items = hash.items, n = list.length;
-    let teams = 0, k = 0;
-    for (let i = 0; i < n; i++) {
+    let teams = 0, k = 0, i = 0;
+    // 지난 재구성 때 죽은 적이 없었고 그 뒤 목록 앞부분(listVer)이 그대로이며 지금도 그 부분에 죽은 적이 없으면, 그 부분의 해시 항목·팀 비트는 같다: 새로 붙은 적만 본다.
+    // (적의 팀은 생성 직후에만 정해진다. ORD_VERIFY 면 전체를 다시 세어 확인한다)
+    const prev = this._hashPrefix;
+    if (prev && prev.list === list && prev.ver === ESoA.listVer && prev.n <= n && items.length === prev.n && !WasmCore.exports.scan_dead(prev.n)) {
+      i = k = prev.n; teams = prev.teams;
+      A.fill(1, 0, i);
+      if (ORD_VERIFY) { let t = 0; for (let j = 0; j < i; j++) t |= teamBit(list[j].team ?? 'friendly'); if (t !== teams) throw new Error('적 팀이 해시 재구성 사이에 바뀌었다'); }
+    }
+    for (; i < n; i++) {
       const e = list[i];
       if (e.dead) { A[i] = 0; continue; }
       A[i] = 1;
@@ -33,6 +42,8 @@ class GameSpatial {
       teams |= teamBit(e.team ?? 'friendly');
     }
     items.length = k;
+    const next = this._hashPrefix ||= { list: null, ver: 0, n: 0, teams: 0 };
+    if (k === n) { next.list = list; next.ver = ESoA.listVer; next.n = n; next.teams = teams; } else next.list = null;
     WasmCore.adoptHash(hash);
     // 칸 표지(SLOT_STAMP)는 WASM 메모리 하나를 모든 해시가 함께 쓴다: 새 Game 의 해시가 1부터 세면 앞 게임의 칸이 유효해 보이므로 전역으로 늘린다
     hash.stamp = WasmCore.stamp = Math.max(hash.stamp, WasmCore.stamp) + 1;

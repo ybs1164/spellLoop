@@ -118,7 +118,15 @@ function isBlockedSlot(slot, analysis, game) {
 }
 /** 쿨타임 중인 조건 슬롯: 발동 연쇄 카드가 없고 매 프레임 작동하지 않으며 쿨타임이 남은 슬롯 */
 function isCoolingSlot(slot, analysis) {
-  return analysis.ok && !slot.linked && !analysis.triggers.length && !analysis.every && slot.cd > 1e-8;
+  return isCooledEventSlot(slot, analysis) && slot.cd > 1e-8;
+}
+/** 준비된 조건 슬롯이 이번 프레임 카드 이벤트 예산이 없어 미뤄지는가 (runEventSlot 의 예산 검사까지 가는 슬롯: 발동 연쇄 카드·매 프레임·상시 효과 아님) */
+function isDeferredSlot(slot, analysis, game) {
+  return game._cardBudget <= 0 && isCooledEventSlot(slot, analysis) && !(slot.cd > 1e-8) && !CARDS[analysis.actions[0]].effect?.passive;
+}
+/** 작동하면 쿨타임이 걸리는 조건 슬롯 (쿨타임 중인지는 따지지 않는다) */
+function isCooledEventSlot(slot, analysis) {
+  return analysis.ok && !slot.linked && !analysis.triggers.length && !analysis.every;
 }
 function fixedSlotPlan(slot) {
   const a = slotAnalysis(slot);

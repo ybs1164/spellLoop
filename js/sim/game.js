@@ -256,7 +256,7 @@ class Game {
     this._decoyStamp = (this._decoyStamp | 0) + 1;
     this._eventBudget = SLOT_EVENT_BUDGET;
     // 과밀한 프레임은 작업 예산을 더 줄인다 (평소 장면의 결과는 그대로 두고, 1만 개체 같은 과부하에서만 프레임을 지킨다)
-    const crowdedFrame = this.enemies.length > ENEMY_UPDATE_BUDGET || this.projectiles.length > SHOT_UPDATE_BUDGET;
+    const crowdedFrame = this._crowded = this.enemies.length > ENEMY_UPDATE_BUDGET || this.projectiles.length > SHOT_UPDATE_BUDGET;
     this._cardBudget = this._cardBudgetStart = crowdedFrame ? CARD_EVENT_BUDGET_CROWD : CARD_EVENT_BUDGET;
     this._hitBudget = crowdedFrame ? SHOT_HIT_BUDGET_CROWD : SHOT_HIT_BUDGET;
     this._shotBudget = this.projectiles.length > SHOT_UPDATE_BUDGET ? SHOT_SPAWN_BUDGET_CROWD : SHOT_SPAWN_BUDGET;

@@ -8,6 +8,8 @@ const BASE_COOLDOWN = 1;
 // 휴면: 표가 SLEEP_AFTER 프레임 연달아 같았던 개체는 한 번에 최대 SLEEP_FRAMES 프레임씩 슬롯 검증을 건너뛴다.
 const SLEEP_AFTER = 2;
 const SLEEP_FRAMES = 6;
+// 과밀 프레임(Game._crowded)에서 쿨타임 표가 한 번에 자는 최대 턴 수: 쿨타임이 끝나기 직전에는 어차피 깨어나므로 깨어나 다시 잠드는 전체 갱신만 줄어든다 (쿨타임 누적 순서가 달라져 부동소수 결과는 바뀐다)
+const SLEEP_FRAMES_CROWD = 60;
 // 쿨타임·조건 슬롯이 없는 표(이동·충돌 같은 상시 효과뿐)는 깨어날 때 모아서 반영할 쿨타임이 없어 일찍·오래 자도 결과가 같다.
 const SLEEP_FRAMES_IDLE = 120;
 const SLEEP_AFTER_IDLE = 1;   // 같은 표: 한 번 확인되면 바로 잔다

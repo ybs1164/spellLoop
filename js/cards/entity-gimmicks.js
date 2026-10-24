@@ -27,6 +27,15 @@ function entitySlot(owner, kind) {
     combined.defaults ??= combined.cards.slice();
     return (owner.slot = new EntitySlots(owner, kind, owner.slots, combined));
   }
+  // 적도 같은 종류·같은 피해면 슬롯 구성이 같다: 틀의 카드·분석과 슬롯 구성 중 주인에게 남긴 주기 상태를 그대로 쓴다 (소환·대량 생성 비용)
+  const enemyKey = !owner.slot && !owner.slots && kind === 'enemy' ? enemySlotTemplateKey(owner) : null;
+  const enemyTemplate = enemyKey && ENEMY_SLOT_TEMPLATES.get(owner.def)?.get(enemyKey);
+  if (enemyTemplate && enemyTemplate.cards.every(id => CARDS[id])) {
+    for (const [field, value] of enemyTemplate.state) owner[field] ??= value;
+    owner.slots = enemyTemplate.slots.map(t => new EntitySlot(owner, kind, t.cards, t));
+    return (owner.slot = new EntitySlots(owner, kind, owner.slots, enemyTemplate.combined));
+  }
+  const stateBefore = enemyKey ? ENEMY_TEMPLATE_STATE.map(field => owner[field]) : null;
   const inherited = owner.slot?.cards.slice();
   const inheritedSlots = inherited && owner.slots?.map(slot => ({ cards: slot.cards.slice(), defaults: slot.defaults.slice() }));
   const settings = {};
@@ -205,6 +214,18 @@ function entitySlot(owner, kind) {
       owner.slot.syncSlots();
     }
   }
+  // 임시 카드를 지운 구성(temporaryCards)은 다음 개체가 같은 카드를 다시 만들어야 하므로 틀로 두지 않는다
+  if (enemyKey && !temporaryCards.size && !owner.gimmick) {
+    let byDef = ENEMY_SLOT_TEMPLATES.get(owner.def);
+    if (!byDef) ENEMY_SLOT_TEMPLATES.set(owner.def, byDef = new Map());
+    if (byDef.size >= ENEMY_SLOT_TEMPLATE_MAX) byDef.clear();
+    const state = [];
+    ENEMY_TEMPLATE_STATE.forEach((field, i) => { if (stateBefore[i] == null && owner[field] != null) state.push([field, owner[field]]); });
+    byDef.set(enemyKey, {
+      slots: owner.slots.map(slot => ({ cards: slot.cards, defaults: slot.defaults, analysis: slotAnalysis(slot) })),
+      combined: { cards: owner.slot.cards, defaults: owner.slot.defaults }, cards: owner.slot.cards.concat(owner.slot.defaults), state,
+    });
+  }
   if (templateKey) {
     if (SHOT_SLOT_TEMPLATES.size >= SHOT_SLOT_TEMPLATE_MAX) SHOT_SLOT_TEMPLATES.clear();
     SHOT_SLOT_TEMPLATES.set(templateKey, owner.slots.map(slot => ({ cards: slot.cards, defaults: slot.defaults, analysis: slotAnalysis(slot) })));
@@ -219,8 +240,20 @@ const SHOT_SLOT_TEMPLATES = new Map();
 const SHOT_SLOT_TEMPLATE_MAX = 512;
 /** 틀을 쓸 수 있는 투사체면 키, 아니면 null (기믹·상속 슬롯이 붙는 투사체는 매번 만든다) */
 function shotSlotTemplateKey(owner) {
-  if (!(owner instanceof Projectile) || owner.slots || owner.def || owner.kind === 'curseBolt') return null;
+  if (owner.slots || owner.def || owner.kind === 'curseBolt') return null;
+  // 적 탄(일반 객체, cardHazardTick)도 같은 카드로 이루어진다. 투사체와 섞이지 않게 키를 나눈다.
+  if (!(owner instanceof Projectile)) return owner.boomerang || owner.homing || owner.blastOnEnd ? null : `hazard|${owner.kind}`;
   return `${owner.boomerang ? `${Math.hypot(owner.vx, owner.vy)}/${owner.returnTime}` : ''}|${owner.homing ? owner.turn ?? 7 : ''}|${owner.blastOnEnd ? 1 : ''}`;
+}
+
+// 적 슬롯 틀: 적 정의(def) → 키 → 틀. 슬롯 구성은 정의와 아래 키의 값으로만 정해진다 (이동 속도는 비율 1 로만 들어가 카드를 바꾸지 않는다).
+// 기믹·상속 슬롯이 붙는 적, 임시 카드를 쓰는 구성은 매번 만든다. state: 슬롯을 만들며 주인에게 처음 채운 주기·사거리 상태.
+const ENEMY_SLOT_TEMPLATES = new WeakMap();
+const ENEMY_SLOT_TEMPLATE_MAX = 64;
+const ENEMY_TEMPLATE_STATE = ['attackPeriod', 'summonPeriod', 'supportPeriod', 'reach'];
+function enemySlotTemplateKey(owner) {
+  if (!(owner instanceof Enemy) || owner.def.gimmick) return null;
+  return `${owner.damage}|${owner.knockback}|${owner.boss ? 1 : ''}|${owner.armor}|${owner.guard}|${Object.keys(owner.affinity || {}).length}|${ENEMY_TEMPLATE_STATE.map(f => owner[f] ?? '').join(',')}`;
 }
 
 // New entity types install these existing-card chains as their native slots.
