@@ -7,9 +7,7 @@ class GameActionsStatus {
     if (o.dead) return;
     if (o === p && kind !== 'amplify') p.applyBuff(kind, this);
     else if (kind === 'heal') this.healTarget(o, this.actionValue('heal', 'heal', o));
-    else if (kind === 'prolong') {
-      if (Number.isFinite(o.life)) o.life *= 1.5;
-    } else {
+    else {
       o.cardBuffs ||= {};
       o.cardBuffs[kind] = Math.max(o.cardBuffs[kind] || 0, (BUFFS[kind]?.dur ?? 6) * p.stats.duration);
       if (kind === 'shield') o.cardShield = Math.max(o.cardShield || 0, this.actionValue('shield', 'shield', o));
@@ -78,16 +76,6 @@ class GameActionsStatus {
     this.circleFx(o.x, o.y, r, '#ffd166', { life: 0.35, style: 'pulse' });
   }
 
-  /** 격려: 수명 +3초. */
-  rally(a) {
-    if (a.dead) return;
-    const t = this.allTargets().find(t => this.targetObj(t) === a);
-    if (!t) return;
-    if (Number.isFinite(a.life)) a.life += 3;
-    if (a.max !== undefined) a.max = Math.max(a.max, a.life);
-    this.circleFx(a.x, a.y, 26, '#ffd166', { life: 0.35, follow: a, style: 'wave' });
-  }
-
   /** 결계: 대상 자리에 적을 밀어내는 장판 (지점이 아니면 따라다닌다) */
   ward(o, t, dt) {
     const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'ward', this.actionCard) ?? this.zoneModeSettings(actor, 'ward', dt);
@@ -152,12 +140,6 @@ class GameActionsStatus {
       src.burnDps = 0;
       src.markStacks = []; src.burnStacks = []; src.directBurnStacks = [];
     }
-  }
-
-  refresh(o) {
-    if (o.dead) return;
-    if (Number.isFinite(o.life)) o.life = Math.max(o.life, o.max ?? o.life);
-    this.circleFx(o.x, o.y, 24, '#b8f0ff', { life: 0.3, follow: o, style: 'wave' });
   }
 }
 mixin(Game, GameActionsStatus);

@@ -1,0 +1,4 @@
+_owner,_i,cards,period,team,range
+bloomMatriarch,0,entityHurt|entitySelf|heal,12,,
+warMarshal,0,all|rage|focus,7,same,160
+bindingOracle,0,all|mark|root,7,opposing,170

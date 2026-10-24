@@ -1,0 +1,9 @@
+_key,collection,cap
+enemy,enemies,inf
+self,allies,inf
+ally,allies,inf
+object,objects,inf
+zone,zones,inf
+shot,projectiles,inf
+gem,pickups,inf
+pickup,pickups,inf

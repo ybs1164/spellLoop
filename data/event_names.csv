@@ -1,0 +1,9 @@
+_key,value
+hit,타격 시
+hurt,피격 시
+death,사망 시
+spawn,생성 시
+complete,행동 완료 시
+collect,획득 시
+moved,이동 완료 시
+detonate,기폭 시

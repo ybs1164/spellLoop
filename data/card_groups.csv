@@ -1,0 +1,9 @@
+_key,id,name
+0,health,체력을 가진 대상
+1,area,범위를 가진 대상
+2,position,공통
+3,movement,움직일 수 있는 대상
+4,attack,공격 가능한 대상
+5,ranged,발사 가능한 대상
+6,lifetime,제한시간을 가진 대상
+7,entity,개체 기믹

@@ -16,7 +16,7 @@ class Game {
   }
 
   /** 적이 갱신 상한보다 많은가 (워커 모드에서는 워커의 실제 적 수) */
-  get crowded() { return (this._enemyCount ?? this.enemies.length) > ENEMY_UPDATE_BUDGET; }
+  get crowded() { return (this._enemyCount ?? this.enemies.length) > CROWD_ENEMIES; }
 
   resize() {
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -38,6 +38,7 @@ class Game {
     this.events.clear();
     this.player = new Player(0, 0);
     this.enemies = [];
+    if (this.projectiles) for (const o of this.projectiles) if (o._pi !== undefined) PSoA.release(o._pi);   // 앞 판의 탄 슬롯을 돌려준다
     this.projectiles = [];
     this.hazards = [];       // 적이 쏜 탄
     this.allies = [];
@@ -79,9 +80,12 @@ class Game {
   enterStage(step, announce = true) {
     // 단계 보상과 플레이어 설치물은 유지하고 이전 전투의 압박은 정리한다.
     if (step > 0) {
+      ESoA.releaseAll(this.enemies);
       this.enemies = [];
       this.hazards = [];
-      this.projectiles = this.projectiles.filter(p => entityTeam(p) !== 'hostile');
+      const before = this.projectiles;
+      this.projectiles = before.filter(p => entityTeam(p) !== 'hostile');
+      PSoA.releaseDropped(before, this.projectiles);
       this.zones = this.zones.filter(z => entityTeam(z) !== 'hostile');
     }
     this.spawnAcc = 0;
@@ -251,7 +255,11 @@ class Game {
     this.time += dt;
     this._decoyStamp = (this._decoyStamp | 0) + 1;
     this._eventBudget = SLOT_EVENT_BUDGET;
-    this._shotBudget = SHOT_SPAWN_BUDGET;
+    // 과밀한 프레임은 작업 예산을 더 줄인다 (평소 장면의 결과는 그대로 두고, 1만 개체 같은 과부하에서만 프레임을 지킨다)
+    const crowdedFrame = this.enemies.length > ENEMY_UPDATE_BUDGET || this.projectiles.length > SHOT_UPDATE_BUDGET;
+    this._cardBudget = this._cardBudgetStart = crowdedFrame ? CARD_EVENT_BUDGET_CROWD : CARD_EVENT_BUDGET;
+    this._hitBudget = crowdedFrame ? SHOT_HIT_BUDGET_CROWD : SHOT_HIT_BUDGET;
+    this._shotBudget = this.projectiles.length > SHOT_UPDATE_BUDGET ? SHOT_SPAWN_BUDGET_CROWD : SHOT_SPAWN_BUDGET;
     this._enemyBudget = ENEMY_SPAWN_BUDGET;
     this.drainShotQueue();
     const p = this.player;
@@ -263,25 +271,7 @@ class Game {
     const enemies = this.enemies, enemyTick = this._enemyTick = (this._enemyTick | 0) + 1;
     const lodX = this.w / 2 + FAR_ENEMY_MARGIN, lodY = this.h / 2 + FAR_ENEMY_MARGIN;
     const crowdPeriod = Math.min(ENEMY_MAX_PERIOD, Math.ceil(enemies.length / ENEMY_UPDATE_BUDGET));
-    for (let i = 0; i < enemies.length; i++) {
-      const e = enemies[i];
-      // 화면 밖 먼 적은 FAR_ENEMY_PERIOD 프레임에 한 번, 모인 시간만큼 한꺼번에 갱신한다 (보스는 제외).
-      let step = dt, period = 1;
-      if (!e.boss) {
-        const dx = Math.abs(e.x - p.x), dy = Math.abs(e.y - p.y);
-        if (dx > lodX || dy > lodY) period = Math.max(FAR_ENEMY_PERIOD, crowdPeriod);
-        else if (crowdPeriod > 1) period = dx > ENEMY_NEAR_RANGE || dy > ENEMY_NEAR_RANGE ? crowdPeriod : Math.min(2, crowdPeriod);
-      }
-      if (period > 1) {
-        e._lodDt += dt;
-        if ((enemyTick + i) % period) continue;
-        step = e._lodDt; e._lodDt = 0;
-      } else if (e._lodDt) { step += e._lodDt; e._lodDt = 0; }
-      // 슬롯의 「플레이어」 대상도 같은 값을 쓰므로, 이 적이 움직이기 전에 한 번만 구해 둔다.
-      const redirect = this._redirectValue = this.findRedirect(e);
-      this._redirectUnit = e;
-      e.update(step, this.targetObj(redirect), this);
-    }
+    if (!(WasmCore.on() && this.stepEnemiesWasm(dt, enemyTick, lodX, lodY, crowdPeriod))) this.stepEnemies(0, dt, enemyTick, lodX, lodY, crowdPeriod);
     this._redirectUnit = null; this._redirectValue = null;
 
     this.rebuildHash();
@@ -309,8 +299,10 @@ class Game {
 
     this.resolveEntityDeaths();
     flushSlotEvents(this);
-    compact(this.enemies);
-    compact(this.projectiles);
+    ESoA.compactEnemies(this.enemies);
+    ESoA.tick();
+    PSoA.compactShots(this.projectiles);
+    PSoA.tick();
     compact(this.hazards);
     compact(this.allies);
     compact(this.objects);

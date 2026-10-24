@@ -86,6 +86,8 @@ const SimBridge = {
     const proto = this.PROTOS[plain.__c];
     if (!proto) return plain;
     const o = Object.create(proto.prototype);
+    // 투사체의 접근자 필드(SoA)는 복제 개체에서 자기 값으로 둔다 (그리기만 하는 복제는 SoA 슬롯을 쓰지 않는다)
+    if (proto === Projectile) for (const k of [...PROJECTILE_SOA_PROPS, ...PROJECTILE_GUARD_PROPS]) Object.defineProperty(o, k, { value: undefined, writable: true, enumerable: true, configurable: true });
     Object.assign(o, plain);
     return o;
   },
@@ -122,6 +124,10 @@ const SimBridge = {
       if (!e || e.type !== typeId) {
         e = pool[i] = Object.create(this.template(typeId));
         e.type = typeId;
+        e._si = ESoA.alloc(); e._pooled = true; ESoA.buffy[e._si] = 0;   // 견본이 아니라 자기 슬롯을 쓴다 (목록에서 빠져도 풀에 남으므로 해제하지 않는다)
+        // 스냅샷이 보내지 않는 SoA 필드는 견본 값으로 채운다 (슬롯 재사용으로 남은 값을 읽지 않게)
+        const t = this.template(typeId);
+        for (const f of ['speed', 'damage', 'knockback', 'directFrozen', 'directMove', 'cardMove', 'strafe', 'kx', 'ky']) e[f] = t[f];
         e.dead = false;
       }
       e.x = buf[o]; e.y = buf[o + 1]; e.radius = buf[o + 2]; e.wobble = buf[o + 3]; e.ang = buf[o + 4];

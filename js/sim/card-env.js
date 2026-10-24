@@ -1,6 +1,7 @@
 'use strict';
 
 // 유인이 없을 때의 플레이어 대상. 읽기 전용이라 하나를 공유한다 (복사해서 쓰는 호출부만 있다).
+const CULL_MIN = 48;   // 적이 이만큼 이상일 때만 C 로 거른다
 const SELF_TARGET = Object.freeze({ kind: 'self' });
 const byStructOrder = (a, b) => a._so - b._so;
 function oldestOverCap(list, kind, team, max) {
@@ -33,8 +34,8 @@ const CARD_EFFECTS = [
   'placeOrb', 'placeMine', 'placeTurret', 'placeDecoy',
   'boomerang', 'homing', 'laser', 'chain', 'meteor', 'blades',
   'root', 'mark', 'burn', 'fear', 'drain',
-  'blink', 'dash', 'summonArcher', 'rally', 'ward',
-  'spread', 'snipe', 'refresh', 'split', 'absorb', 'swap',
+  'blink', 'dash', 'summonArcher', 'ward',
+  'spread', 'snipe', 'split', 'absorb', 'swap',
 ];
 for (const name of CARD_EFFECTS) CARD_EFFECT_DELEGATES[name] = function (...args) {
   const g = this.game, previous = g.actionActor;
@@ -84,7 +85,7 @@ class GameCardEnv {
       allTargets: (keep) => g.allTargets(keep),
 
       /* ---- 대상 카드 ---- */
-      enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map((e) => ({ kind: 'enemy', e })),
+      enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map(e => e),
       aheadPoint: (d) => ({ kind: 'point', x: p.x + p.facing.x * d, y: p.y + p.facing.y * d }),
       // 화약통(중립 설치물)은 시야 안의 것만 고른다
       objects: () => g.objects.filter((o) => !o.dead && (!o.neutral || dist2(o.x, o.y, p.x, p.y) <= 600 * 600)).map((o) => ({ kind: 'object', o })),
@@ -161,14 +162,31 @@ class GameCardEnv {
     for (let i = 0; i < lists.length; i++) {
       const list = lists[i];
       if (!list) continue;
+      // 적 목록이 길고 거리 조건이 있으면 C 가 먼 적을 먼저 거른다 (남은 후보만 아래 원래 판정을 거친다. 순서는 목록 순서 그대로).
+      const c = i === 0 && keep?.cull && list.length >= CULL_MIN && WasmCore.on() && list.length <= WasmCore.cap ? this.cullEnemies(list, keep.cull) : -1;
+      if (c >= 0) {
+        for (let k = 0; k < c; k++) {
+          const o = list[WasmCore.cand[k]];
+          if (o.dead || !keep(o)) continue;
+          out.push(o);   // 적은 래퍼 없이 객체 자신이 대상이다
+        }
+        continue;
+      }
       for (const o of list) {
         if (o.dead || keep && !keep(o)) continue;
+        if (i === 0) { out.push(o); continue; }
         let w = wraps.get(o);
         if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
         out.push(w);
       }
     }
     return out;
+  }
+
+  /** 적 목록의 슬롯 번호(WasmCore.syncOrd)로 범위 후보 수를 돌려준다. 슬롯 없는 개체가 섞여 있으면 -1 (호출한 쪽이 일반 경로로 간다). */
+  cullEnemies(list, c) {
+    if (!WasmCore.syncOrd(list)) return -1;
+    return WasmCore.exports.cull(list.length, c.x, c.y, c.base, c.useRadius ? 1 : 0);
   }
 
   actionValue(id, field, owner = this.actionActor || this.player) {

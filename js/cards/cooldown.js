@@ -8,16 +8,23 @@ const BASE_COOLDOWN = 1;
 // 휴면: 표가 SLEEP_AFTER 프레임 연달아 같았던 개체는 한 번에 최대 SLEEP_FRAMES 프레임씩 슬롯 검증을 건너뛴다.
 const SLEEP_AFTER = 2;
 const SLEEP_FRAMES = 6;
+// 쿨타임·조건 슬롯이 없는 표(이동·충돌 같은 상시 효과뿐)는 깨어날 때 모아서 반영할 쿨타임이 없어 일찍·오래 자도 결과가 같다.
+const SLEEP_FRAMES_IDLE = 120;
+const SLEEP_AFTER_IDLE = 1;   // 같은 표: 한 번 확인되면 바로 잔다
+// 같은 프레임에 생긴 개체들이 같은 프레임에 한꺼번에 깨어나지 않게 잠드는 길이를 SLEEP_FRAMES_IDLE - (0 ~ SLEEP_IDLE_SPREAD-1) 로 엇갈린다 (쿨타임 없는 표라 길이가 달라도 결과는 같다).
+const SLEEP_IDLE_SPREAD = 48;
+let sleepIdleSeq = 0;
 const FRAME_COOLDOWN = 0.016;
 // 카드별 쿨타임 연산. 대상이 많거나 효과가 큰 카드일수록 쿨타임을 늘린다.
+// 카드 연산은 쿨타임을 줄이지 않는다(+ 또는 1 이상의 ×): 행동을 쌓은 체인이 매 프레임 작동으로 무너지지 않게 한다.
 const CARD_COOLDOWNS = {
-  self: '+0', ahead: '+0', behind: '+0', randomPoint: '-0.1', fallen: '+0.2', nearestEnemy: '+0', lastHit: '+0', prey: '+0.2',
-  woundedEnemies: '+0.3', enemies: '×3', all: '×3.5', objects: '+0.5', allies: '+0.5', zones: '+0.5', shots: '+0.5', gems: '+0.3', pickups: '+0.3',
-  bolt: '-0.2', slash: '+1.8', explode: '+0.9', frost: '+2.3', poison: '+11', vortex: '+1.5', shockwave: '+0', summon: '×0.35', spawnOrb: '+0',
-  heal: '+1', shield: '+1', haste: '+5', rage: '+1', scatter: '+0', lance: '×0.9', focus: '+1.5', amplify: '+1', prolong: '+1', armor: '+1',
-  pull: '+0', magnet: '+0.5', orb: '×0.25', mine: '+0.7', turret: '×2', decoy: '+3', boomerang: '×0.75', homing: '+3', laser: '+1.5', chain: '+1',
-  meteor: '+0.8', blades: '+1.5', root: '+4', mark: '+0', burn: '×0.9', fear: '+6', drain: '+5.5', blink: '+0.5', dash: '+0.5', archer: '×0.9',
-  rally: '+0.5', ward: '+4.5', spread: '+0', snipe: '×2', refresh: '+0.5', split: '+2', absorb: '+0', swap: '+0.5', inputMove: '+0',
+  self: '+0', ahead: '+0', behind: '+0.2', randomPoint: '+0.3', fallen: '+0.6', nearestEnemy: '+0.2', lastHit: '+0', prey: '+0.2',
+  woundedEnemies: '+0.3', enemies: '×3', all: '×3.5', objects: '+0', allies: '+0.5', zones: '+0', shots: '+0.8', gems: '+1.2', pickups: '+1.3',
+  bolt: '+0.1', slash: '+1', explode: '+0.1', frost: '+0.8', poison: '+6', vortex: '+0', shockwave: '+0.2', summon: '+0.75', spawnOrb: '+0',
+  heal: '+2', shield: '+2.8', haste: '+1.8', rage: '+4.5', scatter: '+0', lance: '+0.1', focus: '+3', amplify: '+0.2', armor: '+1',
+  pull: '+0', magnet: '+0', orb: '+0.75', mine: '+0.7', turret: '+0.2', decoy: '+2.5', boomerang: '+0.55', homing: '+2.2', laser: '+0.8', chain: '+0.1',
+  meteor: '+1.2', blades: '+0.8', root: '+1.2', mark: '+0.2', burn: '+0.2', fear: '+2', drain: '+8', blink: '+0.5', dash: '+1.2', archer: '+0.6',
+  ward: '+1.5', spread: '+0', snipe: '×1.8', split: '+1', absorb: '+0.2', swap: '+0', inputMove: '+0',
 };
 for (const [id, op] of Object.entries(CARD_COOLDOWNS)) CARDS[id].cd = op;
 const COOLDOWN_OPS = new Map();

@@ -1,0 +1,5 @@
+_key,name,color,desc,armor,guard
+undead,언데드,#b39dff,일반 공격으로 처치할 수 있다,,
+fire,화염,#ff7b2e,빙결에 2배 피해,,
+armored,갑주,#c0c8d8,타격마다 피해 -4 (최소 1),4,
+shielded,방패,#e9d8a6,"정면 피해를 85% 막는다. 등·옆, 독·화상, 빙결 중엔 못 막는다",,0.85

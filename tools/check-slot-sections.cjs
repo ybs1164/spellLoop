@@ -18,21 +18,47 @@ vm.runInContext(`
   const order = cards => cards.map(id => SLOT_SECTION_ORDER[CARDS[id].type]);
   const sorted = cards => order(cards).every((v, i, a) => !i || a[i - 1] <= v);
 
-  // 카드 슬롯은 아티팩트 → 대상 → 행동 칸으로 정렬된다.
+  // 순서가 뒤섞인 카드 목록(개체 슬롯)은 연쇄 → 대상 → 행동 칸으로 정렬된다.
   assert.deepEqual(sortSlotCards(['bolt', 'self', 'artifactThorns', 'heal', 'nearestEnemy']), ['artifactThorns', 'self', 'nearestEnemy', 'bolt', 'heal']);
-  assert.deepEqual(slotSections(['artifactThorns', 'self', 'heal']).map(s => [s.id, s.start, s.ids.length]), [['artifact', 0, 1], ['target', 1, 1], ['action', 2, 1]]);
+  // 대상 → 행동 → 연쇄 순환을 지킨 목록은 놓인 순서가 곧 실행 순서다.
+  const chainStack = ['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'frost'];
+  assert.deepEqual(normalizeSlotCards(chainStack), chainStack);
+  assert.equal(slotNextType([]), null);
+  assert.equal(slotNextType(['nearestEnemy']), 'action');
+  assert.equal(slotNextType(['nearestEnemy', 'bolt']), 'artifact');
+  assert.equal(slotNextType(chainStack), 'artifact');
+  assert.equal(slotNextType(['artifactThorns', 'self', 'heal']), 'artifact', 'the first card sets the cycle');
+  assert.equal(slotNextType(['artifactThorns']), 'target');
+  assert.equal(slotNextType(['bolt']), 'artifact');
+
+  // 편집: 맨 뒤 빈 칸에는 다음 순서의 종류만 놓을 수 있고, 같은 종류의 놓인 카드 자리는 교체된다.
   const deck = game.player.deck;
   deck.slots[0].cards = ['nearestEnemy', 'bolt'];
-  deck.inventory = ['artifactThorns', 'heal'];
-  deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0 });
-  deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0, idx: 0 });
-  assert.deepEqual(deck.slots[0].cards, ['artifactThorns', 'nearestEnemy', 'heal', 'bolt'], 'inserting at the front lands at the front of its own section');
+  deck.inventory = ['heal', 'artifactThorns', 'self', 'frost', 'nearestEnemy'];
+  assert.match(deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0 }), /연쇄/, 'a chain cell follows an action');
+  assert.equal(deck.move({ src: 'inv', idx: 1 }, { dest: 'slot', slot: 0 }), null);
+  assert.deepEqual(deck.slots[0].cards, ['nearestEnemy', 'bolt', 'artifactThorns']);
+  assert.equal(deck.move({ src: 'inv', idx: 1 }, { dest: 'slot', slot: 0 }), null, 'target follows chain');
+  assert.equal(deck.move({ src: 'inv', idx: 1 }, { dest: 'slot', slot: 0 }), null, 'action follows target');
+  assert.deepEqual(deck.slots[0].cards, ['nearestEnemy', 'bolt', 'artifactThorns', 'self', 'frost']);
+  assert.equal(deck.move({ src: 'inv', idx: 1 }, { dest: 'slot', slot: 0, idx: 0 }), null, 'same-kind card replaces');
+  assert.deepEqual(deck.slots[0].cards.slice(0, 2), ['nearestEnemy', 'bolt']);
+  assert.ok(deck.inventory.includes('heal') && deck.inventory.includes('nearestEnemy'), 'replaced card returns to the inventory');
+  assert.match(deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0, idx: 0 }), /대상/, 'kinds cannot replace each other');
+  // 중간 카드를 빼면 그 뒤 카드도 보관함으로 돌아간다. 첫 카드나 마지막 카드는 혼자 빠진다.
+  assert.equal(deck.move({ src: 'slot', slot: 0, idx: 2 }, { dest: 'inv' }), null);
+  assert.deepEqual(deck.slots[0].cards, ['nearestEnemy', 'bolt']);
+  assert.match(deck.notice, /2장/);
+  assert.equal(deck.move({ src: 'slot', slot: 0, idx: 0 }, { dest: 'inv' }), null);
+  assert.deepEqual(deck.slots[0].cards, ['bolt']);
+  assert.equal(deck.notice, null);
 
-  // 대상 칸의 대상 카드는 합쳐서 같은 행동을 받는다.
-  deck.slots[0].cards = ['self', 'nearestEnemy', 'bolt'];
+  // 한 슬롯의 대상 카드는 하나이고, 연쇄 뒤의 대상 카드는 연쇄 슬롯의 몫이다.
+  deck.slots[0].cards = ['self', 'bolt', 'on_hit', 'nearestEnemy', 'heal'];
   const env = game.cardEnv();
   game.enemies.push(new Enemy('grunt', game.player.x + 50, game.player.y, 1));
-  assert.deepEqual(selectSlotTargets(deck.slots[0], env).map(t => t.kind).sort(), ['enemy', 'self']);
+  assert.deepEqual(selectSlotTargets(deck.slots[0], env).map(t => t.kind), ['self']);
+  assert.equal(slotAnalysis(deck.slots[0]).chainRest.join(), 'on_hit,nearestEnemy,heal');
 
   // 모든 개체 슬롯도 같은 칸 순서를 따른다.
   const owners = [new Enemy('necro', 0, 0, 1), new Enemy('pyro', 0, 0, 1), new Ally('archer', 0, 0), new Placed('turret', 0, 0, 1), new Placed('mine', 0, 0, 1), new Pickup('gem', 0, 0, 1)];
@@ -45,12 +71,15 @@ vm.runInContext(`
   game.enemies = [necro];
   UI.editorPage = 2; UI.showEntityEditor(game);
   assert.ok(UI.html.includes('<details class="slot-toggle" data-entity="0">'));
-  assert.ok(UI.html.includes('아티팩트 카드 슬롯') && UI.html.includes('대상 카드 슬롯') && UI.html.includes('행동 카드 슬롯'));
+  assert.ok(!UI.html.includes('카드 슬롯</div>') && !UI.html.includes('data-section'), 'entity slots are one strip, not sections');
+  assert.ok(UI.html.includes('class="slot-cards slot-strip"'));
   UI.openEntitySlots.add(necro); UI.showEntityEditor(game);
   assert.ok(UI.html.includes('data-entity="0" open'));
   UI.editorPage = 0; UI.showEditor(game);
   assert.ok(!UI.html.includes('<details'), 'player slots are always open');
-  assert.equal((UI.html.match(/data-section="artifact"/g) || []).length, deck.slots.length);
+  assert.equal((UI.html.match(/slot-strip dropzone/g) || []).length, deck.slots.length);
+  assert.equal((UI.html.match(/cell next/g) || []).length, deck.slots.length, 'each slot shows its next empty cell');
+  assert.ok(UI.html.includes('data-type="artifact"') && UI.html.includes('data-type=""'), 'next cell follows the first card');
 
   // 편집기에는 개체 조회 진입 UI가 없고, I 키 조회는 원래 화면으로 돌아온다.
   assert.ok(!UI.html.includes('data-act="entity-page"'));
@@ -84,4 +113,4 @@ vm.runInContext(`
   press('KeyI'); press('KeyI'); press('KeyE');
   assert.equal(game.state, 'levelup', 'inspection preserves the editor reward return path');
 `, context);
-console.log('Slot sections: condition/target/action ordering, joined targets, entity slots and collapsible editor passed.');
+console.log('Slot cycle: target/action/chain ordering, editing rules, chain stage split, entity slots and collapsible editor passed.');

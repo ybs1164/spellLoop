@@ -9,6 +9,8 @@
 const ENEMY_CONTEXT = { chase: null };
 class Enemy {
   constructor(type, x, y, hpMul, dmgMul = 1) {
+    this._si = ESoA.alloc();   // 좌표·반지름 SoA 슬롯 (enemy-soa.js)
+    ESoA.napOn[this._si] = 0; ESoA.buffy[this._si] = 0;
     const def = ENEMY_TYPES[type];
     this.type = type;
     this.def = def;
@@ -55,29 +57,120 @@ class Enemy {
     this.dead = false;
     // 전투 중 나중에 붙는 상태 필드를 미리 둔다. 적마다 속성이 붙는 순서가 달라 객체 형태가
     // 수십 가지로 갈리면 속성 읽기가 느려지므로, 형태를 하나로 맞춘다 (값은 모두 '없음'과 같다).
-    this.directFrozen = undefined; this.directMove = undefined; this.directStates = undefined;
+    this.directFrozen = undefined; this.directMove = undefined; this.knockback = undefined; this.sight = undefined; this.directStates = undefined;
     this.directBurnStacks = undefined; this.directBurnPending = undefined; this.directBurnTick = undefined;
     this.burnStacks = undefined; this.burnPending = undefined; this.markStacks = undefined;
     this.attackPeriod = undefined; this.summonPeriod = undefined; this.supportPeriod = undefined; this.reach = undefined; this.gimmick = undefined;
     this.cardBuffs = undefined; this.cardScales = undefined; this.cardMove = undefined; this.cardPower = undefined;
     this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
     this._lodDt = 0;     // 화면 밖에서 건너뛴 시간 (Game.step 의 먼 적 갱신)
-    this._si = 0;       // 겹침 해소(separateEnemies)용 배열 번호
     this._body = null;   // 그리기용 몸체 합성 묶음 (Sprites.bodyFamily)
     entitySlot(this, "enemy");
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);
   }
 
+  // 적 객체가 곧 대상이다: {kind:'enemy', e} 래퍼 대신 쓸 수 있도록 같은 모양(kind, e)을 보인다.
+  get kind() { return 'enemy'; }
+  get e() { return this; }
+  get x() { return ESoA.x[this._si]; }
+  set x(v) { ESoA.x[this._si] = v; }
+  get y() { return ESoA.y[this._si]; }
+  set y(v) { ESoA.y[this._si] = v; }
+  get radius() { return ESoA.r[this._si]; }
+  set radius(v) { ESoA.r[this._si] = v; }
+  get kx() { return ESoA.kx[this._si]; }
+  set kx(v) { ESoA.kx[this._si] = v; }
+  get ky() { return ESoA.ky[this._si]; }
+  set ky(v) { ESoA.ky[this._si] = v; }
+  get ang() { return ESoA.ang[this._si]; }
+  set ang(v) { ESoA.ang[this._si] = v; }
+  get wobble() { return ESoA.wobble[this._si]; }
+  set wobble(v) { ESoA.wobble[this._si] = v; }
+  get rootT() { return ESoA.rootT[this._si]; }
+  set rootT(v) { ESoA.rootT[this._si] = v; }
+  get fearT() { return ESoA.fearT[this._si]; }
+  set fearT(v) { ESoA.fearT[this._si] = v; }
+  get markT() { return ESoA.markT[this._si]; }
+  set markT(v) { ESoA.markT[this._si] = v; }
+  get healT() { return ESoA.healT[this._si]; }
+  set healT(v) { ESoA.healT[this._si] = v; }
+  get flash() { return ESoA.flash[this._si]; }
+  set flash(v) { ESoA.flash[this._si] = v; }
+  get freezeT() { return ESoA.freezeT[this._si]; }
+  set freezeT(v) { ESoA.freezeT[this._si] = v; }
+  // 적 순회(Game.stepEnemiesWasm)를 C 가 하므로 보스 여부·사망·건너뛴 시간도 SoA 에 둔다 (dead 는 원래 값을 그대로 돌려준다)
+  get boss() { return ESoA.boss[this._si] === 1; }
+  set boss(v) { ESoA.boss[this._si] = v ? 1 : 0; }
+  get dead() { return this._dead; }
+  set dead(v) { if (this._dead && !v) ESoA.burnGain++; this._dead = v; ESoA.dead[this._si] = v ? 1 : 0; }
+  get burnT() { const v = ESoA.burnT[this._si]; return v === v ? v : undefined; }
+  // 화상이 없던(또는 죽었던) 적이 화상 대상이 되면 burnGain 을 올린다 (updateStatuses 의 C 거르기가 놓친 적을 알아챈다)
+  set burnT(v) { const a = ESoA.burnT, si = this._si; if (a[si] <= 0 && !(v <= 0)) ESoA.burnGain++; a[si] = v === undefined ? NaN : v; }
+  get _lodDt() { return ESoA.lodDt[this._si]; }
+  set _lodDt(v) { ESoA.lodDt[this._si] = v; }
+  // 슬롯 묶음이 바뀌면 옛 묶음이 넘긴 수면 장부는 무효다 (예전에도 새 묶음의 _soa 가 없어 C 경로를 타지 않았다)
+  get slot() { return this._slot; }
+  set slot(v) { if (v !== this._slot) { ESoA.napOn[this._si] = 0; ESoA.snapF[this._si] = NaN; } this._slot = v; }
+  get strafe() { return ESoA.strafe[this._si]; }
+  set strafe(v) { ESoA.strafe[this._si] = v; }
+  // 슬롯 목록이 다른 배열로 바뀌면 슬롯 표본이 무효가 된다 (EntitySlot.version, nap-turn.js)
+  get slots() { return this._slots; }
+  set slots(v) { this._slots = v; if (this.slot) this.slot.bump(); }
+  // 잠든 적 점검(nap_try)이 믿는 JS 쪽 조건: 이 값들이 생기거나 바뀌면 잠든 적 점검을 끈다 (EntitySlots.armNap 은 시작할 때 이 값들이 없음을 확인한다).
+  get effectSlots() { return this._effectSlots; }
+  set effectSlots(v) { this._effectSlots = v; if (v != null) ESoA.napOn[this._si] = 0; }
+  get burnEventEffects() { return this._burnEventEffects; }
+  set burnEventEffects(v) { this._burnEventEffects = v; if (v) ESoA.napOn[this._si] = 0; }
+  get markStacks() { return this._markStacks; }
+  set markStacks(v) { this._markStacks = v; this._buffy(BUFFY_MARK, v); if (v) ESoA.napOn[this._si] = 0; }
+  get directStates() { return this._directStates; }
+  set directStates(v) { this._directStates = v; this._buffy(BUFFY_DIRECT_STATES, v); if (v) ESoA.napOn[this._si] = 0; }
+  get directBurnStacks() { return this._directBurnStacks; }
+  set directBurnStacks(v) { this._directBurnStacks = v; this._buffy(BUFFY_DIRECT_BURN, v); }
+  get cardBuffs() { return this._cardBuffs; }
+  set cardBuffs(v) { this._cardBuffs = v; this._buffy(BUFFY_CARD_BUFFS, v); }
+  _buffy(bit, v) { const a = ESoA.buffy, si = this._si, cur = a[si] | 0; a[si] = v ? cur | bit : cur & ~bit; }
+  get keepDistance() { return this._keepDistance; }
+  set keepDistance(v) { if (v !== this._keepDistance) ESoA.napOn[this._si] = 0; this._keepDistance = v; }
+  get pierceLimit() { return this._pierceLimit; }
+  set pierceLimit(v) { if (v !== this._pierceLimit) ESoA.napOn[this._si] = 0; this._pierceLimit = v; }
+  get sight() { const v = ESoA.sight[this._si]; return v === v ? v : undefined; }
+  set sight(v) { ESoA.sight[this._si] = v === undefined ? NaN : v; }
+  get damage() { return ESoA.damage[this._si]; }
+  set damage(v) { ESoA.damage[this._si] = v; }
+  get speed() { return ESoA.speed[this._si]; }
+  set speed(v) { ESoA.speed[this._si] = v; }
+  get maxHp() { return ESoA.maxHp[this._si]; }
+  set maxHp(v) { ESoA.maxHp[this._si] = v; }
+  get knockback() { const v = ESoA.knockback[this._si]; return v === v ? v : undefined; }
+  set knockback(v) { ESoA.knockback[this._si] = v === undefined ? NaN : v; }
+  get directFrozen() { const v = ESoA.directFrozen[this._si]; return v === v ? v === 1 : undefined; }
+  set directFrozen(v) { ESoA.directFrozen[this._si] = v === undefined ? NaN : v ? 1 : 0; }
+  get cardMove() { const v = ESoA.cardMove[this._si]; return v === v ? v : undefined; }
+  set cardMove(v) { ESoA.cardMove[this._si] = v === undefined ? NaN : v; }
+  get directMove() { const v = ESoA.directMove[this._si]; return v === v ? v : undefined; }
+  set directMove(v) { ESoA.directMove[this._si] = v === undefined ? NaN : v; }
+
   /** chase: 쫓아갈 대상 (보통 플레이어, 미끼가 있으면 미끼) */
   update(dt, chase, game) {
     ENEMY_CONTEXT.chase = chase;
-    entitySlot(this, "enemy").update(dt, game, ENEMY_CONTEXT);
+    const slot = this.slot;   // 슬롯 묶음은 생성자가 만든다: entitySlot() 의 팀 기본값·소유 확인을 매 프레임 다시 하지 않는다
+    (slot !== undefined && slot.owner === this ? slot : entitySlot(this, "enemy")).update(dt, game, ENEMY_CONTEXT);
   }
 
   cardTick(dt, chase, game) {
     const player = game.player, move = this.slot.effect('entityMove');
     if (move?.targets?.length) chase = game.targetObj(move.targets[0]);
     if (this.directFrozen) return;
+    // 이동 방향이 facing·vx 가 아니라 ang 에서 나오는 보통의 적은 같은 식을 C(nap_move)가 계산한다 (상태 시간·넉백·방향·흔들림은 SoA)
+    if (this.facing === undefined && !Number.isFinite(this.vx) && WasmCore.on()) {
+      const keep = this.slot.has('entityKeep'), A = WasmCore.nap;
+      A[0] = dt; A[1] = player.x; A[2] = player.y; A[3] = chase.x; A[4] = chase.y; A[5] = move ? move.speed : 0; A[6] = keep ? this.slot.effect('entityKeep').distance : 0;
+      // 이동 대상이 따로 있으면(위에서 chase 로 바꿨다) 그쪽으로, 아니면 ang 방향 (entityMovementDirection)
+      A[7] = (move ? 1 : 0) | (this.markStacks ? 4 : 0) | (keep ? 8 : 0) | (move?.targets?.[0] && chase !== this ? 16 : 0);
+      WasmCore.exports.nap_move(this._si);
+      return;
+    }
     if (this.rootT > 0) this.rootT -= dt;
     if (this.fearT > 0) this.fearT -= dt;
     if (this.markT > 0 && !this.markStacks) this.markT -= dt;
@@ -188,6 +281,12 @@ class Enemy {
       Px.disc(ctx, x, y, r);
     }
 
+    this.drawOverlays(ctx);
+  }
+
+  /** 몸체 위에 얹는 표시: 표식·공포·방패·갑주·체력 막대 */
+  drawOverlays(ctx) {
+    const { x, y, radius: r } = this;
     const G = Px.G;
     if (this.markT > 0) {
       // 표식: 도트 마름모
@@ -204,7 +303,8 @@ class Enemy {
 
     if (this.slot.has('entityGuard') && this.freezeT <= 0) {
       // 방패: 바라보는 쪽에 든다
-      const c = Math.cos(this.ang), s = Math.sin(this.ang);
+      // 몸체와 같은 높이 (draw 의 sy: 빙결이 아니면 흔들림 bob 포함)
+      const c = Math.cos(this.ang), s = Math.sin(this.ang), sy = y - r * 0.15 + Math.round(Math.sin(this.wobble) * 1.5);
       Sprites.draw(ctx, 'td', TD.shield, x + c * r * 0.9, sy + s * r * 0.5 + 4, 3, { flip: c < 0 });
     }
 

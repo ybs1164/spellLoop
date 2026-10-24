@@ -126,16 +126,23 @@ const Sprites = {
 
   /** bob: 정수 흔들림(-2~2), alpha: 본체 투명도, aura: 광채 밝기 0~1 (0.02 단계로 반올림) */
   drawBody(ctx, family, x, y, flip, bob, alpha, aura) {
+    const body = this.bodyFor(family, flip, bob, alpha, aura);
+    if (!body) return false;
+    ctx.drawImage(body.c, Math.round(x) - body.ox, Math.round(y) - body.oy, body.w, body.h);
+    return true;
+  },
+
+  /** 몸체 합성 비트맵 { c, ox, oy, w, h } (스프라이트가 아직 없으면 null). */
+  bodyFor(family, flip, bob, alpha, aura) {
     const sheet = this.sheets[family.name];
-    if (!sheet || !sheet.ready) return false;
+    if (!sheet || !sheet.ready) return null;
     let ai = family.alphas.indexOf(alpha);
     if (ai < 0) { ai = family.alphas.length; family.alphas.push(alpha); }
     const auraQ = family.auraR ? Math.round(aura * 50) : 0;
     const variant = ((ai * 2 + (flip ? 1 : 0)) * 8 + (bob + 4)) * 64 + auraQ;
     let body = family.variants.get(variant);
     if (!body) body = this._makeBody(family, sheet, flip, bob, alpha, auraQ / 50, variant);
-    ctx.drawImage(body.c, Math.round(x) - body.ox, Math.round(y) - body.oy, body.w, body.h);
-    return true;
+    return body;
   },
 
   _makeBody(f, sheet, flip, bob, alpha, aura, variant) {

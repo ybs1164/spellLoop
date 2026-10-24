@@ -6,10 +6,13 @@
 let entityDecoyEpoch = 0;
 // 유인 카드가 들어 있는 적 슬롯의 수 (사라진 개체의 슬롯은 세지 않는 쪽으로 틀리지 않고 남아 있는 쪽으로만 틀린다). 0 이면 적 목록은 훑을 필요가 없다.
 let entityDecoyEnemySlots = 0;
+// 모든 개체를 통틀어 같은 방식으로 센 수. 0 이면 어떤 개체 슬롯도 유인을 가질 수 없어 유인 후보 목록을 훑지 않는다 (플레이어 덱은 따로 본다).
+let entityDecoySlots = 0;
 function isDecoyCard(id) { return CARDS[id]?.mechanic === 'entityDecoy' || cardBaseId(id) === 'entityDecoy'; }
 function trackDecoySlot(slot, cards) {
   const may = cards.some(isDecoyCard);
   if (may || slot._mayDecoy) entityDecoyEpoch++;
+  entityDecoySlots += (may ? 1 : 0) - (slot._mayDecoy ? 1 : 0);
   if (slot.owner instanceof Enemy) entityDecoyEnemySlots += (may ? 1 : 0) - (slot._mayDecoy ? 1 : 0);
   slot._mayDecoy = may;
 }
@@ -19,20 +22,55 @@ function slotMayHaveDecoy(o) {
   return !!s && (s._mayDecoy || !!s.enabled?.has('entityDecoy') || !!s.slots?.some(x => x._mayDecoy));
 }
 
+// 참조 스탯 이름 → nap_try 가 원본 값을 비교하는 SoA 칸 (damage speed maxHp knockback)
+const NAP_STAT_BIT = { attackPower: 1, moveSpeed: 2, maxHp: 4, knockback: 8, pierce: 16, keepDistance: 16 };   // 16: SoA 가 아니라 Enemy 접근자(pierceLimit·keepDistance)가 값이 바뀔 때 점검을 끈다
+
+const FIXED_VERIFY = typeof process !== 'undefined' && !!process.env?.NAP_VERIFY;   // 시험용: 버전이 놓친 분석 변경이 있으면 예외
+
+const NO_AFTER_MOVEMENT = Object.freeze([]);
+// 표본(captureFixed)의 읽기 전용 배열: 최근에 만든 같은 내용의 배열이 있으면 그것을 쓴다 (같은 틀의 개체가 같은 배열을 따로 쥐지 않게)
+const INTERNED_ARRAYS = new Map();
+// 갱신 한 번 동안만 쓰는 객체의 풀 (EntitySlots.update·tickPooled)
+const TICK_CTX_POOL = [], SHARED_CTX_POOL = [], RUNS_POOL = [];
+function internArray(arr) {
+  const n = arr.length;
+  let bucket = INTERNED_ARRAYS.get(n);
+  if (!bucket) INTERNED_ARRAYS.set(n, bucket = []);
+  outer: for (let b = 0; b < bucket.length; b++) {
+    const c = bucket[b];
+    for (let i = 0; i < n; i++) if (!Object.is(c[i], arr[i])) continue outer;
+    return c;
+  }
+  if (bucket.length >= 16) bucket.shift();
+  bucket.push(arr);
+  return arr;
+}   // tickOwner 의 기본값 (호출마다 빈 배열을 만들지 않는다)
+
 class EntitySlot {
-  constructor(owner, kind, cards) {
+  /** template: 이미 정규화된 카드·기본값·분석을 그대로 쓴다 (entitySlot 의 투사체 슬롯 틀) */
+  constructor(owner, kind, cards, template) {
     this.owner = owner;
     this.kind = kind;
-    this.cards = cards;
-    this.defaults = cards.slice();
+    if (template) {
+      this._cards = template.cards; this._defaults = template.defaults; this._analysis = template.analysis;
+      if (template.cards.some(isDecoyCard)) trackDecoySlot(this, template.cards);
+    } else {
+      this.cards = cards;
+      this.defaults = cards.slice();
+    }
     this.cd = 0;
     this.enabled = null;
     this.effects = null;
-    this.effectCache = new Map();
+    this.effectCache = null;   // configuredEffect 가 처음 쓸 때 만든다 (탄마다 빈 Map 을 만들지 않는다)
+    this.version = 0;   // enabled/effects 표나 개체의 슬롯 목록이 바뀔 때마다 올라간다: 표본(_fast.version)이 아직 유효한지 정수 하나로 본다
   }
-  // 개체 슬롯도 아티팩트 → 대상 → 행동 칸 순서로 카드 스택을 유지한다.
+  // 개체 슬롯도 연쇄 카드 → 대상 → 행동 칸 순서로 카드 스택을 유지한다.
   get cards() { return this._cards; }
-  set cards(cards) { this._cards = normalizeEventStack(cards); trackDecoySlot(this, this._cards); }
+  set cards(cards) {
+    this._cards = normalizeEventStack(cards); trackDecoySlot(this, this._cards);
+    const parent = this.owner.slot;   // 슬롯 묶음이 쥔 분석 표본(captureFixed)은 카드 배열이 바뀌면 무효다
+    if (parent && parent !== this) parent.bump();
+  }
   get defaults() { return this._defaults; }
   set defaults(cards) { this._defaults = normalizeEventStack(cards); }
   configuredEffect(effect, interval, hitTeamRule, card) {
@@ -45,23 +83,23 @@ class EntitySlot {
       const field = (name) => { const at = ratios.findIndex(([f]) => f === name); return at < 0 ? effect[name] : derived[at]; };
       const rawCd = field('separateInterval') ? interval ?? 0 : field('cd');
       const cd = rawCd;
-      const previous = this.effectCache.get(cacheKey);
+      const previous = this.effectCache?.get(cacheKey);
       if (previous && previous.derived && previous.cd === cd && previous.hitTeamRule === hitTeamRule
         && previous.derived.every((v, i) => jsonNumber(v) === jsonNumber(derived[i]))) return previous.value;
       const resolved = { ...effect };
       ratios.forEach(([name], i) => { resolved[name] = derived[i]; });
       const value = { ...resolved, ...(cd != null ? { cd } : {}), ...(hitTeamRule ? { hitTeamRule } : {}) };
-      this.effectCache.set(cacheKey, { derived, cd, hitTeamRule, value });
+      (this.effectCache ||= new Map()).set(cacheKey, { derived, cd, hitTeamRule, value });
       return value;
     }
     effect = entityResolvedEffect(this.owner, card.mechanic, effect);
     const signature = JSON.stringify(effect);
     const rawCd = effect.separateInterval ? interval ?? 0 : effect.cd;
     const cd = rawCd;
-    const previous = this.effectCache.get(cacheKey);
+    const previous = this.effectCache?.get(cacheKey);
     if (previous && previous.signature === signature && previous.cd === cd && previous.hitTeamRule === hitTeamRule) return previous.value;
     const value = { ...effect, ...(cd != null ? { cd } : {}), ...(hitTeamRule ? { hitTeamRule } : {}) };
-    this.effectCache.set(cacheKey, { signature, cd, hitTeamRule, value });
+    (this.effectCache ||= new Map()).set(cacheKey, { signature, cd, hitTeamRule, value });
     return value;
   }
   /** 슬롯 주인 대상 (읽기 전용이라 한 번 만들어 재사용한다) */
@@ -118,7 +156,14 @@ class EntitySlot {
     this.defaults = this.defaults.map(cardId => CARDS[cardId].mechanic === id ? entityBehaviorCard(id, { ...CARDS[cardId].effect, ...values, statRatios: Object.fromEntries(Object.entries(CARDS[cardId].effect.statRatios || {}).filter(([field]) => !(field in values))) }, this.owner) : cardId);
     this.changed();
   }
-  changed() { this.enabled = null; this.effects = null; this.eventState = undefined; this.effectCache.clear(); }
+  /** 표본이 무효가 되는 변경: 버전을 올리고, C 가 잠든 적을 처리하고 있었다면 점검을 끈다 */
+  bump() {
+    this.version++;
+    const si = this.owner._si;
+    if (si !== undefined) { if (this._soa) ESoA.napOn[si] = 0; ESoA.snapF[si] = NaN; }   // 적: 잠든 적 점검을 끄고, 스냅샷 표지 캐시를 버린다
+    else if (this.owner._pi !== undefined) PSoA.napOn[this.owner._pi] = 0;   // 탄: C 휴면을 끈다 (묶음의 _soa 는 다음 갱신에서 pullNap 이 정리한다)
+  }
+  changed() { this.enabled = null; this.effects = null; this.eventState = undefined; this.effectCache?.clear(); this.bump(); }
   onDeath(game) {
     if (!this.owner.dead || this.deathDone) return;
     this.deathDone = true;
@@ -135,7 +180,7 @@ class EntitySlot {
     this.enabled = enabled; this.effects = effects;
     if (!context.deferTick) this.tickOwner(dt, game, { ...context, lifetimeTicked: true }, enabled);
   }
-  tickOwner(dt, game, context, enabled, afterMovement = []) {
+  tickOwner(dt, game, context, enabled, afterMovement = NO_AFTER_MOVEMENT) {
     const owner = this.owner;
     if (owner.dead || (!context.lifetimeTicked && !tickEntityLifetime(owner, dt, game))) return;
     tickEffectSlots(owner, dt, game);
@@ -156,8 +201,10 @@ class EntitySlots extends EntitySlot {
   set cards(cards) { this._cards = cards; trackDecoySlot(this, cards); }
   get defaults() { return this._defaults; }
   set defaults(cards) { this._defaults = cards; }
-  constructor(owner, kind, slots) {
+  /** combined: 같은 틀의 개체끼리 함께 쓰는 { cards, defaults } (내용은 아래에서 만드는 것과 같다. 카드 배열은 제자리에서 바뀌지 않는다) */
+  constructor(owner, kind, slots, combined) {
     super(owner, kind, slots.flatMap(slot => slot.cards));
+    if (combined) { this._cards = combined.cards; this._defaults = combined.defaults; }
     this.slots = slots;
   }
   changed() {
@@ -172,7 +219,7 @@ class EntitySlots extends EntitySlot {
   syncSlots() {
     this.cards = this.slots.flatMap(slot => slot.cards);
     this.defaults = this.slots.flatMap(slot => slot.defaults);
-    this.enabled = null; this.effects = null; this.effectCache.clear();
+    this.enabled = null; this.effects = null; this.effectCache?.clear(); this.bump();
   }
   replaceEffect(id, values) {
     for (const slot of this.slots) slot.replaceEffect(id, values);
@@ -187,7 +234,7 @@ class EntitySlots extends EntitySlot {
     const owner = this.owner, slots = this.slots, n = slots.length;
     this._captureStructural = false;
     if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length) return null;
-    const analyses = [], stats = [], refs = [];
+    const analyses = [], stats = [], refs = [], cver = this.version;
     let needsRedirect = false, cool = null;
     for (let i = 0; i < n; i++) {
       const slot = slots[i], analysis = slotAnalysis(slot);
@@ -208,28 +255,24 @@ class EntitySlots extends EntitySlot {
     for (const name of stats) refs.push(combat[name]);
     let rk, ro;
     if (needsRedirect) { const rv = game.redirectedPlayerTarget(owner); rk = rv.kind; ro = game.targetObj(rv); }
-    return { slots, n, analyses, stats, refs, canAct: ownerCanAct(owner), bits: featureBits(owner), cool, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
+    return { slots, n, cver, analyses: internArray(analyses), stats: internArray(stats), ids: internArray(stats.map(name => STAT_ID[name] ?? -1)), refs: internArray(refs), canAct: ownerCanAct(owner), bits: featureBits(owner), cool, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
   }
   fixedMatches(f, game, dt) {
     const owner = this.owner, slots = this.slots, n = f.n;
     if (f.slots !== slots || slots.length !== n || owner.slots !== slots || owner.targetFeatures || owner.effectSlots?.length) return false;
-    if (ownerCanAct(owner) !== f.canAct || featureBits(owner) !== f.bits) return false;
+    // 표본을 만든 뒤 슬롯 묶음이 바뀌었으면(카드 배열 교체 포함) 분석이 달라졌을 수 있다: 버전이 같으면 슬롯마다 분석 캐시를 볼 필요가 없다
+    if (f.cver !== this.version || ownerCanAct(owner) !== f.canAct || featureBits(owner) !== f.bits) return false;
     const analyses = f.analyses;
+    if (FIXED_VERIFY) for (let i = 0; i < n; i++) if (slotAnalysis(slots[i]) !== analyses[i]) throw new Error('slot version missed an analysis change');
     for (let i = 0; i < n; i++) {
       const slot = slots[i];
-      // slotAnalysis 의 캐시 적중 검사를 그 자리에서 한다 (카드 목록이 바뀌었으면 slotAnalysis 가 새로 만든다).
-      const cached = slot._analysis;
-      if ((cached && cached.cards === slot.cards ? cached : slotAnalysis(slot)) !== analyses[i]) return false;
       // 쿨타임 슬롯은 이번 프레임을 깎고도 아직 쿨타임 중이어야 한다 (끝나면 조건을 다시 평가해야 하므로 느린 경로로 보낸다).
       const mode = f.cool?.[i];
       if (mode === 1) { if (!(slot.cd - dt * (owner.stats?.cooldownRate ?? owner.cardRate ?? 1) > 1e-8)) return false; }
       else if (mode === 2) { if (!isBlockedSlot(slot, analyses[i], game)) return false; }
       else if (slot.cd > 0) return false;
     }
-    if (f.stats.length) {
-      const combat = entityStats(owner);
-      for (let i = 0; i < f.stats.length; i++) if (combat[f.stats[i]] !== f.refs[i]) return false;
-    }
+    if (f.stats.length && !statsMatch(owner, f)) return false;
     if (f.needsRedirect) {
       const rv = game.redirectedPlayerTarget(owner);
       if (rv.kind !== f.rk || game.targetObj(rv) !== f.ro) return false;
@@ -237,6 +280,7 @@ class EntitySlots extends EntitySlot {
     return true;
   }
   update(dt, game, context = {}) {
+    if (this._soa) this.pullNap();
     if (this.owner.dead) return;
     if (!tickEntityLifetime(this.owner, dt, game)) return;
     if (!this.owner._slotSpawned) {
@@ -260,12 +304,16 @@ class EntitySlots extends EntitySlot {
         if (fast.ran[i]) slot.runs = (slot.runs || 0) + 1;
         slot.enabled = fast.enabled; slot.effects = fast.effects;
       }
-      this.tickOwner(dt, game, this.tickContext(chase), fast.enabled);
+      this.tickPooled(dt, game, chase, fast.enabled);
       flushSlotEvents(game);
       // 표가 안정된 개체는 다음 프레임부터 잠든다. 쿨타임 중인 슬롯이 있으면 그 남은 시간을 넘기지 않는 만큼만.
-      if (!owner.dead && (this._stable = (this._stable | 0) + 1) >= SLEEP_AFTER) {
-        this._sleep = SLEEP_FRAMES; this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
+      if (!owner.dead && (this._stable = (this._stable | 0) + 1) >= (fast.cool ? SLEEP_AFTER : SLEEP_AFTER_IDLE)) {
+        this._sleep = fast.cool ? SLEEP_FRAMES : SLEEP_FRAMES_IDLE - (sleepIdleSeq++ % SLEEP_IDLE_SPREAD); this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
         this._sleepRate = owner.stats?.cooldownRate ?? owner.cardRate ?? 1;
+        // 자는 동안 쓰지 않는 표 버퍼는 놓는다 (오래 사는 개체마다 Set·Map 두 개를 덜 쥔다)
+        const bufs = this._tables;
+        if (bufs) { if (bufs[0]?.enabled === this.enabled) bufs[1] = null; else if (bufs[1]?.enabled === this.enabled) bufs[0] = null; }
+        this.armNap(game, fast);
       }
       return;
     }
@@ -279,18 +327,22 @@ class EntitySlots extends EntitySlot {
       if (!capture && this._captureStructural) this._captureSkip = 20;
     }
     // 켜진 메커니즘 표는 두 벌을 번갈아 쓴다: 갱신하는 동안에는 지난 프레임의 완성된 표가 그대로 보여야 한다.
-    const bufs = this._tables ||= [{ enabled: new Set(), effects: new Map() }, { enabled: new Set(), effects: new Map() }];
-    const table = this.enabled === bufs[0].enabled ? bufs[1] : bufs[0], enabled = table.enabled, effects = table.effects;
+    // 잠드는 동안 쓰지 않는 쪽은 버려 두었다가(아래 휴면 진입) 필요할 때 다시 만든다 (빈 표라 같다).
+    const bufs = this._tables ||= [null, null], k = bufs[0] && this.enabled === bufs[0].enabled ? 1 : 0;
+    const table = bufs[k] ||= { enabled: new Set(), effects: new Map() }, enabled = table.enabled, effects = table.effects;
     enabled.clear(); effects.clear();
-    const slots = this.slots, count = slots.length, shared = this._shared ||= { sharedEnabled: null, sharedEffects: null, deferTick: true, listens: undefined };
+    // 슬롯 갱신 동안만 쓰는 공유 문맥·실행 횟수 기록은 개체마다 두지 않고 빌린다 (중첩 호출도 각자 빌린다)
+    const slots = this.slots, count = slots.length, shared = SHARED_CTX_POOL.pop() || { sharedEnabled: null, sharedEffects: null, deferTick: true, listens: undefined };
     shared.sharedEnabled = enabled; shared.sharedEffects = effects; shared.listens = undefined;
     let runsBefore;
-    if (capture) { runsBefore = this._runsBefore ||= []; for (let i = 0; i < count; i++) runsBefore[i] = slots[i].runs || 0; }
+    if (capture) { runsBefore = RUNS_POOL.pop() || []; for (let i = 0; i < count; i++) runsBefore[i] = slots[i].runs || 0; }
     for (let i = 0; i < count; i++) slots[i].update(dt, game, shared);
+    shared.sharedEnabled = null; shared.sharedEffects = null; SHARED_CTX_POOL.push(shared);
     this.enabled = enabled; this.effects = effects;
     if (capture) {
-      capture.enabled = enabled; capture.effects = effects;
-      capture.ran = slots.map((slot, i) => (slot.runs || 0) !== runsBefore[i]);
+      capture.enabled = enabled; capture.effects = effects; capture.version = this.version;
+      capture.ran = internArray(slots.map((slot, i) => (slot.runs || 0) !== runsBefore[i]));
+      runsBefore.length = 0; RUNS_POOL.push(runsBefore);
     }
     this._fast = capture;
     // 유인이 켜지거나 꺼지거나 범위가 바뀌면 Game 의 유인 인덱스를 다시 만들게 한다.
@@ -298,8 +350,84 @@ class EntitySlots extends EntitySlot {
       const range = enabled.has('entityDecoy') ? effects.get('entityDecoy')?.range ?? -1 : undefined;
       if (range !== this._decoyRange) { this._decoyRange = range; game._decoyStamp = (game._decoyStamp | 0) + 1; }
     }
-    this.tickOwner(dt, game, this.tickContext(chase), enabled);
+    this.tickPooled(dt, game, chase, enabled);
     flushSlotEvents(game);
+  }
+  /**
+   * 잠들기 시작할 때, 이후 프레임의 점검·장부·이동을 C(nap_try)에 넘길 수 있으면 넘긴다.
+   * 넘기면 수면 장부(_sleep*)는 SoA 가 갖고, update()/wake() 가 pullNap 으로 되읽는다.
+   * Game.napTurn 이 매 프레임 JS 로 보던 조건 중 바뀔 수 있는 것은 SoA(상태·스탯·장부)로 C 가 보거나, 바뀔 때 napOn 을 끄는 쪽(bump, Enemy 접근자)이 맡는다.
+   */
+  armNap(game, fast) {
+    const owner = this.owner;
+    if (this.kind === 'shot') return this.armShotNap(game, fast);
+    if (!WasmCore.on() || this.kind !== 'enemy' || owner._si === undefined || fast.version !== this.version) return;
+    if (owner.effectSlots != null || owner.burnEventEffects || owner.directStates || owner.markStacks || owner.baseSpeed != null || owner.stats) return;
+    // 표본이 같으면 계획(스탯 비트·막힌 슬롯 종류·이동 인자)도 같다: 표본마다 한 번만 구한다
+    let plan = fast._arm;
+    if (plan === undefined) plan = fast._arm = this.armPlan(game, fast);
+    if (plan === null) return;
+    if (plan.blocked && !(typeof owner.sight === 'number' && owner.sight === owner.sight)) return;
+    const A = ESoA, si = owner._si;
+    A.napSleep[si] = this._sleep; A.napLeft[si] = this._sleepLeft; A.napRate[si] = this._sleepRate; A.napDt[si] = 0; A.napFrames[si] = 0;
+    A.napCan[si] = plan.can;
+    A.napFlags[si] = plan.flags; A.napSpeed[si] = plan.speed; A.napKeep[si] = plan.keep; A.napMask[si] = plan.mask;
+    A.napR0[si] = owner.damage; A.napR1[si] = owner.speed; A.napR2[si] = owner.maxHp; A.napR3[si] = owner.knockback ?? NaN;
+    A.napBlk[si] = plan.blocked;
+    A.napOn[si] = 1;
+    this._soa = true;
+  }
+  armPlan(game, fast) {
+    // 조건 때문에 막힌 슬롯: 막는 조건이 모두 「플레이어가 시야 안인가」(entityInSight·entityPlayerInSight 의 quick)이면 C 가 거리로 판정한다.
+    let blocked = 0;
+    if (fast.cool?.includes(2)) {
+      for (let i = 0; i < fast.n; i++) {
+        if (fast.cool[i] !== 2) continue;
+        for (const b of fast.analyses[i].blockers) if (b !== CARDS.entityInSight && b !== CARDS.entityPlayerInSight) return null;
+      }
+      blocked = 1;
+    }
+    if (fast.needsRedirect && (fast.rk !== 'self' || fast.ro !== game.player)) return null;
+    let mask = 0;
+    for (const name of fast.stats) { const bit = NAP_STAT_BIT[name]; if (!bit) return null; mask |= bit; }
+    let d = fast._nap;
+    if (d === undefined) d = fast._nap = game.napDesc(this.owner, this, fast);
+    if (d === null || (d.target && !d.selSelf)) return null;
+    return { blocked, mask, can: fast.canAct ? 1 : 0, flags: (d.move ? 1 : 0) | (d.keep ? 8 : 0) | (d.target ? 16 : 0), speed: d.speed, keep: d.keepDist };
+  }
+  /**
+   * 단순한 잠든 탄(참조 스탯·유인 대상·쿨타임·조건 없는 표, 유도·부메랑 없음, 이동 방향 고정)이면 이후 휴면 프레임을 C(run_shots)에 넘긴다.
+   * C 는 napCheck·tickEntityLifetime·napRun·cardTick 의 이동을 같은 식으로 한다. 그 판정을 바꾸는 필드는 Projectile 접근자가 바뀔 때 napOn 을 끈다.
+   */
+  armShotNap(game, fast) {
+    const owner = this.owner, pi = owner._pi;
+    if (!WasmCore.on() || pi === undefined || !(owner instanceof Projectile) || fast.version !== this.version) return;
+    if (fast.needsRedirect || fast.cool || !fast.canAct) return;
+    for (const name of fast.stats) if (!SHOT_NAP_STATS.has(name)) return;
+    if (owner.effectSlots != null || owner.burnEventEffects || owner.directStates || owner.freezeT > 0 || owner.directFrozen || owner.slots !== fast.slots) return;
+    const effects = fast.effects, move = effects.get('entityMove');
+    if (effects.get('boomerang') || effects.get('homing')) return;
+    // 이동 방향을 다시 구하지 않는 표: 속도가 같고, 대상이 있으면 모두 자기 자신 (cardTick 의 재계산 조건)
+    if (move && (owner._moveSpeed !== move.speed || move.targets?.some(t => game.targetObj(t) !== owner))) return;
+    const A = PSoA;
+    A.napSleep[pi] = this._sleep; A.napLeft[pi] = this._sleepLeft; A.napRate[pi] = this._sleepRate; A.napDt[pi] = this._sleepDt; A.napFrames[pi] = this._sleepFrames;
+    A.napMv[pi] = this.has('entityMove') ? 1 : 0; A.napCm[pi] = owner.cardMove || 1; A.napDm[pi] = owner.directMove ?? 1;
+    A.napOn[pi] = 1; A.hitOk[pi] = 0;   // 잠든 뒤 첫 충돌 검사에서 명중 효과를 다시 확인한다
+    this._soa = true;
+  }
+  /** C 가 갖고 있던 수면 장부를 되읽어 JS 가 다시 주인이 된다 */
+  pullNap() {
+    if (this.kind === 'shot') {
+      const A = PSoA, pi = this.owner._pi;
+      this._sleep = A.napSleep[pi]; this._sleepLeft = A.napLeft[pi]; this._sleepDt = A.napDt[pi]; this._sleepFrames = A.napFrames[pi];
+      A.napOn[pi] = 0;
+      this._soa = false;
+      return;
+    }
+    const A = ESoA, si = this.owner._si;
+    this._sleep = A.napSleep[si]; this._sleepLeft = A.napLeft[si]; this._sleepDt = A.napDt[si]; this._sleepFrames = A.napFrames[si];
+    A.napOn[si] = 0;
+    this._soa = false;
   }
   /** 이번 프레임도 잠든 채로 갱신해도 되는가 (부수 효과 없음). 표·행동 가능 여부·참조 스탯·막힌 슬롯의 조건이 지난 프레임과 같고 쿨타임이 끝나지 않아야 한다. */
   napCheck(dt, game) {
@@ -316,15 +444,12 @@ class EntitySlots extends EntitySlot {
   /** napCheck 를 통과한 프레임: 슬롯 갱신 없이 몸만 움직인다. 쿨타임·실행 횟수는 깨어날 때 반영한다. */
   napRun(dt, game, chase) {
     this._sleep--; this._sleepLeft -= dt * this._sleepRate; this._sleepDt += dt; this._sleepFrames++;
-    this.tickOwner(dt, game, this.tickContext(chase), this._fast.enabled);
+    this.tickPooled(dt, game, chase, this._fast.enabled);
     if (game._slotEvents?.length) flushSlotEvents(game);
   }
   /** 잠들어 있는 동안에도 매 프레임 확인하는 입력: 참조 스탯과 유인 대상. 달라졌으면 깨어난다. */
   sleepInputsSame(f, game) {
-    if (f.stats.length) {
-      const combat = entityStats(this.owner);
-      for (let i = 0; i < f.stats.length; i++) if (combat[f.stats[i]] !== f.refs[i]) return false;
-    }
+    if (f.stats.length && !statsMatch(this.owner, f)) return false;
     if (f.needsRedirect) {
       const rv = game.redirectedPlayerTarget(this.owner);
       if (rv.kind !== f.rk || game.targetObj(rv) !== f.ro) return false;
@@ -333,6 +458,7 @@ class EntitySlots extends EntitySlot {
   }
   /** 잠든 동안 미뤄 둔 쿨타임 감소와 실행 횟수를 반영하고 깨운다. */
   wake() {
+    if (this._soa) this.pullNap();
     if (!this._sleep && !this._sleepFrames) return;
     const f = this._fast, slots = this.slots;
     if (f && this._sleepFrames) {
@@ -344,10 +470,12 @@ class EntitySlots extends EntitySlot {
     }
     this._sleep = 0; this._sleepFrames = 0; this._sleepDt = 0;
   }
-  /** tickOwner 에 넘기는 문맥. 프레임마다 객체를 새로 만들지 않고 슬롯 묶음마다 하나를 재사용한다 (tickOwner 가 바로 쓰고 보관하지 않는다). */
-  tickContext(chase) {
-    const ctx = this._tickCtx ||= { chase: undefined, lifetimeTicked: true };
+  /** tickOwner 를 부른다. 문맥 객체는 개체마다 두지 않고 호출 동안만 빌린다 (tickOwner 가 바로 쓰고 보관하지 않는다. 중첩 호출도 각자 빌린다). */
+  tickPooled(dt, game, chase, enabled) {
+    const ctx = TICK_CTX_POOL.pop() || { chase: undefined, lifetimeTicked: true };
     ctx.chase = chase;
-    return ctx;
+    this.tickOwner(dt, game, ctx, enabled);
+    ctx.chase = undefined;
+    TICK_CTX_POOL.push(ctx);
   }
 }

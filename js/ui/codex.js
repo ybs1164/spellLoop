@@ -28,7 +28,7 @@ Object.assign(UI, {
       const list = ofType(ids, 'action').filter((id) => CARDS[id].group === g.id);
       return `<div class="section-title">${g.name} <span class="muted">· ${list.length}장</span></div>${grid(list)}`;
     }).join('');
-    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['artifact', '아티팩트 카드']].map(([type, label]) => {
+    const variantSections = [['target', '대상 카드'], ['action', '행동 카드'], ['artifact', '연쇄 카드']].map(([type, label]) => {
       const list = ofType(variants, type);
       return list.length ? `<div class="section-title">${label} <span class="muted">· ${list.length}장</span></div>${grid(list)}` : '';
     }).join('');
@@ -37,7 +37,7 @@ Object.assign(UI, {
       ${grid(ofType(ids, 'target'))}
       <h3 class="codex-h">행동 카드 <span class="muted">· ${ofType(ids, 'action').length}장</span></h3>
       ${actions}
-      <h3 class="codex-h">아티팩트 카드 <span class="muted">· ${ofType(ids, 'artifact').length}장</span></h3>
+      <h3 class="codex-h">연쇄 카드 <span class="muted">· ${ofType(ids, 'artifact').length}장</span></h3>
       <p class="sub">슬롯 안의 조건에 제약을 거는 카드입니다. 제약을 지키는 대신 슬롯 쿨타임을 바꿉니다.</p>
       ${grid(ofType(ids, 'artifact'))}
       <h3 class="codex-h">개체 변형 카드 <span class="muted">· ${variants.length}장</span></h3>
@@ -196,9 +196,8 @@ Object.assign(UI, {
       const tip = `[${CARD_TYPES[c.type].label}] ${c.name} — ${c.desc}`.replace(/"/g, '&quot;').replace(/</g, '&lt;');
       return `<span class="cx-card t-${c.type}" tabindex="0" title="${tip}">${this.iconHtml(id, 16)}${this.cardName(c)}</span>`;
     };
-    // 아티팩트 → 대상 → 행동 칸을 순서대로 보여 준다.
-    const chain = (cards) => slotSections(cards).map(sec => `<span class="cx-sec cx-sec-${sec.id}"><i class="cx-sec-label">${sec.label}</i>${
-      sec.ids.length ? sec.ids.map(chip).join('') : '<span class="muted">—</span>'}</span>`).join('<i class="cx-arrow">›</i>');
+    // 슬롯의 카드를 놓인 순서대로 한 줄로 보여 준다.
+    const chain = (cards) => `<span class="cx-sec">${cards.length ? cards.map(chip).join('') : '<span class="muted">—</span>'}</span>`;
     const row = (i, meta, cards) => `<div class="cx-slot"><span class="cx-slot-no">${i + 1}</span>
       <div>${meta.length ? `<div class="cx-slot-meta">${meta.join(' · ')}</div>` : ''}<div class="cx-chain">${chain(cards)}</div></div></div>`;
     if (e.cat === 'player') {

@@ -95,7 +95,6 @@ get('game.enemies[0].hp = game.enemies[0].maxHp * 0.3');
 assert.equal(get('CARDS.woundedEnemies.resolve(env).length'), 1);
 assert.equal(get("actionApplies(CARDS.heal, all.find(t => t.kind === 'enemy'), env)"), true);
 assert.equal(get("actionApplies(CARDS.heal, all.find(t => t.kind === 'shot'), env)"), false);
-assert.equal(get("actionApplies(CARDS.refresh, { kind: 'enemy', e: game.enemies[0] }, env)"), false);
 get('game.enemies[0].targetFeatures = { health: false }');
 assert.equal(get("actionApplies(CARDS.heal, { kind: 'enemy', e: game.enemies[0] }, env)"), false, 'explicit OFF overrides health');
 get('delete game.enemies[0].targetFeatures');
@@ -105,10 +104,6 @@ get("game.castBuff('shield', { kind: 'enemy', e: game.enemies[0] }); game.damage
 assert.equal(get('game.enemies[0].cardShield'), get('game.enemies[0].maxHp * 0.25 - 1'));
 get("game.castBuff('amplify', { kind: 'zone', z: game.zones[0] }); game.castBuff('amplify', { kind: 'zone', z: game.zones[0] })");
 assert.equal(get('game.zones[0].r'), 84, 'recasting does not multiply size repeatedly');
-get("game.castBuff('prolong', { kind: 'zone', z: game.zones[0] })");
-assert.equal(get('game.zones[0].life'), 3);
-get('game.refresh(game.zones[0])');
-assert.equal(get('game.zones[0].life'), 4);
 get("game.castBuff('haste', { kind: 'shot', s: game.hazards[0] }); game.castBuff('rage', { kind: 'ally', a: game.allies[0] }); game.updateTargetBuffs(6)");
 assert.ok(Math.abs(get('game.zones[0].r') - 60) < 1e-9, 'expired size buff restores radius');
 assert.equal(get('game.hazards[0].cardMove'), 1);
@@ -143,7 +138,7 @@ assert.equal(get('game.enemies[1].hp'), get('untouched'), 'blast spy does not ap
 get("game.castBuff('amplify', { kind: 'self' })");
 assert.ok(Math.abs(get('game.player.radius') - 18.2) < 1e-9);
 assert.equal(get('game.player.stats.area'), 1, 'self size buff does not amplify later spells');
-for (const id of ['prolong', 'magnet']) {
+for (const id of ['magnet']) {
   assert.equal(get(`actionApplies(CARDS.${id}, { kind: 'self' }, env)`), false, `${id} needs a directly applicable target`);
 }
 assert.equal(get("actionApplies(CARDS.rage, { kind: 'self' }, env)"), true, 'rage applies to the player');
@@ -233,7 +228,7 @@ get(`
   for (let i = 0; i < 600; i++) simulation.step(1 / 60);
   if (simulation.time < 9.9 || !simulation.objects.length) throw new Error('simulation did not progress');
   const e = simulation.spawnEnemy('brute', { x: 150, y: 0 });
-  const allSlot = { limit: 15, cards: ['all', 'heal', 'amplify', 'prolong'], heat: 0, cast: null };
+  const allSlot = { limit: 15, cards: ['all', 'heal', 'amplify'], heat: 0, cast: null };
   simulation.player.deck.slots = [allSlot];
   for (let i = 0; i < 240; i++) simulation.step(1 / 60);
   for (const t of simulation.allTargets()) {

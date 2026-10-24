@@ -172,8 +172,12 @@ class GameRender {
     let grid = this._crowdGrid;
     if (!grid || grid.length < size) grid = this._crowdGrid = new Uint8Array(size); else grid.fill(0, 0, size);
     const left = this.cam.x - this.w / 2 - 80, top = this.cam.y - this.h / 2 - 80;
+    // inView 와 같은 식을 펼쳐 쓴다 (적 수천 마리를 훑는 자리)
+    const camX = this.cam.x, camY = this.cam.y, hw = this.w / 2, hh = this.h / 2, bosses = this._frameBosses;
     for (const e of this.enemies) {
-      if (!this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + pad)) continue;
+      if (e.boss) bosses.push(e);
+      const r = Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + pad;
+      if (!(Math.abs(e.x - camX) < hw + r && Math.abs(e.y - camY) < hh + r)) continue;
       if (!e.boss) {
         const cx = Math.floor((e.x - left) / cell), cy = Math.floor((e.y - top) / cell);
         if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
@@ -184,6 +188,46 @@ class GameRender {
       }
       e.draw(ctx, this.clock, this);
     }
+  }
+
+  /** 과밀(투사체가 SHOT_UPDATE_BUDGET 보다 많음) 때의 투사체 그리기: CROWD_SHOT_DRAW_CELL 칸마다 하나만 그린다 (같은 자리에 겹친 탄을 건너뛴다). */
+  drawCrowdShots(ctx) {
+    const cell = CROWD_SHOT_DRAW_CELL, cols = Math.ceil((this.w + 60) / cell), rows = Math.ceil((this.h + 60) / cell), size = cols * rows;
+    let grid = this._shotGrid;
+    if (!grid || grid.length < size) grid = this._shotGrid = new Uint8Array(size); else grid.fill(0, 0, size);
+    const left = this.cam.x - this.w / 2 - 30, top = this.cam.y - this.h / 2 - 30;
+    // GL 배치에 쌓는 중이면 기본 모양 탄은 기록기를 거치지 않고 바로 쌓는다 (그리는 사각형·순서는 같다)
+    const fast = GLSprites.ok && ctx === GLSprites._rec, dotDraw = Projectile.prototype.draw;
+    for (const pr of this.projectiles) {
+      if (!this.inView(pr.x, pr.y, 30)) continue;
+      if (pr.shape === 'dot') {
+        const cx = Math.floor((pr.x - left) / cell), cy = Math.floor((pr.y - top) / cell);
+        if (cx >= 0 && cx < cols && cy >= 0 && cy < rows) {
+          const k = cy * cols + cx;
+          if (grid[k]) continue;
+          grid[k] = 1;
+        }
+        if (fast && pr.draw === dotDraw && this.drawDotShot(pr)) { ctx.globalAlpha = 1; continue; }
+      }
+      pr.draw(ctx);
+    }
+  }
+
+  /** Projectile.draw 의 기본 모양(꼬리 점 셋 + 탄두 + 흰 점, 끝나면 globalAlpha 1)과 같은 사각형을 GL 배치에 바로 쌓는다. 색을 해석할 수 없으면 false. */
+  drawDotShot(pr) {
+    const c = GLSprites.parseColor(pr.color);
+    if (!c) return false;
+    const x = pr.x, y = pr.y, vx = pr.vx, vy = pr.vy;
+    const r = Math.max(3, Math.round(pr.radius)), sp = Math.hypot(vx, vy) || 1, ux = vx / sp, uy = vy / sp;
+    const G = Px.G, body = r >= 5 ? G * 3 : G * 2;
+    for (let i = 3; i >= 1; i--) {
+      const sz = i === 3 ? G : body - G;
+      GLSprites.rect(Math.round((x - ux * i * r * 1.4 - sz / 2) / G) * G, Math.round((y - uy * i * r * 1.4 - sz / 2) / G) * G, sz, sz, c[0], c[1], c[2], c[3] * (0.25 + (3 - i) * 0.12));
+    }
+    const bx = Math.round((x - body / 2) / G) * G, by = Math.round((y - body / 2) / G) * G, o = body > G * 2 ? G : 0;
+    GLSprites.rect(bx, by, body, body, c[0], c[1], c[2], c[3]);
+    GLSprites.rect(bx + o, by + o, G, G, 1, 1, 1, 1);
+    return true;
   }
 
   /** 이펙트가 그리는 범위가 화면(흔들림 포함)에 걸치는가. 여유를 넉넉히 둬 결과 화면은 같다. */
@@ -214,32 +258,46 @@ class GameRender {
     const sy = shaking ? rand(-1, 1) * this.shakeMag : 0;
 
     ctx.save();
-    ctx.translate(Math.round(this.w / 2 - this.cam.x + sx), Math.round(this.h / 2 - this.cam.y + sy));
+    const tx = Math.round(this.w / 2 - this.cam.x + sx), ty = Math.round(this.h / 2 - this.cam.y + sy);
+    ctx.translate(tx, ty);
     this.drawGround(ctx, floor);
 
     if (this.player) {
-      this.drawZones(ctx);
-      for (const o of this.objects) if (this.inView(o.x, o.y, 30)) o.draw(ctx);
-      for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(ctx);
+      // 바닥 위 층부터 파티클까지 한 번에: gl 이면 2D 컨텍스트처럼 쓰는 기록기에 그려 WebGL 배치로 쌓고, 글자 앞에서 한 번 찍는다.
+      // 그리는 순서는 2D 와 같다 (배치는 add 순서대로 블렌딩).
+      const gl = GLSprites.enabled && Sprites.ready('td') && (GLSprites.ok || GLSprites.init());
+      let rec = ctx;
+      if (gl) { GLSprites.begin(ctx, this.dpr, tx, ty); rec = GLSprites.recorder(ctx); }
+      this.drawZones(rec);
+      for (const o of this.objects) if (this.inView(o.x, o.y, 30)) o.draw(rec);
+      for (const pk of this.pickups) if (this.inView(pk.x, pk.y, 24)) pk.draw(rec);
       // 적이 실제로 그리는 범위(스프라이트·방패 r+24·머리 위 표시 r+18)만큼만 여유를 둔다
       const enemyPad = this.shakeMag + 2;
-      if (this.crowded) this.drawCrowd(ctx, enemyPad);
-      else for (const e of this.enemies) if (this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + enemyPad)) e.draw(ctx, this.clock, this);
-      for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(ctx);
-      if (this.state !== 'gameover') this.player.draw(ctx, this.clock);
-      for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(ctx);
-      this.drawHazards(ctx);
-      this.drawFx(ctx);
+      // 화면 밖 보스 표시(drawScreenUI)가 적 전체를 다시 훑지 않도록 그리면서 보스를 모은다
+      const bosses = this._frameBosses ||= [];
+      bosses.length = 0;
+      if (this.crowded) this.drawCrowd(rec, enemyPad);
+      else for (const e of this.enemies) {
+        if (e.boss) bosses.push(e);
+        if (this.inView(e.x, e.y, Math.max(TILE * e.scale / 2 + e.radius * 0.15 + 2, e.radius + 24) + enemyPad)) e.draw(rec, this.clock, this);
+      }
+      for (const a of this.allies) if (this.inView(a.x, a.y, a.radius + 40 + this.shakeMag)) a.draw(rec);
+      if (this.state !== 'gameover') this.player.draw(rec, this.clock);
+      if (this.projectiles.length > SHOT_UPDATE_BUDGET) this.drawCrowdShots(rec);
+      else for (const pr of this.projectiles) if (this.inView(pr.x, pr.y, 30)) pr.draw(rec);
+      this.drawHazards(rec);
+      this.drawFx(rec);
 
       const particles = this.particles, crowded = this.crowded;
       for (let pi = crowded ? Math.max(0, particles.length - CROWD_PARTICLE_DRAW) : 0; pi < particles.length; pi++) {
         const pt = particles[pi];
         if (!this.inView(pt.x, pt.y, 16 + this.shakeMag)) continue;
-        ctx.globalAlpha = Math.max(0, pt.life / pt.max);
-        ctx.fillStyle = pt.color;
+        rec.globalAlpha = Math.max(0, pt.life / pt.max);
+        rec.fillStyle = pt.color;
         const s = pt.size > 3.2 ? Px.G * 2 : Px.G;
-        ctx.fillRect(Px.snap(pt.x - s / 2), Px.snap(pt.y - s / 2), s, s);
+        rec.fillRect(Px.snap(pt.x - s / 2), Px.snap(pt.y - s / 2), s, s);
       }
+      if (gl) GLSprites.flush();
       ctx.globalAlpha = 1;
 
       ctx.font = TEXT_FONT;
@@ -252,7 +310,9 @@ class GameRender {
         const x = Math.round(t.x), y = Math.round(t.y);
         ctx.globalAlpha = Math.min(1, t.life / 0.3);
         if (cached) {
-          const b = this.textBitmap(ctx, t.text, t.color);
+          // 글자 하나의 비트맵은 사는 동안 같다: 글자 객체에 붙여 두고 화면 배율이 바뀔 때만 다시 찾는다
+          let b = t._bm;
+          if (!b || b.dpr !== this.dpr) b = t._bm = this.textBitmap(ctx, t.text, t.color);
           ctx.drawImage(b.c, x - b.ox, y - b.oy, b.w, b.h);
           continue;
         }
@@ -289,7 +349,7 @@ class GameRender {
     g.fillStyle = color;
     g.fillText(text, left, up);
     if (cache.size >= 600) cache.clear();
-    b = { c, ox: left, oy: up, w: left + right, h: up + down };
+    b = { c, ox: left, oy: up, w: left + right, h: up + down, dpr: this.dpr };
     cache.set(key, b);
     return b;
   }
@@ -347,8 +407,8 @@ class GameRender {
       }
     }
 
-    // 화면 밖 보스 방향 표시
-    for (const e of this.enemies) {
+    // 화면 밖 보스 방향 표시 (이번 프레임에 그리며 모은 보스 목록)
+    for (const e of this._frameBosses || this.enemies) {
       if (!e.boss || e.dead) continue;
       const sx = e.x - this.cam.x + this.w / 2, sy = e.y - this.cam.y + this.h / 2;
       if (sx >= 0 && sx <= this.w && sy >= 0 && sy <= this.h) continue;

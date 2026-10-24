@@ -182,8 +182,10 @@ class GameActionsAttack {
    *  자신 → 분신 (입력 이동과 스킬 계승) · 아군·설치물·장판 → 남은 수명과 슬롯을 계승한 복제
    *  탄환 → 진행 방향 양옆으로 갈라진다 (적 탄은 적 탄으로)
    *  적 → 체력을 반씩 나눈 복제 (복제는 경험치 없음, 보스는 나뉘지 않음)
+   *  분열로 생긴 개체(splitBorn)의 행동 카드에서는 분열이 실행되지 않는다: 복제가 다시 분열하며 한 프레임에 기하급수로 늘어나는 것을 막는다.
    */
   split(t) {
+    if (this.actionActor?.splitBorn) return;
     const o = this.targetObj(t);
     if (o.dead) return;
     const cap = SPLIT_CAPS[t.kind];
@@ -220,6 +222,7 @@ class GameActionsAttack {
         break;
       default: return;
     }
+    if (c) c.splitBorn = true;
     if (c && t.kind !== 'shot') {
       const kind = { self: 'ally', ally: 'ally', object: 'object', zone: 'zone', enemy: 'enemy', gem: 'pickup', pickup: 'pickup' }[t.kind];
       inheritEntitySlots(o, c, kind);
@@ -254,7 +257,7 @@ class GameActionsAttack {
     const rot = (vx, vy, a) => [vx * Math.cos(a) - vy * Math.sin(a), vx * Math.sin(a) + vy * Math.cos(a)];
     [o.vx, o.vy] = rot(o.vx, o.vy, -0.3);
     const [vx, vy] = rot(o.vx, o.vy, 0.6);
-    const opts = { ...o, vx, vy, cardBuffs: o.cardBuffs && { ...o.cardBuffs }, cardScales: o.cardScales && { ...o.cardScales }, targetFeatures: o.targetFeatures && { ...o.targetFeatures } };
+    const opts = { ...o, ...(mine ? o.soaCopy() : null), vx, vy, cardBuffs: o.cardBuffs && { ...o.cardBuffs }, cardScales: o.cardScales && { ...o.cardScales }, targetFeatures: o.targetFeatures && { ...o.targetFeatures } };
     if (!mine) {
       const c = opts;
       c.hitSet = new Set(o.hitSet || []);

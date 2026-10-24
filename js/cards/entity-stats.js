@@ -55,6 +55,46 @@ class EntityCombatStats {
   get maxHp() { const owner = this.#owner; return Math.round(owner.stats?.maxHp ?? owner.maxHp ?? 0); }
   set maxHp(value) { const owner = this.#owner; value = Math.round(value); if (owner.stats) owner.stats.maxHp = value; else owner.maxHp = value; if (Number.isFinite(owner.hp)) owner.hp = Math.min(owner.hp, value); }
 }
+// 슬롯 표본(captureFixed)이 참조 스탯을 매 프레임 다시 비교할 때 쓰는 빠른 읽기. `combat[이름]` 은 비공개 필드 접근자에 동적 키로 접근해 느리므로,
+// 이름을 정수 id 로 바꿔 접근자와 같은 식을 switch 로 읽는다. 접근자와의 일치는 tools/check-stat-readers.cjs 가 확인한다.
+// 목록에 없는 스탯(id -1)은 접근자로 읽는다.
+const STAT_ORDER = ['knockbackResistance', 'statusResistance', 'lifetime', 'range', 'moveSpeed', 'attackPower', 'knockback', 'sight', 'keepDistance', 'xpReward',
+  'shotSpeed', 'shotCount', 'summonCount', 'defense', 'shotPower', 'reach', 'attackPeriod', 'summonPeriod', 'supportPeriod', 'pierce', 'maxHp'];
+const STAT_ID = Object.freeze(Object.fromEntries(STAT_ORDER.map((name, i) => [name, i])));
+function readCombatStat(o, id) {
+  switch (id) {
+    case 0: return o.knockbackResistance;
+    case 1: return o.statusResistance;
+    case 2: return o.max;
+    case 3: return Math.max(0, Math.round(o.range));
+    case 4: return Math.round(o.baseSpeed ?? o.speed);
+    case 5: return Math.round(o.damage);
+    case 6: return Math.round(o.knockback);
+    case 7: return o.sight;
+    case 8: return o.keepDistance;
+    case 9: return o instanceof Enemy ? o.xp : 0;
+    case 10: return o.shotSpeed;
+    case 11: return o.shotCount;
+    case 12: return o.summonCount;
+    case 13: return o.armor ?? 0;
+    case 14: return o.shotPower;
+    case 15: return o.reach ?? 0;
+    case 16: return o.attackPeriod ?? 0;
+    case 17: return o.summonPeriod ?? 0;
+    case 18: return o.supportPeriod ?? 0;
+    case 19: return o.pierceLimit;
+    default: return Math.round(o.stats?.maxHp ?? o.maxHp ?? 0);
+  }
+}
+/** 표본(f.stats 이름, f.ids, f.refs)이 잡아 둔 참조 스탯이 지금도 같은가 */
+function statsMatch(owner, f) {
+  const ids = f.ids, refs = f.refs;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if ((id >= 0 ? readCombatStat(owner, id) : entityStats(owner)[f.stats[i]]) !== refs[i]) return false;
+  }
+  return true;
+}
 // 개체 스탯 이름 (선언 순서). 스탯 객체의 접근자는 프로토타입에 있어 Object.keys 로는 보이지 않는다.
 const ENTITY_STAT_NAMES = Object.freeze(Object.getOwnPropertyNames(EntityCombatStats.prototype).filter(name => name !== 'constructor'));
 function entityStats(owner) {

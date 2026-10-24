@@ -21,17 +21,17 @@ globalThis.JS_MANIFEST = (() => {
     ],
     sprites: ['core/sprites.js'],
     entities: [
-      'entities/types.js', 'entities/player.js', 'entities/enemy.js', 'entities/ally.js', 'entities/placed.js',
-      'entities/projectile.js', 'entities/pickup.js',
+      'entities/types.js', 'entities/player.js', 'entities/enemy-soa.js', 'entities/enemy.js', 'entities/ally.js', 'entities/placed.js',
+      'entities/projectile-soa.js', 'entities/projectile.js', 'entities/pickup.js',
     ],
     stages: ['data/stages.js'],
     upgrades: ['data/upgrades.js'],
     ui: ['ui/ui.js', 'ui/hud.js', 'ui/card-html.js', 'ui/codex.js', 'ui/editor.js', 'ui/overlay.js'],
     game: [
       'sim/tuning.js', 'sim/game.js',   // Game 본체 다음에 메서드 묶음(믹스인)이 붙는다
-      'sim/spawn.js', 'sim/spatial.js', 'sim/projectiles.js', 'sim/card-env.js', 'sim/decoy.js', 'sim/damage.js',
+      'sim/wasm-core-data.js', 'sim/wasm-core.js', 'sim/nap-turn.js', 'sim/spawn.js', 'sim/spatial.js', 'sim/projectiles.js', 'sim/card-env.js', 'sim/decoy.js', 'sim/damage.js',
       'sim/actions-attack.js', 'sim/actions-status.js', 'sim/actions-move.js', 'sim/actions-summon.js',
-      'sim/zones.js', 'sim/fx.js', 'sim/hazards.js', 'render/render.js',
+      'sim/zones.js', 'sim/fx.js', 'sim/hazards.js', 'render/gl-sprites.js', 'render/render.js',
     ],
     'log-config': ['log/log-config.js'],
     'play-log': ['log/play-log.js'],

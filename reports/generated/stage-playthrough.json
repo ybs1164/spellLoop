@@ -6,65 +6,301 @@
       "graveyard",
       "cinderCaldera"
     ],
-    "state": "gameover",
-    "seconds": 232,
-    "kills": 586,
-    "peak": 144,
+    "state": "playing",
+    "seconds": 1100,
+    "kills": 4172,
+    "peak": 293,
     "stages": [
       {
         "stage": "slimeNest",
-        "seconds": 232,
-        "hp": 0,
-        "level": 11
+        "seconds": 1100,
+        "hp": 45,
+        "level": 30
       }
     ],
     "deck": [
       [
+        "artifactBoots",
+        "self",
+        "inputMove"
+      ],
+      [
         "nearestEnemy",
-        "frost",
-        "poison",
-        "burn"
+        "bolt"
       ],
       [
         "ahead",
         "orb"
-      ]
+      ],
+      [
+        "self",
+        "shield"
+      ],
+      [],
+      []
     ],
     "checkpoint": {
-      "level": 11,
-      "xp": 73,
-      "xpNext": 96,
+      "level": 30,
+      "xp": 202,
+      "xpNext": 335,
       "slots": [
         {
-          "limit": 8,
           "cards": [
-            "nearestEnemy",
-            "frost",
-            "poison",
-            "burn"
+            "artifactBoots",
+            "self",
+            "inputMove"
           ]
         },
         {
-          "limit": 4,
+          "cards": [
+            "nearestEnemy",
+            "bolt"
+          ]
+        },
+        {
           "cards": [
             "ahead",
             "orb"
           ]
+        },
+        {
+          "cards": [
+            "self",
+            "shield"
+          ]
+        },
+        {
+          "cards": []
+        },
+        {
+          "cards": []
+        }
+      ],
+      "inventory": [
+        "objects",
+        "blink",
+        "frost",
+        "decoy",
+        "lastHit",
+        "on_hit",
+        "dash",
+        "mark",
+        "snipe",
+        "boomerang",
+        "magnet",
+        "enemies",
+        "objects",
+        "focus",
+        "heal",
+        "bolt",
+        "frost",
+        "burn",
+        "gems",
+        "burn",
+        "explode",
+        "slash",
+        "artifactChalice",
+        "explode",
+        "bolt",
+        "poison",
+        "mark",
+        "pull",
+        "eventSubject"
+      ]
+    }
+  },
+  {
+    "seed": 2,
+    "route": [
+      "mossGarden",
+      "sealedSanctum",
+      "abyssThrone"
+    ],
+    "state": "gameover",
+    "seconds": 309,
+    "kills": 824,
+    "peak": 219,
+    "stages": [
+      {
+        "stage": "mossGarden",
+        "seconds": 309,
+        "hp": 0,
+        "level": 14
+      }
+    ],
+    "deck": [
+      [
+        "artifactBoots",
+        "self",
+        "inputMove"
+      ],
+      [
+        "nearestEnemy",
+        "bolt"
+      ],
+      [
+        "ahead",
+        "orb"
+      ],
+      [],
+      [],
+      []
+    ],
+    "checkpoint": {
+      "level": 14,
+      "xp": 44,
+      "xpNext": 129,
+      "slots": [
+        {
+          "cards": [
+            "artifactBoots",
+            "self",
+            "inputMove"
+          ]
+        },
+        {
+          "cards": [
+            "nearestEnemy",
+            "bolt"
+          ]
+        },
+        {
+          "cards": [
+            "ahead",
+            "orb"
+          ]
+        },
+        {
+          "cards": []
+        },
+        {
+          "cards": []
+        },
+        {
+          "cards": []
         }
       ],
       "inventory": [
         "objects",
         "self",
-        "ahead",
-        "bolt",
-        "mark",
-        "ifMany",
-        "ifElite",
-        "mark",
-        "fallen",
-        "explode"
+        "burn",
+        "split",
+        "orb",
+        "chain",
+        "behind",
+        "woundedEnemies",
+        "homing",
+        "artifactBoots",
+        "artifactRing",
+        "poison",
+        "enemies",
+        "allies",
+        "vortex"
+      ]
+    }
+  },
+  {
+    "seed": 3,
+    "route": [
+      "batBarracks",
+      "ironBastion",
+      "abyssThrone"
+    ],
+    "state": "gameover",
+    "seconds": 425,
+    "kills": 1741,
+    "peak": 149,
+    "stages": [
+      {
+        "stage": "batBarracks",
+        "seconds": 425,
+        "hp": 0,
+        "level": 20
+      }
+    ],
+    "deck": [
+      [
+        "artifactBoots",
+        "self",
+        "inputMove"
       ],
-      "costPoints": 11
+      [
+        "nearestEnemy",
+        "bolt"
+      ],
+      [
+        "ahead",
+        "orb"
+      ],
+      [
+        "self",
+        "shield"
+      ],
+      [
+        "self",
+        "shield"
+      ],
+      []
+    ],
+    "checkpoint": {
+      "level": 20,
+      "xp": 141,
+      "xpNext": 201,
+      "slots": [
+        {
+          "cards": [
+            "artifactBoots",
+            "self",
+            "inputMove"
+          ]
+        },
+        {
+          "cards": [
+            "nearestEnemy",
+            "bolt"
+          ]
+        },
+        {
+          "cards": [
+            "ahead",
+            "orb"
+          ]
+        },
+        {
+          "cards": [
+            "self",
+            "shield"
+          ]
+        },
+        {
+          "cards": [
+            "self",
+            "shield"
+          ]
+        },
+        {
+          "cards": []
+        }
+      ],
+      "inventory": [
+        "objects",
+        "ahead",
+        "split",
+        "frost",
+        "mark",
+        "poison",
+        "explode",
+        "behind",
+        "enemies",
+        "mark",
+        "shield",
+        "bolt",
+        "artifactFeather",
+        "mark",
+        "chain",
+        "zones",
+        "snipe"
+      ]
     }
   }
 ]

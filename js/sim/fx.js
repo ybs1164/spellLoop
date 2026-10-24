@@ -1,8 +1,12 @@
 'use strict';
 
 class GameFx {
+  /** 과밀 프레임인가: 이펙트·글자·파티클을 CROWD_MAX_* 까지만 쌓는다 */
+  get fxCrowded() { return this.enemies.length > ENEMY_UPDATE_BUDGET || this.projectiles.length > SHOT_UPDATE_BUDGET; }
+
   addFx(f) {
     f.max = f.life; f.dead = false;
+    if (this.fx.length >= CROWD_MAX_FX && this.fxCrowded) return;
     pushCapped(this.fx, f, MAX_FX);
   }
 
@@ -38,15 +42,18 @@ class GameFx {
   showBanner(text, color, sub) { this.banner = { text, color, sub, life: sub ? 4 : 2.5, max: sub ? 4 : 2.5 }; }
 
   addText(x, y, text, color) {
+    if (this.texts.length >= CROWD_MAX_TEXTS && this.fxCrowded) return;
     pushCapped(this.texts, { x, y, text: String(text), color, life: 0.7, dead: false }, MAX_TEXTS);
   }
 
   burst(x, y, color, n) {
+    const room = this.fxCrowded ? CROWD_MAX_PARTICLES - this.particles.length : Infinity;
     for (let i = 0; i < Math.min(n, MAX_PARTICLES); i++) {
-      const a = Math.random() * TAU, s = rand(60, 220);
+      const a = Math.random() * TAU, s = rand(60, 220), life = rand(0.25, 0.55), size = rand(2, 4.5);
+      if (i >= room) continue;
       pushCapped(this.particles, {
         x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-        life: rand(0.25, 0.55), max: 0.55, size: rand(2, 4.5), color, dead: false,
+        life, max: 0.55, size, color, dead: false,
       }, MAX_PARTICLES);
     }
   }

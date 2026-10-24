@@ -17,6 +17,16 @@ function entitySlot(owner, kind) {
   if (kind === 'shot') owner.pierceLimit ??= owner.cardTick && Number.isFinite(owner.pierce) ? owner.pierce : owner.cardTick ? Infinity : 0;
   owner.knockback ??= kind === 'shot' && !owner.cardTick ? 0 : 100;
   entityStats(owner);
+  // 같은 구성의 투사체는 슬롯 카드·분석 결과가 같다: 처음 만든 결과를 틀로 두고 재사용한다 (탄막 프레임의 생성 비용).
+  const templateKey = !owner.slot && kind === 'shot' ? shotSlotTemplateKey(owner) : null;
+  const template = templateKey && SHOT_SLOT_TEMPLATES.get(templateKey);
+  if (template) {
+    owner.slots = template.map(t => new EntitySlot(owner, kind, t.cards, t));
+    // 합친 카드·기본값 배열도 틀에서 함께 쓴다 (EntitySlots 가 만드는 것과 같은 내용)
+    const combined = template.combined ||= { cards: template.flatMap(t => t.cards) };
+    combined.defaults ??= combined.cards.slice();
+    return (owner.slot = new EntitySlots(owner, kind, owner.slots, combined));
+  }
   const inherited = owner.slot?.cards.slice();
   const inheritedSlots = inherited && owner.slots?.map(slot => ({ cards: slot.cards.slice(), defaults: slot.defaults.slice() }));
   const settings = {};
@@ -195,7 +205,22 @@ function entitySlot(owner, kind) {
       owner.slot.syncSlots();
     }
   }
+  if (templateKey) {
+    if (SHOT_SLOT_TEMPLATES.size >= SHOT_SLOT_TEMPLATE_MAX) SHOT_SLOT_TEMPLATES.clear();
+    SHOT_SLOT_TEMPLATES.set(templateKey, owner.slots.map(slot => ({ cards: slot.cards, defaults: slot.defaults, analysis: slotAnalysis(slot) })));
+  }
   return owner.slot;
+}
+
+// 투사체 슬롯 틀. 키는 슬롯 구성을 정하는 투사체 값(부메랑·유도·폭발)이다.
+// 피해·넉백·이동 속도는 카드에 스탯 비율 1 로만 들어가 카드 구성을 바꾸지 않는다 (부메랑만 던진 속도를 카드 값으로 쓴다).
+// 카드 배열은 제자리에서 바뀌지 않고 통째로 교체되므로 개체끼리 같은 배열을 나눠 가져도 된다.
+const SHOT_SLOT_TEMPLATES = new Map();
+const SHOT_SLOT_TEMPLATE_MAX = 512;
+/** 틀을 쓸 수 있는 투사체면 키, 아니면 null (기믹·상속 슬롯이 붙는 투사체는 매번 만든다) */
+function shotSlotTemplateKey(owner) {
+  if (!(owner instanceof Projectile) || owner.slots || owner.def || owner.kind === 'curseBolt') return null;
+  return `${owner.boomerang ? `${Math.hypot(owner.vx, owner.vy)}/${owner.returnTime}` : ''}|${owner.homing ? owner.turn ?? 7 : ''}|${owner.blastOnEnd ? 1 : ''}`;
 }
 
 // New entity types install these existing-card chains as their native slots.

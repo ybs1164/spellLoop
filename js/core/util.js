@@ -68,8 +68,10 @@ class SpatialHash {
     this.next = new Int32Array(256);
     this.cx = new Int32Array(256);
     this.cy = new Int32Array(256);
+    this.gridOn = false; this.grid = null; this.cstart = null; this.sorted = null;
   }
   clear() {
+    this.gridOn = false;   // C(build)가 칸 정렬 격자를 만들었으면 rebuildHashWasm 이 켠다 (grid·cstart·sorted)
     this.stamp++;
     this.n = 0;
     this.items.length = 0;
@@ -96,6 +98,7 @@ class SpatialHash {
   /** query 와 같되 out 을 비우지 않고 뒤에 덧붙인다. */
   queryInto(x, y, r, out) {
     if (!this.n) return out;
+    if (this.gridOn) return this.queryGrid(x, y, r, out);
     const cs = this.cs, stamp = this.stamp, slotStamp = this.slotStamp, head = this.head, next = this.next, CX = this.cx, CY = this.cy, items = this.items;
     const x0 = Math.floor((x - r) / cs) | 0, x1 = Math.floor((x + r) / cs) | 0;
     const y0 = Math.floor((y - r) / cs) | 0, y1 = Math.floor((y + r) / cs) | 0;
@@ -106,6 +109,23 @@ class SpatialHash {
         if (slotStamp[slot] !== stamp) continue;
         for (let i = head[slot]; i >= 0; i = next[i]) if (CX[i] === cx && CY[i] === cy) out.push(items[i]);
       }
+    }
+    return out;
+  }
+  /** queryInto 의 칸 정렬 격자 판 (native/sim_core.c build): 같은 칸 순서(cx → cy)·칸 안 삽입 순서. 격자 밖 칸은 비어 있다. */
+  queryGrid(x, y, r, out) {
+    const cs = this.cs, G = this.grid, start = this.cstart, sorted = this.sorted, items = this.items;
+    const gx0 = G[1], gy0 = G[2], gx1 = gx0 + G[3] - 1, gy1 = gy0 + G[4] - 1, gh = G[4];
+    let x0 = Math.floor((x - r) / cs) | 0, x1 = Math.floor((x + r) / cs) | 0;
+    let y0 = Math.floor((y - r) / cs) | 0, y1 = Math.floor((y + r) / cs) | 0;
+    if (x0 < gx0) x0 = gx0;
+    if (x1 > gx1) x1 = gx1;
+    if (y0 < gy0) y0 = gy0;
+    if (y1 > gy1) y1 = gy1;
+    if (y0 > y1) return out;
+    for (let cx = x0; cx <= x1; cx++) {
+      const base = (cx - gx0) * gh - gy0, p1 = start[base + y1 + 1];
+      for (let p = start[base + y0]; p < p1; p++) out.push(items[sorted[p]]);
     }
     return out;
   }

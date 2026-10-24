@@ -1,0 +1,10 @@
+_key,health,area,position,lifetime
+self,true,true,true,false
+enemy,true,true,true,false
+point,false,false,true,false
+object,true,true,true,true
+ally,true,true,true,true
+zone,false,true,true,true
+shot,false,true,true,true
+gem,false,true,true,false
+pickup,false,true,true,false

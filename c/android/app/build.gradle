@@ -1,0 +1,48 @@
+plugins {
+    id 'com.android.application'
+}
+
+// SDL3 소스 (c/third_party, python c/tools/build.py fetch). Java 쪽 SDLActivity 등은 여기서 그대로 쓴다.
+def sdlDir = file('../../third_party/SDL3-3.4.16')
+def pythonExe = project.findProperty('pythonExe') ?: 'python'
+
+android {
+    namespace = 'com.amagos.game'
+    compileSdk 35
+    ndkVersion = '29.0.14206865'
+    defaultConfig {
+        applicationId 'com.amagos.game'
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 1
+        versionName '0.1'
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_PLATFORM=android-21', '-DANDROID_STL=c++_static', "-DPython3_EXECUTABLE=${pythonExe}",
+                          '-DAMAGOS_TOOLS=OFF', "-DSDL_DIR=${sdlDir}"
+                abiFilters 'arm64-v8a', 'x86_64'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    sourceSets.main {
+        java.srcDirs += "${sdlDir}/android-project/app/src/main/java"
+    }
+    externalNativeBuild {
+        cmake {
+            path '../../CMakeLists.txt'
+            version '3.31.6'
+        }
+    }
+    applicationVariants.all { variant ->
+        tasks["merge${variant.name.capitalize()}Assets"].dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    }
+    lint {
+        abortOnError = false
+    }
+}

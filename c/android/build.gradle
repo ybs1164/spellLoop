@@ -1,0 +1,17 @@
+// Amagos Android (SDL3 android-project 템플릿 기반). 빌드: python c/tools/build.py android
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+    }
+}

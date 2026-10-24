@@ -23,6 +23,7 @@
   - 모든 개체는 같은 학습 시드 --eval-seeds 개로 평가한다. 같은 build·설정의 결과는 CSV 에서 재사용한다.
   - 세대마다 상태를 저장한다 (Ctrl+C 후 --resume 으로 이어 하기).
   - 종료 시 상위 조합을 처음 보는 시드로 재검증하고, 상위 개체의 카드 빈도 리포트를 만든다.
+  - 유전자 = 이동 슬롯(고정) 뒤의 슬롯 --slots 개(기본 5, 합계 6칸)의 카드 구성. 슬롯 단위 교차, 칸별 변이.
   python balanceTest/slot_balance_test.py --mode ga --population 30 --generations 50 --actions 1-4 --targets 1-2 --artifacts 0-2
   python balanceTest/slot_balance_test.py --mode ga --resume
 """
@@ -91,14 +92,20 @@ api.catalog = () => ({
   cards: Object.keys(CARDS).filter(rewardable).map(id => ({ id, name: CARDS[id].name, type: CARDS[id].type, cd: CARDS[id].cd ?? '+0', weight: CARDS[id].weight ?? 1 })),
 });
 
+api.rule = job => job.slots.map(cards => slotCycleError(cards) || slotRuleError(cards));
+
 api.run = (job) => {
-  const cards = job.cards;
-  for (const id of cards) if (!CARDS[id]) return { error: 'unknown card ' + id };
-  const slot = { cards: sortSlotCards(cards), cd: 0, cast: null };
-  const rule = slotRuleError(slot.cards);
-  if (rule) return { skip: 'rule', reason: rule };
-  if (!SkillDeck.runnable(slot)) return { skip: 'not_runnable' };
-  const cooldown = slotCooldown(slot);
+  const lists = job.slots || [job.cards];
+  if (lists.length > MAX_SLOTS - 1) return { error: 'too many slots ' + lists.length };
+  const tests = [];
+  for (const cards of lists) {
+    for (const id of cards) if (!CARDS[id]) return { error: 'unknown card ' + id };
+    const slot = { cards: cards.slice(), cd: 0, cast: null };
+    const rule = slotCycleError(slot.cards) || slotRuleError(slot.cards);
+    if (rule) return { skip: 'rule', reason: rule };
+    if (!SkillDeck.runnable(slot)) return { skip: 'not_runnable' };
+    tests.push(slot);
+  }
   const stageIdx = STAGES.findIndex(s => s.id === job.stage);
   if (stageIdx < 0) return { error: 'unknown stage ' + job.stage };
 
@@ -111,9 +118,9 @@ api.run = (job) => {
   g.openLevelUp = () => { g.pendingLevelUps = 0; };   // 보상 무시: 조합 고정
 
   const p = g.player, deck = p.deck;
-  // 슬롯은 MAX_SLOTS 칸 고정: 0번 = 기본 이동 슬롯, 1번 = 테스트 슬롯, 나머지는 빈 칸
+  // 슬롯은 MAX_SLOTS 칸 고정: 0번 = 기본 이동 슬롯, 1번~ = 테스트 슬롯, 나머지는 빈 칸
   const move = deck.slots.find(s => s.cards.includes('inputMove'))?.cards || ['artifactBoots', 'self', 'inputMove'];
-  deck.slots = Array.from({ length: MAX_SLOTS }, (_, i) => i === 0 ? { cards: move.slice(), cd: 0, cast: null } : i === 1 ? slot : { cards: [], cd: 0, cast: null });
+  deck.slots = Array.from({ length: MAX_SLOTS }, (_, i) => i === 0 ? { cards: move.slice(), cd: 0, cast: null } : tests[i - 1] || { cards: [], cd: 0, cast: null });
   deck.inventory = [];
 
   const m = { damage: 0, bossDamage: 0, taken: 0, healing: 0, firstDamage: null, peak: 0, bossSpawnAt: null, bossKillAt: null, dmg60: null };
@@ -148,8 +155,8 @@ api.run = (job) => {
     outcome: g.state === 'victory' ? 'clear' : g.state === 'gameover' ? 'death' : wallOut ? 'wall_timeout' : 'timeout',
     survival: t, kills: g.kills, damage: m.damage, dps: t > 0 ? m.damage / t : 0, dps60: (m.dmg60 ?? m.damage) / Math.max(1, Math.min(60, t)), bossDamage: m.bossDamage,
     bossSpawnAt: m.bossSpawnAt, bossKillAt: m.bossKillAt, bossHpLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : (m.bossKillAt !== null ? 0 : null),
-    taken: m.taken, healing: m.healing, hpLeft: Math.max(0, p.hp), cooldown, cardCds: slot.cards.map(id => CARDS[id].cd ?? '+0'), cards: slot.cards,
-    casts: slot.runs || 0, firstDamage: m.firstDamage, peak: m.peak, level: p.level, simMs: Date.now() - t0,
+    taken: m.taken, healing: m.healing, hpLeft: Math.max(0, p.hp), cooldowns: tests.map(s => slotCooldown(s)), cardCds: tests.map(s => s.cards.map(id => CARDS[id].cd ?? '+0').join('|')),
+    casts: tests.reduce((n, s) => n + (s.runs || 0), 0), firstDamage: m.firstDamage, peak: m.peak, level: p.level, simMs: Date.now() - t0,
   };
 };
 `)(quiet, new Proxy({}, { get: () => 0 }), api, Object.create(Math));
@@ -168,11 +175,14 @@ COLUMNS = [
     'cleared', 'outcome', 'survival_sec', 'kills', 'damage_total', 'dps', 'dps_60s',
     'boss_damage', 'boss_spawn_sec', 'boss_kill_sec', 'boss_hp_left_pct',
     'damage_taken', 'healing', 'hp_left',
-    'slot_cooldown', 'card_count', 'combo', 'combo_ids',
+    'slot_cooldown', 'card_count', 'slot_count', 'combo', 'combo_ids',
     'artifacts', 'targets', 'actions', 'card_cooldowns',
     'casts', 'casts_per_min', 'first_damage_sec', 'peak_enemies', 'level', 'sim_ms',
 ]
-SECTIONS = ('artifact', 'target', 'action')   # 슬롯 배치 순서: 아티팩트 → 대상 → 행동
+SECTIONS = ('artifact', 'target', 'action')
+CYCLE = ('target', 'action', 'artifact')   # 플레이어 슬롯 순환: 대상 → 행동 → 연쇄 → 대상 …
+MAX_CARDS = 9
+EXCLUDED = {'artifactBoots'}               # 이동 슬롯 전용
 
 
 class Worker:
@@ -225,16 +235,16 @@ def weighted_sample(pool: list[dict], k: int, rnd: random.Random, uniform: bool)
 
 
 def roll_combo(by_type: dict, args, rnd: random.Random) -> list[dict]:
+    """연쇄 순환(대상 → 행동 → 연쇄 → …)을 지킨 카드 한 줄. 연쇄 카드로 시작하면 연쇄 → 대상 → 행동 …"""
+    lo, hi = args.cards
+    first = 'artifact' if rnd.random() < 0.3 else 'target'
+    n = rnd.randint(max(lo, 2 if first == 'target' else 3), max(hi, 3))
     combo = []
-    for kind in SECTIONS:
-        lo, hi = section_range(args, kind)
-        combo += weighted_sample(by_type[kind], rnd.randint(lo, hi), rnd, args.uniform)
+    for i in range(n):
+        kind = CYCLE[(CYCLE.index(first) + i) % 3]
+        pool = [c for c in by_type[kind] if c not in combo]
+        combo.append(weighted_sample(pool, 1, rnd, args.uniform)[0])
     return combo
-
-
-def section_range(args, kind: str) -> tuple[int, int]:
-    lo, hi = {'artifact': args.artifacts, 'target': args.targets, 'action': args.actions}[kind]
-    return (max(lo, 1), max(hi, 1)) if kind == 'action' else (lo, hi)
 
 
 def js_source_files() -> list[str]:
@@ -261,8 +271,14 @@ def r(v, n=2):
     return '' if v is None else round(v, n) if n else int(round(v))
 
 
+def cd_text(cds: list[float]) -> str:
+    return '/'.join(f'{x:.3f}'.rstrip('0').rstrip('.') for x in cds)
+
+
 def to_row(ctx, combo, seed, res, mode='random', generation='', individual='') -> dict:
-    names = lambda kind: ' + '.join(c['name'] for c in combo if c['type'] == kind)
+    """combo: 카드 목록(슬롯 1개) 또는 슬롯별 카드 목록의 목록."""
+    slots = [combo] if combo and isinstance(combo[0], dict) else combo
+    names = lambda kind: ' ; '.join(' + '.join(c['name'] for c in sl if c['type'] == kind) for sl in slots)
     survival = res['survival']
     return {
         'timestamp': dt.datetime.now().isoformat(timespec='seconds'),
@@ -275,10 +291,11 @@ def to_row(ctx, combo, seed, res, mode='random', generation='', individual='') -
         'boss_kill_sec': r(res['bossKillAt'], 1),
         'boss_hp_left_pct': '' if res['bossHpLeft'] is None else round(res['bossHpLeft'] * 100, 1),
         'damage_taken': r(res['taken'], 0), 'healing': r(res['healing'], 0), 'hp_left': r(res['hpLeft'], 0),
-        'slot_cooldown': round(res['cooldown'], 3), 'card_count': len(combo),
-        'combo': ' | '.join(c['name'] for c in combo), 'combo_ids': '|'.join(c['id'] for c in combo),
+        'slot_cooldown': cd_text(res['cooldowns']), 'card_count': sum(len(sl) for sl in slots), 'slot_count': len(slots),
+        'combo': ' ; '.join(' | '.join(c['name'] for c in sl) for sl in slots),
+        'combo_ids': ';'.join('|'.join(c['id'] for c in sl) for sl in slots),
         'artifacts': names('artifact'), 'targets': names('target'), 'actions': names('action'),
-        'card_cooldowns': '|'.join(res['cardCds']),
+        'card_cooldowns': ';'.join(res['cardCds']),
         'casts': res['casts'], 'casts_per_min': r(res['casts'] / survival * 60 if survival > 0 else 0, 1),
         'first_damage_sec': r(res['firstDamage'], 1), 'peak_enemies': res['peak'],
         'level': res['level'], 'sim_ms': res['simMs'],
@@ -343,7 +360,7 @@ class Ctx:
         if args.stage not in {s['id'] for s in catalog['stages']}:
             sys.exit(f"알 수 없는 스테이지: {args.stage} (가능: {', '.join(s['id'] for s in catalog['stages'])})")
         self.cards = {c['id']: c for c in catalog['cards']}
-        self.by_type = {k: [c for c in catalog['cards'] if c['type'] == k] for k in SECTIONS}
+        self.by_type = {k: [c for c in catalog['cards'] if c['type'] == k and c['id'] not in EXCLUDED] for k in SECTIONS}
         self.stage_name = next(s['name'] for s in catalog['stages'] if s['id'] == args.stage)
         self.build, self.git = build_id()
         self.sim = f'dt={args.dt};max={args.max_time:g};barrels={int(args.barrels)}'
@@ -352,10 +369,16 @@ class Ctx:
         self.lock = threading.Lock()
         self.stop = threading.Event()
 
-    def request(self, cards: list[str], seed: int) -> dict:
+    def request(self, cards: list, seed: int) -> dict:
+        """cards: 카드 id 목록(슬롯 1개) 또는 슬롯별 카드 id 목록의 목록."""
         a = self.args
-        return dict(cmd='run', cards=cards, seed=seed, stage=a.stage, maxTime=a.max_time, dt=a.dt,
+        slots = [cards] if cards and isinstance(cards[0], str) else cards
+        return dict(cmd='run', slots=slots, seed=seed, stage=a.stage, maxTime=a.max_time, dt=a.dt,
                     wallLimit=a.wall_limit, barrels=a.barrels)
+
+    def rule_errors(self, slots: list[list[str]]) -> list:
+        """슬롯별 아티팩트 제약 위반 사유 (없으면 None). 워커가 쉬는 동안(세대 사이)에만 부른다."""
+        return self.workers[0].call(cmd='rule', slots=slots)
 
     def write(self, row: dict):
         self.writer.writerow(row)
@@ -377,7 +400,7 @@ class Ctx:
                     res = self.workers[index].call(**job['req'])
                 except Exception as err:
                     # 워커가 죽은 조합은 기록하고 워커를 새로 띄워 계속 진행한다
-                    msg = f"{dt.datetime.now():%H:%M:%S} {'|'.join(job['req']['cards'])} seed={job['req']['seed']}: {err}"
+                    msg = f"{dt.datetime.now():%H:%M:%S} {';'.join('|'.join(sl) for sl in job['req']['slots'])} seed={job['req']['seed']}: {err}"
                     with self.lock:
                         print(f'\n[worker crash] {msg}', file=sys.stderr)
                         with (self.args.out.parent / 'worker_crashes.log').open('a', encoding='utf-8') as f:
@@ -480,7 +503,8 @@ def run_random(ctx: Ctx):
 
 # --------------------------------------------------------------------------- #
 # 유전 알고리즘 모드
-#   유전자 = {'artifact': [id..], 'target': [id..], 'action': [id..]} (행동은 순서도 유전자)
+#   유전자 = {'slots': [[id, ..] × --slots]} (슬롯 하나 = 대상 → 행동 → 연쇄 → 대상 … 순환을 지킨 카드 한 줄)
+#   슬롯 0 은 고정 이동 슬롯이고, 진화하는 슬롯은 그 뒤 --slots 개 (MAX_SLOTS - 1 이하).
 #   적합도 = (DPS 구간, 평균 버틴 시간, DPS) 를 사전식으로 비교
 # --------------------------------------------------------------------------- #
 GEN_COLUMNS = ['timestamp', 'build', 'generation', 'evaluated', 'unique', 'best_dps', 'best_survival_sec',
@@ -490,12 +514,16 @@ VALIDATE_COLUMNS = ['rank', 'combo', 'combo_ids', 'slot_cooldown', 'dps', 'dps_s
 FREQ_COLUMNS = ['card_id', 'name', 'type', 'top_count', 'top_share', 'all_count', 'all_share', 'lift']
 
 
-def genome_key(g: dict) -> str:
-    return '|'.join(genome_cards(g))
+def genome_slots(g: dict) -> list[list[str]]:
+    return [list(sl) for sl in g['slots']]
 
 
 def genome_cards(g: dict) -> list[str]:
-    return g['artifact'] + g['target'] + g['action']
+    return [i for sl in g['slots'] for i in sl]
+
+
+def genome_key(g: dict) -> str:
+    return ';'.join('|'.join(sl) for sl in g['slots'])
 
 
 class GA:
@@ -521,7 +549,8 @@ class GA:
                 if row['build'] == c.build and row['stage'] == self.args.stage and row['sim'] == c.sim and row['seed']:
                     self.cache[(row['combo_ids'], int(row['seed']))] = {
                         'dps': float(row['dps'] or 0), 'survival': float(row['survival_sec'] or 0),
-                        'cleared': int(row['cleared'] or 0), 'cd': float(row['slot_cooldown'] or 0)}
+                        'cleared': int(row['cleared'] or 0), 'cd': row['slot_cooldown'],
+                        'cpm': float(row['casts_per_min'] or 0)}
         if self.cache:
             print(f'재사용 가능한 기존 결과 {len(self.cache)}판')
 
@@ -550,7 +579,7 @@ class GA:
                 if (key, s) in self.cache or (key, s) in seen:
                     continue
                 seen.add((key, s))
-                jobs.append({'genome': g, 'key': key, 'seed': s, 'individual': i, 'req': self.ctx.request(genome_cards(g), s)})
+                jobs.append({'genome': g, 'key': key, 'seed': s, 'individual': i, 'req': self.ctx.request(genome_slots(g), s)})
         done = [0]
         bad: set[str] = set()
 
@@ -561,13 +590,13 @@ class GA:
                 if 'error' in res and key not in bad:
                     print(f"\n[error] {key}: {res['error'].splitlines()[0]}", file=sys.stderr)
                 bad.add(key)
-                self.cache[(key, seed)] = {'dps': 0, 'survival': 0, 'cleared': 0, 'cd': 0, 'invalid': True}
+                self.cache[(key, seed)] = {'dps': 0, 'survival': 0, 'cleared': 0, 'cd': '', 'invalid': True}
             else:
-                combo = [self.ctx.cards[i] for i in genome_cards(job['genome'])]
+                combo = [[self.ctx.cards[i] for i in sl] for sl in genome_slots(job['genome'])]
                 row = to_row(self.ctx, combo, seed, res, mode, generation, job['individual'])
                 self.ctx.write(row)
                 self.cache[(key, seed)] = {'dps': res['dps'], 'survival': res['survival'],
-                                           'cleared': row['cleared'], 'cd': res['cooldown']}
+                                           'cleared': row['cleared'], 'cd': row['slot_cooldown'], 'cpm': row['casts_per_min']}
             print(f'\r  세대 {generation}: {done[0]}/{len(jobs)}판', end='', flush=True)
 
         if jobs:
@@ -588,55 +617,96 @@ class GA:
             return None
         return weighted_sample(pool, 1, rnd, self.args.uniform)[0]['id']
 
-    def random_genome(self, rnd: random.Random) -> dict:
-        g = {k: [] for k in SECTIONS}
-        for c in roll_combo(self.ctx.by_type, self.args, rnd):
-            g[c['type']].append(c['id'])
-        return g
+    def type_of(self, i: str) -> str:
+        return self.ctx.cards[i]['type']
 
-    def repair(self, g: dict, rnd: random.Random) -> dict:
-        out = {}
-        for kind in SECTIONS:
-            lo, hi = section_range(self.args, kind)
-            ids = list(dict.fromkeys(i for i in g[kind] if i in self.ctx.cards))[:hi]
-            while len(ids) < lo:
-                new = self.pick(kind, ids, rnd)
-                if new is None:
+    def random_slot(self, rnd: random.Random) -> list[str]:
+        return [c['id'] for c in roll_combo(self.ctx.by_type, self.args, rnd)]
+
+    def random_genome(self, rnd: random.Random) -> dict:
+        return {'slots': [self.random_slot(rnd) for _ in range(self.args.slots)]}
+
+    def repair_slot(self, sl: list[str], rnd: random.Random) -> list[str]:
+        """순환 순서(처음 카드 기준)·장수·중복을 맞춘다. 순서가 어긋난 칸은 맞는 종류의 카드로 바꾼다."""
+        lo, hi = self.args.cards
+        ids = [i for i in sl if i in self.ctx.cards][:min(hi, MAX_CARDS)]
+        if not ids:
+            return self.random_slot(rnd)
+        first = CYCLE.index(self.type_of(ids[0]))
+        need = 3 if first == 2 else 2
+        out = []
+        for pos in range(max(len(ids), lo, need)):
+            kind = CYCLE[(first + pos) % 3]
+            cur = ids[pos] if pos < len(ids) else None
+            if cur is None or self.type_of(cur) != kind or cur in out:
+                cur = self.pick(kind, out, rnd)
+                if cur is None:
                     break
-                ids.append(new)
-            out[kind] = ids
-        return out
+            out.append(cur)
+        return out if len(out) >= need else self.random_slot(rnd)
+
+    def repair_all(self, genomes: list[dict], rnd: random.Random) -> list[dict]:
+        """칸 수·순환 순서를 맞추고, 연쇄 카드 제약을 어기는 슬롯은 다시 뽑는다."""
+        n = self.args.slots
+        fixed = []
+        for g in genomes:
+            slots = [self.repair_slot(sl, rnd) for sl in g['slots'][:n]]
+            while len(slots) < n:
+                slots.append(self.random_slot(rnd))
+            fixed.append(slots)
+        for _ in range(8):
+            flat = [(gi, si) for gi, slots in enumerate(fixed) for si in range(n)]
+            errs = self.ctx.rule_errors([fixed[gi][si] for gi, si in flat])
+            bad = [pos for pos, err in zip(flat, errs) if err]
+            if not bad:
+                break
+            for gi, si in bad:
+                fixed[gi][si] = self.random_slot(rnd)
+        return [{'slots': slots} for slots in fixed]
+
+    def crossover_slot(self, a: list[str], b: list[str], rnd: random.Random) -> list[str]:
+        # 한 지점 교차: 앞부분은 a, 뒷부분은 b (순서가 어긋나면 repair 가 맞춘다)
+        i = rnd.randint(1, len(a))
+        return a[:i] + b[min(i, len(b) - 1):]
 
     def crossover(self, a: dict, b: dict, rnd: random.Random) -> dict:
-        child = {}
-        for kind in SECTIONS:
-            if kind == 'action' and rnd.random() < 0.5 and a[kind] and b[kind]:
-                # 한 지점 교차: 앞 행동 사슬은 a, 뒤 사슬은 b
-                child[kind] = a[kind][:rnd.randint(1, len(a[kind]))] + b[kind][rnd.randint(0, len(b[kind]) - 1):]
-            else:
-                child[kind] = list((a if rnd.random() < 0.5 else b)[kind])
-        return child
+        slots = []
+        for sa, sb in zip(a['slots'], b['slots']):
+            roll = rnd.random()
+            slots.append(self.crossover_slot(sa, sb, rnd) if roll < 0.25 else list(sa if roll < 0.625 else sb))
+        return {'slots': slots}
+
+    def mutate_slot(self, sl: list[str], rnd: random.Random) -> list[str]:
+        sl = list(sl)
+        p = self.args.mutation
+        lo, hi = self.args.cards
+        hi = min(hi, MAX_CARDS)
+        if rnd.random() < p:                          # 같은 종류로 교체
+            k = rnd.randrange(len(sl))
+            new = self.pick(self.type_of(sl[k]), sl, rnd)
+            if new:
+                sl[k] = new
+        if len(sl) < hi and rnd.random() < p / 2:     # 끝에 한 장 이어 붙이기
+            new = self.pick(CYCLE[(CYCLE.index(self.type_of(sl[0])) + len(sl)) % 3], sl, rnd)
+            if new:
+                sl.append(new)
+        if len(sl) > max(lo, 2) and rnd.random() < p / 2:   # 끝에서 한 장 빼기
+            sl.pop()
+        if len(sl) >= 3 and rnd.random() < p / 2:     # 같은 종류끼리 순서 바꾸기
+            k = rnd.randrange(len(sl))
+            same = [j for j in range(len(sl)) if j != k and self.type_of(sl[j]) == self.type_of(sl[k])]
+            if same:
+                j = rnd.choice(same)
+                sl[k], sl[j] = sl[j], sl[k]
+        return sl
 
     def mutate(self, g: dict, rnd: random.Random) -> dict:
-        g = {k: list(v) for k, v in g.items()}
-        p = self.args.mutation
-        for kind in SECTIONS:
-            lo, hi = section_range(self.args, kind)
-            ids = g[kind]
-            if ids and rnd.random() < p:            # 교체
-                new = self.pick(kind, ids, rnd)
-                if new:
-                    ids[rnd.randrange(len(ids))] = new
-            if len(ids) < hi and rnd.random() < p / 2:   # 추가
-                new = self.pick(kind, ids, rnd)
-                if new:
-                    ids.insert(rnd.randint(0, len(ids)), new)
-            if len(ids) > lo and rnd.random() < p / 2:   # 삭제
-                ids.pop(rnd.randrange(len(ids)))
-            if kind == 'action' and len(ids) >= 2 and rnd.random() < p / 2:   # 행동 순서 바꾸기
-                i, j = rnd.sample(range(len(ids)), 2)
-                ids[i], ids[j] = ids[j], ids[i]
-        return g
+        # 슬롯 수가 늘어도 자식 하나가 평균 1.5칸쯤만 바뀌게 칸별 변이 확률을 낮춘다
+        n = len(g['slots'])
+        slots = [self.mutate_slot(sl, rnd) if rnd.random() < min(1.0, 1.5 / n) else sl for sl in g['slots']]
+        if n >= 2 and rnd.random() < self.args.mutation / 3:   # 슬롯 하나를 통째로 새로 뽑기
+            slots[rnd.randrange(n)] = self.random_slot(rnd)
+        return {'slots': slots}
 
     def tournament(self, pop: list[dict], scores: dict, rnd: random.Random) -> dict:
         group = rnd.sample(pop, min(self.args.tournament, len(pop)))
@@ -648,18 +718,18 @@ class GA:
         nxt = [dict(g) for g in ranked[:a.elite]]
         keys = {genome_key(g) for g in nxt}
         immigrants = a.population - len(nxt) if restart else round(a.population * a.immigrants)
-        for _ in range(immigrants):
-            nxt.append(self.repair(self.random_genome(rnd), rnd))
-            keys.add(genome_key(nxt[-1]))
-        while len(nxt) < a.population:
-            for _ in range(20):    # 이미 있는 조합이면 다시 만든다
-                p1 = self.tournament(pop, scores, rnd)
-                child = self.crossover(p1, self.tournament(pop, scores, rnd), rnd) if rnd.random() < a.crossover else p1
-                child = self.repair(self.mutate(child, rnd), rnd)
-                if genome_key(child) not in keys:
+        fresh = [self.random_genome(rnd) for _ in range(immigrants)]
+        while len(nxt) + len(fresh) < a.population:
+            p1 = self.tournament(pop, scores, rnd)
+            child = self.crossover(p1, self.tournament(pop, scores, rnd), rnd) if rnd.random() < a.crossover else p1
+            fresh.append(self.mutate(child, rnd))
+        for g in self.repair_all(fresh, rnd):
+            for _ in range(10):    # 이미 있는 조합이면 변이를 더해 다시 만든다
+                if genome_key(g) not in keys:
                     break
-            nxt.append(child)
-            keys.add(genome_key(child))
+                g = self.repair_all([self.mutate(g, rnd)], rnd)[0]
+            keys.add(genome_key(g))
+            nxt.append(g)
         return nxt
 
     # ---------------- 상태 저장 ----------------
@@ -670,8 +740,7 @@ class GA:
 
     def settings(self) -> dict:
         a = self.args
-        return {'stage': a.stage, 'sim': self.ctx.sim, 'artifacts': a.artifacts, 'targets': a.targets, 'actions': a.actions,
-                'dps_tie': a.dps_tie}
+        return {'stage': a.stage, 'sim': self.ctx.sim, 'slots': a.slots, 'cards': a.cards, 'dps_tie': a.dps_tie}
 
     def load_state(self) -> dict | None:
         if not self.args.resume or not self.state_path.exists():
@@ -700,7 +769,7 @@ class GA:
             rng_seed = a.seed if a.seed is not None else random.randrange(2 ** 31)
             rnd = random.Random(rng_seed)
             seeds = [rnd.randrange(1, 2 ** 31) for _ in range(a.eval_seeds)]
-            pop = [self.repair(self.random_genome(rnd), rnd) for _ in range(a.population)]
+            pop = self.repair_all([self.random_genome(rnd) for _ in range(a.population)], rnd)
             gen, stale, best_key = 0, 0, None
         print(f'유전 알고리즘: 개체 {a.population}, 학습 시드 {len(seeds)}개, 세대 {a.generations or "무한"}, '
               f'적합도 = DPS(구간 {a.dps_tie}) → 버틴 시간')
@@ -736,14 +805,10 @@ class GA:
         self.report_frequency(seeds)
 
     def genome_from_key(self, key: str) -> dict:
-        g = {k: [] for k in SECTIONS}
-        for i in key.split('|'):
-            if i in self.ctx.cards:
-                g[self.ctx.cards[i]['type']].append(i)
-        return g
+        return {'slots': [[i for i in part.split('|') if i in self.ctx.cards] for part in key.split(';')]}
 
     def combo_name(self, g: dict) -> str:
-        return ' | '.join(self.ctx.cards[i]['name'] for i in genome_cards(g))
+        return ' ; '.join(' | '.join(self.ctx.cards[i]['name'] for i in sl) for sl in genome_slots(g))
 
     def log_generation(self, gen: int, pop: list[dict], best: dict, seeds: list[int]):
         valid = [st for st in (None if self.invalid(g, seeds) else self.stats(g, seeds) for g in pop) if st]
@@ -752,7 +817,7 @@ class GA:
         row = {'timestamp': dt.datetime.now().isoformat(timespec='seconds'), 'build': self.ctx.build, 'generation': gen,
                'evaluated': len(self.archive), 'unique': len({genome_key(g) for g in pop}),
                'best_dps': r(bst and bst['dps'], 1), 'best_survival_sec': r(bst and bst['survival'], 1),
-               'best_clear_rate': r(bst and bst['clear'], 2), 'best_cooldown': r(bst and bst['cd'], 3),
+               'best_clear_rate': r(bst and bst['clear'], 2), 'best_cooldown': bst['cd'] if bst else '',
                'mean_dps': r(mean('dps'), 1), 'mean_survival_sec': r(mean('survival'), 1),
                'best_combo': self.combo_name(best), 'best_ids': genome_key(best)}
         write_table(self.gen_path, GEN_COLUMNS, [row], append=True)
@@ -779,7 +844,7 @@ class GA:
             st, train = self.stats(g, fresh), self.stats(g, seeds)
             if not st:
                 continue
-            rows.append({'combo': self.combo_name(g), 'combo_ids': genome_key(g), 'slot_cooldown': r(st['cd'], 3),
+            rows.append({'combo': self.combo_name(g), 'combo_ids': genome_key(g), 'slot_cooldown': st['cd'],
                          'dps': r(st['dps'], 1), 'dps_std': r(statistics.pstdev(st['dps_list']), 1),
                          'survival_sec': r(st['survival'], 1), 'survival_std': r(statistics.pstdev(st['survival_list']), 1),
                          'clear_rate': r(st['clear'], 2), 'train_dps': r(train['dps'], 1),
@@ -856,16 +921,128 @@ def run_sweep(ctx: Ctx):
     print()
 
 
+# --------------------------------------------------------------------------- #
+# MAP-Elites + Successive Halving 모드 (--mode me)
+#   격자 칸 = (총 카드 수 구간, 분당 시전 수 구간). 칸마다 최강 조합 하나를 보존해 "빌드 유형별 사기 조합" 을 찾는다.
+#   후보는 시드 1개 → 3개 → 8개 순으로 평가하며 매 단계 상위만 올려 보낸다 (Successive Halving).
+# --------------------------------------------------------------------------- #
+ME_COLUMNS = ['rank', 'cell', 'dps', 'dps_std', 'survival_sec', 'clear_rate', 'casts_per_min', 'cards', 'combo', 'combo_ids']
+CARD_BINS = (20, 27, 34)          # 총 카드 수 경계
+CAST_BINS = (100, 200, 400, 800)  # 분당 시전 수 경계
+
+
+class MapElites(GA):
+    def __init__(self, ctx):
+        super().__init__(ctx)
+        self.elites: dict[tuple, dict] = {}   # cell → {'g', 'fit', 'st'}
+        self.me_path = self.args.out.with_name(f'{self.args.out.stem}_me_elites.csv')
+
+    def cpm(self, g, seeds):
+        return statistics.mean(self.cache[(genome_key(g), s)].get('cpm', 0) for s in seeds)
+
+    def cell(self, g, seeds):
+        return (sum(len(genome_cards(g)) > x for x in CARD_BINS), sum(self.cpm(g, seeds) > x for x in CAST_BINS))
+
+    def run(self):
+        a, ctx = self.args, self.ctx
+        deadline = time.time() + a.minutes * 60
+        rng_seed = a.seed if a.seed is not None else random.randrange(2 ** 31)
+        rnd = random.Random(rng_seed)
+        pool = [rnd.randrange(1, 2 ** 31) for _ in range(8)]
+        rungs = [pool[:1], pool[:3], pool[:8]]
+        keep = [1 / 3, 1 / 3]
+        print(f'MAP-Elites + SH: {a.minutes:g}분, 배치 {a.population}, 단계 시드 {[len(x) for x in rungs]}', flush=True)
+        n = 0
+        while time.time() < deadline and not ctx.stop.is_set():
+            if len(self.elites) < 6:
+                cand = [self.random_genome(rnd) for _ in range(a.population)]
+            else:
+                parents = [e['g'] for e in self.elites.values()]
+                cand = []
+                for _ in range(a.population):
+                    p1 = rnd.choice(parents)
+                    child = self.crossover(p1, rnd.choice(parents), rnd) if rnd.random() < a.crossover else p1
+                    cand.append(self.mutate(child, rnd))
+                cand += [self.random_genome(rnd) for _ in range(max(1, round(a.population * a.immigrants)))]
+            cand = list({genome_key(g): g for g in self.repair_all(cand, rnd)}.values())
+            n += 1
+            alive, done = cand, True
+            for ri, seeds in enumerate(rungs):
+                if not self.evaluate(alive, seeds, n, mode='me'):
+                    done = False
+                    break
+                alive = sorted((g for g in alive if not self.invalid(g, seeds)), key=lambda g: self.score(g, seeds), reverse=True)
+                if ri < len(keep):
+                    alive = alive[:max(2, round(len(alive) * keep[ri]))]
+            if done:
+                self.insert(alive, rungs[-1])
+                self.report(n, deadline)
+                self.dump(rungs[-1])
+        self.finish(rungs[-1], pool, rng_seed)
+
+    def insert(self, finalists, seeds):
+        for g in finalists:
+            st = self.stats(g, seeds)
+            if not st:
+                continue
+            fit, cell = self.fitness(st), self.cell(g, seeds)
+            self.archive[genome_key(g)] = g
+            if cell not in self.elites or fit > self.elites[cell]['fit']:
+                self.elites[cell] = {'g': g, 'fit': fit, 'st': st}
+
+    def report(self, n, deadline):
+        best = max(self.elites.values(), key=lambda e: e['fit'], default=None)
+        if best:
+            print(f"[배치 {n:>3}] 남은 {max(0, deadline - time.time()) / 60:4.1f}분 | 칸 {len(self.elites)}/{(len(CARD_BINS) + 1) * (len(CAST_BINS) + 1)} | "
+                  f"최고 DPS {best['st']['dps']:.0f} 버팀 {best['st']['survival']:.0f}s | {self.combo_name(best['g'])}", flush=True)
+
+    def dump(self, seeds):
+        rows = []
+        for cell, e in sorted(self.elites.items(), key=lambda kv: kv[1]['fit'], reverse=True):
+            st, g = e['st'], e['g']
+            rows.append({'cell': f'{cell[0]}x{cell[1]}', 'dps': r(st['dps'], 1), 'dps_std': r(statistics.pstdev(st['dps_list']), 1),
+                         'survival_sec': r(st['survival'], 1), 'clear_rate': r(st['clear'], 2), 'casts_per_min': r(self.cpm(g, seeds), 0),
+                         'cards': len(genome_cards(g)), 'combo': self.combo_name(g), 'combo_ids': genome_key(g)})
+        for i, row in enumerate(rows, 1):
+            row['rank'] = i
+        write_table(self.me_path, ME_COLUMNS, rows)
+
+    def finish(self, seeds, pool, rng_seed):
+        a = self.args
+        top = [e['g'] for e in sorted(self.elites.values(), key=lambda e: e['fit'], reverse=True)[:a.validate_top]]
+        print(f'엘리트 격자 → {self.me_path}')
+        if top and a.validate_seeds > 0:
+            rnd = random.Random(f'{rng_seed}-validate')
+            fresh = [s for s in (rnd.randrange(1, 2 ** 31) for _ in range(a.validate_seeds * 2)) if s not in pool][:a.validate_seeds]
+            print(f'재검증: 엘리트 {len(top)}개 × 새 시드 {len(fresh)}개', flush=True)
+            self.ctx.stop.clear()
+            if self.evaluate(top, fresh, 'validate', mode='me-validate'):
+                rows = []
+                for g in top:
+                    st = self.stats(g, fresh)
+                    if st:
+                        rows.append({'combo': self.combo_name(g), 'combo_ids': genome_key(g), 'slot_cooldown': st['cd'],
+                                     'dps': r(st['dps'], 1), 'dps_std': r(statistics.pstdev(st['dps_list']), 1),
+                                     'survival_sec': r(st['survival'], 1), 'survival_std': r(statistics.pstdev(st['survival_list']), 1),
+                                     'clear_rate': r(st['clear'], 2), 'train_dps': '', 'train_survival_sec': '', 'seeds': len(fresh),
+                                     '_fit': self.fitness(st)})
+                rows.sort(key=lambda x: x.pop('_fit'), reverse=True)
+                for i, row in enumerate(rows, 1):
+                    row['rank'] = i
+                write_table(self.validate_path, VALIDATE_COLUMNS, rows)
+                for row in rows[:5]:
+                    print(f"  {row['rank']:>2}. DPS {row['dps']:>7} (±{row['dps_std']}) 버팀 {row['survival_sec']:>6}s  {row['combo']}")
+        self.report_frequency(seeds)
+
+
 def main():
     ap = argparse.ArgumentParser(description='단일 슬롯 카드 조합 생존 테스트 → CSV 누적 (랜덤 / 유전 알고리즘)')
-    ap.add_argument('--mode', choices=['random', 'ga', 'sweep'], default='random', help='random: 무작위 누적, ga: 유전 알고리즘 최적화, sweep: 대상×행동 전수')
-    ap.add_argument('--stage', default='graveyard', help='스테이지 id (기본: graveyard = 2단계 망자의 묘역)')
-    ap.add_argument('--out', type=Path, default=ROOT / 'balanceTest' / 'results' / 'graveyard_single_slot.csv')
+    ap.add_argument('--mode', choices=['random', 'ga', 'sweep', 'me'], default='random', help='random: 무작위 누적, ga: 유전 알고리즘 최적화, sweep: 대상×행동 전수')
+    ap.add_argument('--stage', default='abyssThrone', help='스테이지 id (기본: abyssThrone = 3단계 심연의 옥좌)')
+    ap.add_argument('--out', type=Path, default=ROOT / 'balanceTest' / 'results' / 'abyss_chain.csv')
     ap.add_argument('--runs', type=int, default=0, help='[random] 실행 횟수 (0 = Ctrl+C 까지 무한)')
     ap.add_argument('--workers', type=int, default=max(1, (os.cpu_count() or 2) - 1))
-    ap.add_argument('--artifacts', '--events', type=parse_range, default=(0, 1), help='아티팩트 카드 수 범위, 예: 0-2')
-    ap.add_argument('--targets', type=parse_range, default=(1, 1), help='대상 카드 수 범위')
-    ap.add_argument('--actions', type=parse_range, default=(1, 2), help='행동 카드 수 범위, 예: 1-3')
+    ap.add_argument('--cards', type=parse_range, default=(2, 9), help='슬롯 하나의 카드 수 범위 (최대 9, 대상→행동→연쇄 순환), 예: 3-7')
     ap.add_argument('--uniform', action='store_true', help='보상 가중치 대신 균등 확률로 카드 선택')
     ap.add_argument('--max-time', type=float, default=600, help='스테이지 최대 시간(게임 초). 넘으면 timeout')
     ap.add_argument('--dt', type=float, default=0.05, help='시뮬레이션 프레임 간격(초)')
@@ -876,6 +1053,7 @@ def main():
     ap.add_argument('--sweep-artifacts', default='', help='[sweep] 조합 앞에 붙일 아티팩트 (쉼표 구분, 하나씩)')
     ap.add_argument('--seed', type=int, default=None, help='조합 추첨 난수 시드 (재현용)')
     ga = ap.add_argument_group('유전 알고리즘 (--mode ga)')
+    ga.add_argument('--slots', type=int, default=5, help='진화시키는 슬롯 수 (이동 슬롯 1칸 별도, 합계 6칸 = MAX_SLOTS)')
     ga.add_argument('--population', type=int, default=30, help='개체 수')
     ga.add_argument('--generations', type=int, default=50, help='세대 수 (0 = Ctrl+C 까지 무한)')
     ga.add_argument('--eval-seeds', type=int, default=3, help='개체마다 평가하는 학습 시드 수 (모든 개체 공통)')
@@ -888,8 +1066,11 @@ def main():
     ga.add_argument('--dps-tie', type=float, default=1.0, help='DPS 차이가 이 구간 안이면 버틴 시간으로 비교')
     ga.add_argument('--validate-top', type=int, default=10, help='종료 시 재검증할 상위 조합 수')
     ga.add_argument('--validate-seeds', type=int, default=10, help='재검증에 쓰는 새 시드 수')
+    ga.add_argument('--minutes', type=float, default=60, help='[me] 학습 시간(분)')
     ga.add_argument('--resume', action='store_true', help='저장된 GA 상태에서 이어 하기')
     args = ap.parse_args()
+    if not 1 <= args.slots <= 5:
+        ap.error('--slots 는 1~5 (이동 슬롯 때문에 MAX_SLOTS - 1 이하)')
 
     ctx = Ctx(args)
     print(f'[{ctx.stage_name}] mode={args.mode} workers={args.workers} build={ctx.build} git={ctx.git} → {args.out}')
@@ -897,6 +1078,8 @@ def main():
     try:
         if args.mode == 'ga':
             GA(ctx).run()
+        elif args.mode == 'me':
+            MapElites(ctx).run()
         elif args.mode == 'sweep':
             run_sweep(ctx)
         else:

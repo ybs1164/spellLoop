@@ -38,7 +38,7 @@
 `main.js` 루프 → `Game.update(dt)` → `Game.step(dt)`:
 스폰 → 설치물·버프 → 플레이어/적/아군 갱신(각자 `entitySlot(...).update` 로 슬롯 실행) → `rebuildHash`/`separateEnemies` → 장판·상태 → 투사체 이동·충돌 → 적 탄 → 설치물·플레이어 충돌 → 이펙트 → `resolveEntityDeaths` → `flushSlotEvents`. 이후 `Game.render()`.
 
-모든 개체는 스탯과 슬롯(아티팩트 → 대상 → 행동 카드 스택)으로 행동이 정의된다. 슬롯 실행은 `cards/slot-runtime.js`(대상 선택·고정 계획·이벤트 슬롯), 연계 행동은 `cards/slot-events.js`, 쿨타임은 `cards/cooldown.js`.
+모든 개체는 스탯과 슬롯(연쇄 → 대상 → 행동 카드 스택)으로 행동이 정의된다. 슬롯 실행은 `cards/slot-runtime.js`(대상 선택·고정 계획·이벤트 슬롯), 연계 행동은 `cards/slot-events.js`, 쿨타임은 `cards/cooldown.js`.
 
 ## 최적화 캐시와 무효화
 
@@ -52,6 +52,37 @@
 | 유인 후보 (`_decoyIdx`) | `sim/decoy.js` | `entityDecoyEpoch`(유인 슬롯 구성 변경) |
 | 공간 해시·설치물 해시 | `sim/spatial.js` | 프레임마다 `rebuildHash`/`rebuildStructHash` |
 | 효과 해석 캐시 (`_resolvedCache`) | `cards/slot-runtime.js` | 효과 정의·참조 스탯 값이 바뀔 때 |
+| 개체 공유 효과 해석 (`SHARED_RESOLVED`) | `cards/slot-runtime.js` | 효과 정의 객체별, 참조 스탯 값이 같은 항목만 재사용 (결과 객체는 읽기 전용) |
+| 발동 이벤트 종류 비트 (`_evMask`, `CARDS_EVENT_MASK`) | `cards/slot-events.js` | 카드 배열 **동일성** (슬롯 분석과 같은 전제) |
+| 설치물 팀 해시 목록 (`_structTeams`) | `sim/spatial.js` | 팀별 해시 표 크기가 바뀔 때 |
+| 슬롯 묶음 발동 비트 합 (`_evAll`) | `cards/slot-events.js` | 묶음의 `version`·슬롯 목록이 바뀔 때 (효과 슬롯은 따로 본다) |
+
+## 프레임 작업 예산 (과부하 방어)
+
+상수는 `sim/tuning.js`. 예산은 개체가 많을 때만 작동하며, 일반 플레이(`play-stages`)에서는 결과가 바뀌지 않는다.
+
+| 예산 | 동작 |
+| --- | --- |
+| `CARD_EVENT_BUDGET` (400, 과밀(적 > `ENEMY_UPDATE_BUDGET` 또는 탄 > `SHOT_UPDATE_BUDGET`) 때 `_CROWD` 300) | 프레임당 카드 이벤트 수 = 슬롯 실행의 대상 수. 다 쓰면 남은 슬롯 실행은 쿨타임을 걸지 않고 다음 프레임으로 미루고(사망 연계·상시 효과·매 프레임 슬롯 제외), 대상이 남은 예산보다 많으면 앞에서부터 남은 만큼만 |
+| `SHOT_HIT_BUDGET` (600, 과밀 때 `_CROWD` 400) | 프레임당 투사체 충돌 수 (따로 센다: 장판이 예산을 먼저 다 써도 탄이 적을 뚫고 지나가지 않게). 다 쓰면 멈춘 자리부터 다음 프레임에 이어서 |
+| `SLOT_EVENT_QUEUE_MAX` (4096, `cards/slot-events.js`) | 발동 이벤트 대기열 상한. 넘친 새 이벤트는 버린다 (사망·만료는 남김) |
+| `ENEMY_UPDATE_BUDGET` (800) / `CROWD_ENEMIES` (3000) | 적 갱신 주기 / 과밀 렌더·겹침 해소·충돌 반경 기준 |
+| `SHOT_UPDATE_BUDGET` (1200), `SHOT_MAX_PERIOD` (4) | 투사체가 많으면 가까운 것도 돌려 가며 갱신 (모인 시간을 넘기고, 갱신 안 한 프레임은 충돌 생략). 과밀 회전의 차례는 탄의 생성 순번(`PSoA.seq`)으로 정한다 — 목록 순번은 앞 탄이 정리될 때마다 당겨져 같은 탄이 계속 건너뛰어졌다 |
+| `SHOT_SPAWN_BUDGET_CROWD` (40) | 투사체가 `SHOT_UPDATE_BUDGET` 보다 많을 때의 프레임당 생성 수 (평소는 `SHOT_SPAWN_BUDGET`) |
+| `ZONE_UPDATE_BUDGET` (150), `ZONE_MAX_PERIOD` (3) | 장판이 많으면 돌려 가며 갱신 |
+
+휴면: 쿨타임·조건 슬롯이 없는 표는 `SLEEP_AFTER_IDLE`(1) 프레임 뒤 잠들고 `SLEEP_FRAMES_IDLE`(120)에서 `SLEEP_IDLE_SPREAD`(48)만큼 엇갈린 길이로 잔다 (깨어날 때 모아서 반영할 쿨타임이 없어 결과가 같다). 쿨타임 표는 그대로 `SLEEP_AFTER`·`SLEEP_FRAMES`.
+
+## 투사체 SoA
+
+`entities/projectile-soa.js` 의 `PSoA` 가 탄의 좌표·속도·수명·사망·LOD·휴면 장부를 갖고, `Projectile` 의 같은 이름 필드는 접근자다 (적의 `ESoA` 와 같은 방식, WASM 이 준비되면 WASM 메모리로 바뀐다).
+- 잠든 단순 탄(`EntitySlots.armShotNap`: 참조 스탯이 공격력·넉백·이동 속도·관통뿐, 유인 대상·쿨타임·조건 없음, 유도·부메랑 없음, 이동 대상이 자기 자신)은 C `run_shots` 가 `napCheck → tickEntityLifetime → napRun → cardTick` 의 이동을 같은 식으로 한다.
+- 그 판정을 바꾸는 필드(`slot` `slots` `freezeT` `directFrozen` `fearT` `directStates` `effectSlots` `burnEventEffects` `cardMove` `directMove` `damage` `knockback` `speed` `baseSpeed` `pierceLimit`)는 접근자가 값이 바뀔 때 `napOn` 을 끄고, `EntitySlot.bump` 도 끈다. JS 가 다시 맡을 때 `pullNap` 으로 장부를 되읽는다.
+- 펼쳐 복사(`{ ...shot }`)에는 접근자 값이 빠지므로 `shot.soaCopy()` 를 함께 펼친다 (`splitShot`). 워커 스냅샷은 `PROJECTILE_SOA_PROPS`·`PROJECTILE_GUARD_PROPS` 를 직접 옮기고, 메인 스레드 복제는 그 필드를 자기 값으로 둔다.
+- 슬롯은 `PSoA.compactShots`(프레임 끝)·단계 전환·새 게임에서 돌려주고 `SHOT_SLOT_REUSE_DELAY` 틱 뒤 재사용한다.
+- 충돌: C `scan_shots` 가 같은 순서로 탄을 훑어, `collideShot` 이 할 일이 없을 것이 확실한 탄(잠든 채 명중 효과 확인(`hitOk`)이 끝났고 플레이어·설치물·적과 JS 식보다 조금 넉넉하게 재도 겹치지 않음)은 부르지 않는다. 예산과 이어서 볼 자리는 JS 판과 같다.
+- `buffTargets`: C `buff_shots` 가 상태(`buffy`)가 있거나 직접 얼림·이동 배율이 기본값이 아닌(`settled` 아님) 탄만 고른다.
+- 할당: 같은 틀의 탄은 합친 카드 배열·효과 해석 항목·대상 없는 효과 값·표본 배열을 함께 쓰고, 잠든 동안 쓰지 않는 표 버퍼는 놓으며, 갱신 한 번 동안만 쓰는 문맥 객체는 풀에서 빌린다 (탄 한 발이 쥐는 객체 36 → 16개).
 
 ## 새 카드·행동 추가
 

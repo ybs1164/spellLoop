@@ -1,0 +1,15 @@
+_key,value
+attackPower,공격력
+moveSpeed,이동 속도
+maxHp,최대 체력
+knockback,넉백
+sight,시야
+reach,사거리
+defense,방어력
+shotPower,탄 공격력
+keepDistance,유지 거리
+xpReward,경험치
+shotSpeed,탄속
+shotCount,발사 수
+pierce,관통
+summonCount,소환 수

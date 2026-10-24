@@ -11,11 +11,9 @@ importScripts(...JS_MANIFEST.worker.map(p => '../' + p));   // 로드 목록은 
 UI.hideOverlay = UI.showHud = UI.showEnd = UI.updateRewards = () => {};
 
 
-const ENEMY_TYPE_IDS = Object.keys(ENEMY_TYPES);
-const typeIndex = Object.fromEntries(ENEMY_TYPE_IDS.map((id, i) => [id, i]));
 const VIEW_MARGIN = 160;   // 화면 밖으로 이만큼까지 같이 보낸다 (흔들림·큰 스프라이트·보간 여유)
 
-let inflight = 0, fxSeq = 0, crowdGrid = new Uint8Array(0), debugEnabled = false, game = null, paused = false, acked = true, last = 0, generation = 0;
+let inflight = 0, fxSeq = 0, debugEnabled = false, game = null, paused = false, acked = true, last = 0, generation = 0;
 
 /** 복제용 얕은 사본: 숫자·문자열·불리언과, 그런 것만 든 배열·평범한 객체(깊이 제한). 클래스 인스턴스·함수는 뺀다. */
 function plain(value, depth) {
@@ -41,6 +39,8 @@ function plain(value, depth) {
 
 function tagged(o, depth) {
   const copy = plain(o, depth);
+  // 투사체의 좌표·상태는 프로토타입 접근자라 Object.keys 에 없다: 값을 직접 옮긴다
+  if (o instanceof Projectile) for (const k of [...PROJECTILE_SOA_PROPS, ...PROJECTILE_GUARD_PROPS]) { const v = o[k]; if (v === null || typeof v !== 'object') copy[k] = v; else if (copy['_' + k] !== undefined) copy[k] = copy['_' + k]; }
   copy.__c = o.constructor === Object ? 0 : o.constructor.name;
   return copy;
 }
@@ -48,35 +48,7 @@ function tagged(o, depth) {
 function snapshot() {
   const g = game, cam = g.cam, hx = g.w / 2 + VIEW_MARGIN, hy = g.h / 2 + VIEW_MARGIN;
   const inView = o => Math.abs(o.x - cam.x) < hx && Math.abs(o.y - cam.y) < hy;
-  const enemies = g.enemies, rows = [];
-  if (enemies.length > ENEMY_UPDATE_BUDGET) {
-    // 과밀: Game.drawCrowd 와 같은 격자로 미리 솎아서 보낸다 (그쪽에서 다시 솎아도 결과가 같다)
-    const cell = CROWD_DRAW_CELL, cols = Math.ceil((g.w + 160) / cell), rowsN = Math.ceil((g.h + 160) / cell), size = cols * rowsN;
-    if (crowdGrid.length < size) crowdGrid = new Uint8Array(size); else crowdGrid.fill(0, 0, size);
-    const left = cam.x - g.w / 2 - 80, top = cam.y - g.h / 2 - 80;
-    for (let i = 0; i < enemies.length; i++) {
-      const e = enemies[i];
-      if (e.dead || !inView(e)) continue;
-      if (!e.boss) {
-        const cx = Math.floor((e.x - left) / cell), cy = Math.floor((e.y - top) / cell);
-        if (cx >= 0 && cx < cols && cy >= 0 && cy < rowsN) {
-          const k = cy * cols + cx;
-          if (crowdGrid[k] >= CROWD_DRAW_PER_CELL) continue;
-          crowdGrid[k]++;
-        }
-      }
-      rows.push(e);
-    }
-  } else for (let i = 0; i < enemies.length; i++) if (!enemies[i].dead && inView(enemies[i])) rows.push(enemies[i]);
-  const buf = new Float32Array(rows.length * ENEMY_STRIDE);
-  for (let i = 0; i < rows.length; i++) {
-    const e = rows[i], o = i * ENEMY_STRIDE, slot = e.slot;
-    buf[o] = e.x; buf[o + 1] = e.y; buf[o + 2] = e.radius; buf[o + 3] = e.wobble; buf[o + 4] = e.ang;
-    buf[o + 5] = e.flash || 0; buf[o + 6] = e.healT || 0; buf[o + 7] = e.freezeT || 0; buf[o + 8] = e.burnT || 0;
-    buf[o + 9] = e.rootT || 0; buf[o + 10] = e.markT || 0; buf[o + 11] = e.fearT || 0; buf[o + 12] = e.hp; buf[o + 13] = e.maxHp;
-    buf[o + 14] = typeIndex[e.type]; buf[o + 15] = e.sprite; buf[o + 16] = e.scale;
-    buf[o + 17] = (e.boss ? 1 : 0) | (slot?.has('entityGuard') ? 2 : 0) | (slot?.has('armor') ? 4 : 0);
-  }
+  const enemies = g.enemies, buf = packEnemyRows(g, hx, hy);   // 적 행 (js/worker/protocol.js)
   const list = (items, depth = 2, limit = Infinity) => {
     const out = [];
     const from = Math.max(0, items.length - limit);

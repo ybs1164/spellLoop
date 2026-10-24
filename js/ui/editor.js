@@ -4,14 +4,20 @@ Object.assign(UI, {
   /* ------------------------------------------------------------------ */
   /* 카드 편집기                                                          */
   /* ------------------------------------------------------------------ */
-  /** 슬롯 하나를 아티팩트 · 대상 · 행동 카드 슬롯으로 나눠 그린다. zone 이 있으면 각 칸이 드롭 영역이 된다. */
-  slotSectionsHtml(cards, card, zone) {
-    return `<div class="slot-sections">${slotSections(cards).map(sec => {
-      const body = sec.ids.map((id, k) => `${card(id, sec.start + k)}`).join('');
-      const attrs = zone ? ` class="slot-cards dropzone" data-zone="slot" data-slot="${zone.slot}" data-section="${sec.type}" data-end="${sec.start + sec.ids.length}"` : ' class="slot-cards"';
-      return `<div class="slot-section sec-${sec.id}"><div class="slot-section-h" style="color:${CARD_TYPES[sec.type].color}">${sec.label} 카드 슬롯</div>
-        <div${attrs}>${body}${zone ? '<div class="cell">+</div>' : body ? '' : `<span class="muted">${sec.type === 'artifact' ? '제약 없음' : '비어 있음'}</span>`}</div></div>`;
-    }).join('')}</div>`;
+  /**
+   * 슬롯 하나를 카드 한 줄로 그린다. zone 이 있으면(플레이어 슬롯) 줄 전체가 드롭 영역이 되고,
+   * 맨 끝에 다음 순서(대상 → 행동 → 연쇄 → 대상 …)의 빈 칸을 보여 준다. 첫 카드가 순서의 기준이다.
+   */
+  slotStripHtml(cards, card, zone) {
+    const body = cards.map((id, i) => card(id, i)).join('');
+    const attrs = zone ? ` class="slot-cards slot-strip dropzone" data-zone="slot" data-slot="${zone.slot}" data-end="${cards.length}"` : ' class="slot-cards slot-strip"';
+    let tail = '';
+    if (!zone) tail = cards.length ? '' : '<span class="muted">비어 있음</span>';
+    else if (cards.length < MAX_SLOT_CARDS) {
+      const next = slotNextType(cards), info = next ? CARD_TYPES[next] : null;
+      tail = `<div class="cell next" data-type="${next || ''}" style="--c:${info ? info.color : 'var(--muted)'}" title="${info ? `다음 칸: ${info.label} 카드` : '처음 놓는 카드가 순서의 기준이 됩니다'}">+<span>${info ? info.label : '첫 카드'}</span></div>`;
+    }
+    return `<div${attrs}>${body}${tail}</div>`;
   },
 
   editorEntities(g) {
@@ -37,7 +43,7 @@ Object.assign(UI, {
       entitySlot(owner, kind);
       const name = this.entityName(owner, kind);
       const card = id => `<div class="entity-card">${this.cardHtml(id, '').replace('draggable="true"', 'draggable="false"')}</div>`;
-      const slots = owner.slots.map(slot => `<div class="entity-slot-section">${this.slotSectionsHtml(slot.cards, card)}${this.slotCooldownHtml(slot)}</div>`).join('');
+      const slots = owner.slots.map(slot => `<div class="entity-slot-section">${this.slotStripHtml(slot.cards, card)}${this.slotCooldownHtml(slot)}</div>`).join('');
       // 개체의 카드 슬롯은 닫힌 상태가 기본이며, 연 상태는 편집기를 다시 그려도 유지한다.
       const open = (this.openEntitySlots ||= new WeakSet()).has(owner) ? ' open' : '';
       return `<div class="slot-row entity-slot entity-group"><div class="section-title">${name || owner.kind} #${oi + 1} <span class="muted">(${Math.round(owner.x)}, ${Math.round(owner.y)}) · 슬롯 ${owner.slots.length}${Number.isFinite(entityStats(owner).lifetime) && Number.isFinite(owner.life) ? ` · ${owner.life.toFixed(1)}초` : ''}</span></div>${this.entityStatsHtml(owner, true)}
@@ -56,7 +62,7 @@ Object.assign(UI, {
       const card = (id, ci) => this.cardHtml(id, `data-src="slot" data-slot="${si}" data-idx="${ci}"`);
       return `
         <div class="slot-row card-slot-only${si === this.editSel ? ' sel' : ''}" data-slot="${si}">
-          ${this.slotSectionsHtml(slot.cards, card, { slot: si })}
+          ${this.slotStripHtml(slot.cards, card, { slot: si })}
           ${this.slotCooldownHtml(slot)}
         </div>`;
     }).join('');
@@ -72,7 +78,7 @@ Object.assign(UI, {
         <div class="editor-workspace">
         <section class="panel editor-slot-pane" aria-label="슬롯">
         <h2>카드 편집</h2>
-        <div class="section-title">슬롯 ${deck.slots.length}개 <span class="muted">· 오른쪽 카드를 맞는 칸으로 드래그 · 쿨타임은 기본 ${BASE_COOLDOWN}초에서 카드 연산을 배치 순서대로 적용</span></div>
+        <div class="section-title">슬롯 ${deck.slots.length}개 <span class="muted">· 카드를 슬롯 끝의 빈 칸으로 드래그 (대상 → 행동 → 연쇄 순서 반복) · 쿨타임은 기본 ${BASE_COOLDOWN}초에서 카드 연산을 배치 순서대로 적용</span></div>
         ${this.entityStatsHtml(g.player, false)}<div class="slots">${rows}</div>
         </section>
         <aside class="panel editor-inventory-pane" aria-label="보관함">
@@ -82,7 +88,7 @@ Object.assign(UI, {
         <div class="legend">
           <span><i style="background:${CARD_TYPES.target.color}"></i>대상 카드</span>
           <span><i style="background:${CARD_TYPES.action.color}"></i>행동 카드</span>
-          <span><i style="background:${CARD_TYPES.artifact.color}"></i>아티팩트 카드</span>
+          <span><i style="background:${CARD_TYPES.artifact.color}"></i>연쇄 카드</span>
         </div>
         </aside>
         </div>
@@ -106,7 +112,7 @@ Object.assign(UI, {
 
   applyMove(from, to) {
     const err = this.game.player.deck.move(from, to);
-    if (err) this.editMsg = err;
+    this.editMsg = err || this.game.player.deck.notice || '';
     this.refreshEditor();
   },
 
@@ -137,60 +143,36 @@ Object.assign(UI, {
       }
     }, { passive: true });
     ov.addEventListener('touchcancel', () => { swipe = null; }, { passive: true });
-    const marker = document.createElement('div');
-    marker.className = 'insert-marker';
     const clearOver = () => {
-      ov.querySelectorAll('.over, .dragging').forEach(el => el.classList.remove('over', 'dragging'));
-      marker.remove();
+      ov.querySelectorAll('.over, .dragging, .drop-cell').forEach(el => el.classList.remove('over', 'dragging', 'drop-cell'));
     };
     const clearTarget = () => {
-      ov.querySelectorAll('.over').forEach(el => el.classList.remove('over'));
-      marker.remove();
+      ov.querySelectorAll('.over, .drop-cell').forEach(el => el.classList.remove('over', 'drop-cell'));
     };
-    // 카드는 자기 종류의 칸(조건 · 대상 · 행동 카드 슬롯)에만 놓을 수 있다.
+    // 슬롯에 놓을 위치: 놓인 카드 위면 그 자리(같은 종류끼리 교체), 그 밖에는 맨 뒤의 빈 칸.
+    const dropIndex = (zone, e) => {
+      const cards = this.game.player.deck.slots[Number(zone.dataset.slot)].cards;
+      const hit = e.target.closest('.pcard[data-src="slot"]');
+      return { cards, idx: hit && zone.contains(hit) ? Number(hit.dataset.idx) : cards.length };
+    };
+    // 카드는 자기 순서에 맞는 칸(맨 뒤의 다음 종류 칸, 또는 같은 종류의 놓인 카드 자리)에만 놓을 수 있다.
+    const accepts = (zone, e) => {
+      if (zone.dataset.zone !== 'slot') return true;
+      const { cards, idx } = dropIndex(zone, e);
+      if (idx < cards.length) return CARDS[cards[idx]]?.type === dragType;
+      return cards.length < MAX_SLOT_CARDS && (!cards.length || slotNextType(cards) === dragType);
+    };
     const targetZone = e => {
-      const zone = e.target.closest('.dropzone');
-      if (zone) return !zone.dataset.section || zone.dataset.section === dragType ? zone : null;
       const row = e.target.closest('.slot-row');
-      return row && !e.target.closest('button, .slot-head') ? row.querySelector(`.slot-cards[data-section="${dragType}"]`) : null;
-    };
-    const insertion = (zone, e) => {
-      const cards = [...zone.querySelectorAll('.pcard')];
-      const cell = zone.querySelector('.cell');
-      if (e.target.closest('.cell') || !cards.length) return { idx: zone.dataset.end != null ? Number(zone.dataset.end) : cards.length, anchor: cell, after: false };
-      const rows = [];
-      for (const card of cards) {
-        const rect = card.getBoundingClientRect();
-        let row = rows[rows.length - 1];
-        if (!row || Math.abs(row.top - rect.top) > rect.height / 2) {
-          row = { top: rect.top, bottom: rect.bottom, cards: [] };
-          rows.push(row);
-        }
-        row.cards.push({ card, rect });
-      }
-      // Choose the nearest visual row, then the nearest insertion boundary.
-      let row = rows[rows.length - 1];
-      for (let i = 0; i < rows.length - 1; i++) {
-        if (e.clientY < (rows[i].bottom + rows[i + 1].top) / 2) { row = rows[i]; break; }
-      }
-      for (const { card, rect } of row.cards) {
-        if (e.clientX < rect.left + rect.width / 2) {
-          return { idx: Number(card.dataset.idx), anchor: card, after: false };
-        }
-      }
-      const last = row.cards[row.cards.length - 1].card;
-      return { idx: Number(last.dataset.idx) + 1, anchor: last, after: true };
+      const zone = e.target.closest('.dropzone') || (row && !e.target.closest('button, .slot-head') ? row.querySelector('.slot-strip') : null);
+      return zone && accepts(zone, e) ? zone : null;
     };
     const showTarget = (zone, e) => {
-      if (!zone.classList.contains('over')) { clearTarget(); zone.classList.add('over'); }
+      clearTarget();
+      zone.classList.add('over');
       if (zone.dataset.zone !== 'slot') return;
-      const pos = insertion(zone, e);
-      const rect = pos.anchor.getBoundingClientRect();
-      const bounds = zone.getBoundingClientRect();
-      zone.append(marker);
-      marker.style.left = `${(pos.after ? rect.right + 6 : rect.left - 6) - bounds.left - zone.clientLeft}px`;
-      marker.style.top = `${rect.top - bounds.top - zone.clientTop}px`;
-      marker.style.height = `${rect.height}px`;
+      const { cards, idx } = dropIndex(zone, e);
+      (idx < cards.length ? zone.querySelector(`.pcard[data-idx="${idx}"]`) : zone.querySelector('.cell.next'))?.classList.add('drop-cell');
     };
 
     ov.addEventListener('dragstart', (e) => {
@@ -220,7 +202,7 @@ Object.assign(UI, {
       e.preventDefault();
       const to = zone.dataset.zone === 'inv'
         ? { dest: 'inv' }
-        : { dest: 'slot', slot: Number(zone.dataset.slot), idx: insertion(zone, e).idx };
+        : { dest: 'slot', slot: Number(zone.dataset.slot), idx: dropIndex(zone, e).idx };
       const from = drag;
       drag = null;
       clearOver();

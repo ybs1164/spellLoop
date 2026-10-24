@@ -3,7 +3,7 @@
 // 개체 전용 카드·팀 규칙·효과 기본값과 설명 문구
 
 // Every entity owns independent artifact/target/action slots with their own cooldowns.
-const ENTITY_SHARED_ACTIONS = ['heal', 'shield', 'armor', 'haste', 'rage', 'focus', 'amplify', 'prolong', 'rally', 'refresh', 'mark', 'root', 'burn', 'fear', 'snipe', 'spread'];
+const ENTITY_SHARED_ACTIONS = ['heal', 'shield', 'armor', 'haste', 'rage', 'focus', 'amplify', 'mark', 'root', 'burn', 'fear', 'snipe', 'spread'];
 
 const ENTITY_ACTIONS = {};
 CARD_GROUPS.push({ id: 'entity', name: '개체 기믹' });
@@ -34,7 +34,14 @@ CARDS.entityArea = {
   resolve: env => {
     const o = env.owner;
     const r = entityStats(o).range * (entityActionConfig(o, 'snipe')?.scaleArea ? env.game.player.stats.area : 1);
-    return env.game.enemies.filter(e => !e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2).map(e => ({ kind: 'enemy', e }));
+    const list = env.game.enemies;
+    if (typeof WasmCore !== 'undefined' && WasmCore.on() && WasmCore.syncOrd(list)) {
+      // 같은 판정을 C 가 SoA 에서 넉넉하게 먼저 거른다 (목록 순서 그대로). 최종 판정은 원래 식
+      const c = WasmCore.exports.cull(list.length, o.x, o.y, r, 1), cand = WasmCore.cand, out = [];
+      for (let k = 0; k < c; k++) { const e = list[cand[k]]; if (!e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2) out.push(e); }
+      return out;
+    }
+    return list.filter(e => !e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2);
   },
 };
 CARDS.ifPlayerContact = {
@@ -128,7 +135,7 @@ for (const id of Object.keys(ENTITY_EFFECT_DEFAULTS)) {
 const ENTITY_VARIANTS = new Map();
 let entityVariantSerial = 0;
 const ENTITY_CHAIN_CARDS = new Map();
-// 거리 조건 아티팩트: 값마다 변형 카드가 하나씩 생긴다.
+// 거리 조건 연쇄 카드: 값마다 변형 카드가 하나씩 생긴다.
 function entityChainCard(type, value, radius = false) {
   const key = JSON.stringify([type, value, radius]);
   if (ENTITY_CHAIN_CARDS.has(key)) return ENTITY_CHAIN_CARDS.get(key);
@@ -144,7 +151,7 @@ function entityChainCard(type, value, radius = false) {
       return dist2(env.owner.x, env.owner.y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
     }, near: env => {
       const x = env.owner.x, y = env.owner.y;
-      return o => dist2(x, y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2;
+      return withCull(o => dist2(x, y, o.x, o.y) <= (value + (radius ? o.radius || o.r || 0 : 0)) ** 2, x, y, value, !!radius);
     } }),
   };
   ENTITY_CHAIN_CARDS.set(key, id);

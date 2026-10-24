@@ -121,7 +121,7 @@ CARDS.entityMovementTarget = {
   desc: '시야 상태 안의 가장 가까운 적을 고르고, 적이 없으면 플레이어를 고른다.',
   resolve: env => {
     const enemy = env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).sight)[0];
-    return [enemy ? { kind: 'enemy', e: enemy } : env.playerTarget()];
+    return [enemy || env.playerTarget()];
   },
 };
 CARDS.entityMovementDistance = {
@@ -167,7 +167,7 @@ CARDS.entityInReach = {
   // test 와 같은 식으로 개체를 바로 판정한다 (전체 대상을 감싸기 전에 먼 개체를 거르는 데 쓴다).
   near: env => {
     const owner = env.owner, x = owner.x, y = owner.y, base = entityStats(owner).reach;
-    return o => dist2(x, y, o.x, o.y) <= (base + (o.radius || o.r || 0)) ** 2;
+    return withCull(o => dist2(x, y, o.x, o.y) <= (base + (o.radius || o.r || 0)) ** 2, x, y, base, true);
   },
 };
 CARDS.entityInArea = {
@@ -179,7 +179,7 @@ CARDS.entityInArea = {
   },
   near: env => {
     const owner = env.owner, x = owner.x, y = owner.y, radius = owner.r ?? owner.radius ?? entityStats(owner).range;
-    return o => dist2(x, y, o.x, o.y) <= radius ** 2;
+    return withCull(o => dist2(x, y, o.x, o.y) <= radius ** 2, x, y, radius, false);
   },
 };
 CARDS.entityEnemyInReach = {

@@ -82,8 +82,7 @@ Object.assign(UI, {
       this._last.cd = null;
       const slots = deck.slots.map((s, i) => {
         const cls = SkillDeck.runnable(s) ? '' : ' empty';
-        const minis = slotSections(s.cards).filter(sec => sec.ids.length)
-          .map(sec => sec.ids.map(id => this.miniHtml(id)).join('')).join('<i class="dsep"></i>');
+        const minis = s.cards.map(id => this.miniHtml(id)).join('');
         return `<div class="dslot${cls}" data-i="${i}"><span class="no">${i + 1}</span>${minis}
           <span class="dcd">${this.iconHtml('uiTime', 12)}<b></b></span><i class="cdbar"></i></div>`;
       }).join('');

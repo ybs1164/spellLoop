@@ -15,7 +15,7 @@ class GameDecoy {
       let entry = scan.lists[i];
       if (!entry || entry.arr !== arr || entry.n > arr.length) entry = scan.lists[i] = { arr, n: 0, found: [] };
       // 유인 카드를 가진 적 슬롯이 하나도 없으면 적 목록은 훑지 않는다 (적의 기본 카드에는 유인이 없다)
-      if (i === 0 && entityDecoyEnemySlots <= 0) { entry.n = arr.length; continue; }
+      if (entityDecoySlots <= 0 || i === 0 && entityDecoyEnemySlots <= 0) { entry.n = arr.length; continue; }
       for (; entry.n < arr.length; entry.n++) if (slotMayHaveDecoy(arr[entry.n])) entry.found.push(arr[entry.n]);
     }
     return scan.lists;
@@ -40,6 +40,17 @@ class GameDecoy {
    * 프레임마다·유인 슬롯이 켜지거나 꺼지거나 범위가 바뀔 때·개체가 늘어날 때 다시 만든다. 거리는 항상 현재 좌표로 잰다.
    * 대상 지정이 따로 있는 유인이 있으면 옛 방식(전부 훑기)으로 돌아간다.
    */
+  /**
+   * 「대기 슬롯 이벤트가 없고, decoyIndex() 가 지금 다시 만들지 않고 빈 표(켜진 유인 없음)를 돌려준다」면 true. decoyIndex 를 부르지 않으므로 캐시를 바꾸지 않는다
+   * (napFast 가 decoyIndex 를 불러도 같은 결과·같은 캐시라, run_enemies 가 그 판정을 건너뛰어도 된다).
+   */
+  decoyQuiet() {
+    if (this._slotEvents?.length) return false;
+    const idx = this._decoyIdx;
+    if (!idx || idx.linear || idx.grid.size || idx.stamp !== this._decoyStamp || idx.epoch !== entityDecoyEpoch) return false;
+    return idx.sig === this.enemies.length + this.objects.length + this.allies.length + this.zones.length + this.projectiles.length + this.hazards.length + this.pickups.length;
+  }
+
   decoyIndex() {
     const sig = this.enemies.length + this.objects.length + this.allies.length + this.zones.length + this.projectiles.length + this.hazards.length + this.pickups.length;
     let idx = this._decoyIdx;

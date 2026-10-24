@@ -1,0 +1,10 @@
+_key,speed,redirectTargets,distance,range,damage,knockback,pierce,freezeMultiplier,fearImmune,elem,multiplier,reduction,frontDot,count,hitRadius
+entityFollow,,,,,,,,,,,,,,,
+entityMove,170,true,,,,,,,,,,,,,
+entityKeep,,,240,,,,,,,,,,,,
+entityDecoy,,true,,350,,,,,,,,,,,
+entityHit,,,,,10,140,null,,,,,,,,
+entityResistance,,,,,,,,0.4,true,,,,,,
+entityAffinity,,,,,,,,,,frost,2,,,,
+entityGuard,,,,,,,,,,,,0.85,-0.35,,
+orbit,4,,,,,,,,,,,,,3,14

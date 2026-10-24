@@ -103,6 +103,22 @@ class GameDamage {
     if (hits[id]) this.addFx({ kind: 'beam', x: p.x, y: p.y, x1: o.x, y1: o.y, color, w: 3, life: 0.2 });
   }
 
+  /** buffTargets 의 투사체 목록을 C(buff_shots)로 거른다. 고른 탄은 원래 판정을 그대로 한다 (같은 순서). 탄 슬롯이 없으면 false */
+  buffShotsWasm(list, out, wraps) {
+    if (!WasmCore.on() || list.length > WasmCore.pcap) return false;
+    const ord = WasmCore.pord, n = list.length;
+    for (let i = 0; i < n; i++) { const pi = list[i]._pi; if (pi === undefined) return false; ord[i] = pi; }
+    const c = WasmCore.exports.buff_shots(n), cand = WasmCore.cand;
+    for (let k = 0; k < c; k++) {
+      const o = list[cand[k]];
+      if (!o.directStates && !o.directBurnStacks && !o.markStacks && !o.cardBuffs && !o.burnStacks) { o.directFrozen = false; o.directMove = 1; continue; }
+      let w = wraps.get(o);
+      if (!w) wraps.set(o, w = TARGET_LIST_WRAP[4](o));
+      out.push(w);
+    }
+    return true;
+  }
+
   // 필드 값을 누적 곱하지 않고 활성 버프의 배율만 적용하고 만료 시 복구한다.
   syncTargetBuffs(o) {
     const active = k => o.cardBuffs?.[k] > 0;
@@ -132,9 +148,24 @@ class GameDamage {
     const wraps = this._targetWraps ||= new WeakMap();
     const out = [{ kind: 'self' }];
     const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
-    for (let i = 0; i < lists.length; i++) {
+    // 적: 상태 비트(ESoA.buffy)가 0 이면 아무 일도 없다 — 직접 얼림·이동 배율만 초기화한다 (Enemy 접근자 대신 SoA 에 바로 쓴다).
+    const enemies = this.enemies;
+    if (WasmCore.on() && WasmCore.syncOrd(enemies)) {
+      const c = WasmCore.exports.buff_scan(enemies.length), cand = WasmCore.cand;   // 같은 일을 C 가 SoA 에서 (상태 있는 적 번호만 돌려준다)
+      for (let k = 0; k < c; k++) out.push(enemies[cand[k]]);
+    } else {
+      const BF = ESoA.buffy, DF = ESoA.directFrozen, DM = ESoA.directMove;
+      for (const o of enemies) {
+        if (o.dead) continue;
+        const si = o._si;
+        if (BF[si] === 0) { DF[si] = 0; DM[si] = 1; continue; }
+        out.push(o);
+      }
+    }
+    for (let i = 1; i < lists.length; i++) {
       const list = lists[i];
       if (!list) continue;
+      if (i === 4 && this.buffShotsWasm(list, out, wraps)) continue;   // 투사체: 상태 있는 탄만 C 가 골라 준다
       for (const o of list) {
         if (o.dead) continue;
         if (!o.directStates && !o.directBurnStacks && !o.markStacks && !o.cardBuffs && (!o.burnStacks || o instanceof Enemy)) { o.directFrozen = false; o.directMove = 1; continue; }
@@ -199,13 +230,29 @@ class GameDamage {
     let pending;
     do {
       pending = [];
-      for (const [kind, list] of [['enemy', this.enemies], ['ally', this.allies], ['object', this.objects], ['zone', this.zones], ['shot', this.projectiles], ['shot', this.hazards], ['pickup', this.pickups]]) {
-        for (const owner of list) if (owner.dead) {
+      // 적: 죽은 적만 C 가 SoA(dead)에서 골라 준다 (목록 순서 그대로)
+      const enemies = this.enemies;
+      if (WasmCore.on() && WasmCore.syncOrd(enemies)) {
+        const c = WasmCore.exports.scan_dead(enemies.length), cand = WasmCore.cand;
+        for (let k = 0; k < c; k++) {
+          const slot = entitySlot(enemies[cand[k]], 'enemy');
+          if (!slot.deathDone) pending.push(slot);
+        }
+      } else for (const owner of enemies) if (owner.dead) {
+        const slot = entitySlot(owner, 'enemy');
+        if (!slot.deathDone) pending.push(slot);
+      }
+      const lists = [this.allies, this.objects, this.zones, this.projectiles, this.hazards, this.pickups];
+      for (let li = 0; li < 6; li++) {
+        const list = lists[li], kind = DEATH_LIST_KINDS[li];
+        for (let i = 0; i < list.length; i++) {
+          const owner = list[i];
+          if (!owner.dead) continue;
           const slot = entitySlot(owner, kind);
           if (!slot.deathDone) pending.push(slot);
         }
       }
-      for (const slot of pending) slot.onDeath(this);
+      for (let i = 0; i < pending.length; i++) pending[i].onDeath(this);
     } while (pending.length);
   }
 
@@ -235,26 +282,48 @@ class GameDamage {
 
   /** 화상 도트 피해 */
   updateStatuses(dt) {
-    for (const e of this.enemies) {
-      if (e.dead || e.burnT <= 0) continue;
-      if (e.burnStacks) {
-        const damage = e.burnStacks.reduce((sum, s) => sum + s.dps * Math.min(dt, s.time), 0);
-        for (const stack of e.burnStacks) stack.time = Math.max(0, stack.time - dt);
-        e.burnStacks = e.burnStacks.filter(s => s.time > 1e-9);
-        e.burnT = e.burnStacks.reduce((max, s) => Math.max(max, s.time), 0);
-        e.burnDps = e.burnStacks.reduce((sum, s) => sum + s.dps, 0);
-        e.burnPending = (e.burnPending || 0) + damage;
-        e.burnTick = (e.burnTick || 0) + dt;
-        if (e.burnPending > 0 && (e.burnTick >= 0.5 || !e.burnStacks.length)) {
-          this.damageEnemy(e, e.burnPending, 0, 0, 0, '#ffb347', 'fire');
-          e.burnPending = 0; e.burnTick = 0;
+    const enemies = this.enemies;
+    let k0 = 0;
+    // 살아 있고 화상이 남은 적만 C 가 SoA 에서 골라 준다. 도중에 다른 적이 화상을 새로 얻으면(ESoA.burnGain) 그 뒤는 JS 판정으로 이어 본다.
+    if (WasmCore.on() && WasmCore.syncOrd(enemies)) {
+      const n = enemies.length, c = WasmCore.exports.scan_burn(n);
+      k0 = n;
+      if (c) {
+        const idx = WasmCore.cand.slice(0, c), gain = ESoA.burnGain;   // 피해 처리(damageEnemy)가 cull 등으로 CAND 를 덮을 수 있다
+        for (let k = 0; k < c; k++) {
+          const e = enemies[idx[k]];
+          if (e.dead || e.burnT <= 0) continue;   // 앞 적의 피해 처리로 이번 프레임에 죽었을 수 있다
+          this.tickBurn(e, dt);
+          if (ESoA.burnGain !== gain) { k0 = idx[k] + 1; break; }
         }
-      } else {
-        const damage = e.burnDps * Math.min(dt, e.burnT);
-        e.burnT = Math.max(0, e.burnT - dt);
-        if (damage > 0) this.damageEnemy(e, damage, 0, 0, 0, '#ffb347', 'fire');
-        if (e.burnT <= 0) e.burnDps = 0;
       }
+    }
+    for (let k = k0; k < enemies.length; k++) {
+      const e = enemies[k];
+      if (e.dead || e.burnT <= 0) continue;
+      this.tickBurn(e, dt);
+    }
+  }
+
+  /** 적 하나의 화상 한 틱 (updateStatuses) */
+  tickBurn(e, dt) {
+    if (e.burnStacks) {
+      const damage = e.burnStacks.reduce((sum, s) => sum + s.dps * Math.min(dt, s.time), 0);
+      for (const stack of e.burnStacks) stack.time = Math.max(0, stack.time - dt);
+      e.burnStacks = e.burnStacks.filter(s => s.time > 1e-9);
+      e.burnT = e.burnStacks.reduce((max, s) => Math.max(max, s.time), 0);
+      e.burnDps = e.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+      e.burnPending = (e.burnPending || 0) + damage;
+      e.burnTick = (e.burnTick || 0) + dt;
+      if (e.burnPending > 0 && (e.burnTick >= 0.5 || !e.burnStacks.length)) {
+        this.damageEnemy(e, e.burnPending, 0, 0, 0, '#ffb347', 'fire');
+        e.burnPending = 0; e.burnTick = 0;
+      }
+    } else {
+      const damage = e.burnDps * Math.min(dt, e.burnT);
+      e.burnT = Math.max(0, e.burnT - dt);
+      if (damage > 0) this.damageEnemy(e, damage, 0, 0, 0, '#ffb347', 'fire');
+      if (e.burnT <= 0) e.burnDps = 0;
     }
   }
 
@@ -340,4 +409,5 @@ class GameDamage {
     this.pickups.push(new Pickup('gem', x, y, value));
   }
 }
+const DEATH_LIST_KINDS = ['ally', 'object', 'zone', 'shot', 'shot', 'pickup'];
 mixin(Game, GameDamage);

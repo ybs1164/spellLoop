@@ -85,3 +85,12 @@ function ownerCanAct(owner) {
   const d = owner.directStates;
   return !(d && (d.freeze > 0 || d.fear > 0));
 }
+
+/**
+ * 거리 조건 판정(near)에 「이 범위 밖이면 반드시 탈락」 표시를 붙인다. allTargets 가 적 목록을 C(cull)로 먼저 거를 때 쓰며,
+ * 거른 뒤에도 원래 판정을 다시 하므로 표시는 넉넉해도 되고 결과는 달라지지 않는다.
+ */
+function withCull(pred, x, y, base, useRadius) {
+  pred.cull = { x, y, base, useRadius };
+  return pred;
+}

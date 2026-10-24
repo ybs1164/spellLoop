@@ -9,6 +9,8 @@
     "check:all": "node tools/run-all-checks.cjs",
     "check:save-baseline": "node tools/run-all-checks.cjs --save",
     "bench": "node tools/bench-frame.cjs",
-    "play": "node tools/play-stages.cjs"
+    "play": "node tools/play-stages.cjs",
+    "data:export": "node tools/export-csv.cjs && node tools/extract-rules.cjs",
+    "data:check": "node tools/export-csv.cjs --check && node tools/extract-rules.cjs --check"
   }
 }

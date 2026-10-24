@@ -149,8 +149,7 @@ b.c-artifact { color: var(--filter); }
 .editor-inventory-pane .pcard { flex-shrink: 0; }
 .editor-inventory-pane .legend { gap: 6px 12px; }
 @media (max-width: 1000px) {
-  .player-editor .slot-sections { grid-template-columns: 1fr; }
-  .player-editor .slot-row.card-slot-only { grid-template-columns: minmax(0, 1fr); }
+    .player-editor .slot-row.card-slot-only { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 620px) {
   .editor-slot-pane > .sub { display: none; }
@@ -365,20 +364,16 @@ h3.codex-h { margin-top: 26px; font-size: 18px; text-align: center; }
 .cx-settings > div { margin-top: 6px; padding: 4px 8px; background: #0f131d; }
 .cx-settings b { color: #e6e9f2; }
 
-/* ---------- 조건 · 대상 · 행동 카드 슬롯 ---------- */
-/* 이벤트 · 대상 칸은 들어 있는 카드 수만큼만 넓어지고, 남는 폭은 행동 칸이 쓴다. */
-.slot-sections { display: grid; grid-template-columns: fit-content(30%) fit-content(35%) minmax(0, 1fr); gap: 8px; min-width: 0; }
-.slot-section { min-width: 0; padding: 6px 6px 2px; background: rgba(0, 0, 0, .18); border: 2px solid var(--line); }
-.slot-section-h { white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
-.slot-section .slot-cards { min-height: 0; padding: 6px 2px 4px; gap: 8px; }
-.slot-section .slot-cards.dropzone { min-height: 104px; }
-.slot-section .slot-cards .cell { flex: 1 0 60px; width: auto; }
-.slot-section.sec-artifact .slot-cards .cell, .slot-section.sec-target .slot-cards .cell { flex: 0 0 74px; }
-.entity-slot .slot-section .slot-cards { margin: 0; }
+/* ---------- 슬롯 카드 한 줄: 대상 → 행동 → 연쇄 순환, 끝에 다음 순서의 빈 칸 ---------- */
+.slot-strip { gap: 8px; padding: 10px 6px 6px; }
+.slot-strip.dropzone { min-height: 118px; }
+.slot-strip .cell { flex: 0 0 74px; min-height: 100px; align-content: center; gap: 2px; font-size: 22px; line-height: 1; border-color: var(--c, var(--line)); color: var(--c, var(--line)); }
+.slot-strip .cell span { font-size: 11px; font-weight: 700; }
+.slot-strip .cell.next { background: color-mix(in srgb, var(--c, #888) 8%, transparent); }
+.slot-strip.over .cell { background: color-mix(in srgb, var(--c, #888) 8%, transparent); }
+.slot-strip .drop-cell { outline: 3px solid var(--accent); outline-offset: 3px; background: rgba(79, 209, 255, .12); }
+.entity-slot .slot-strip { margin: 0; }
 .fixed-slot { display: block; cursor: default; }
-@media (max-width: 720px) {
-  .slot-sections { grid-template-columns: 1fr; }
-}
 .slot-toggle { margin-top: 10px; }
 .slot-toggle > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #e6ebf7; user-select: none; }
 .slot-toggle > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

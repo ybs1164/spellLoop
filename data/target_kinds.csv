@@ -1,0 +1,10 @@
+_key,label,card,inAll,key
+self,플레이어,self,true,
+enemy,적,enemies,true,e
+point,지점,,,
+object,설치물,objects,true,o
+ally,아군,allies,true,a
+zone,장판,zones,true,z
+shot,탄환,shots,true,s
+gem,보석,gems,true,g
+pickup,아이템,pickups,true,g

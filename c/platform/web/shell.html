@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Amagos</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #12141e; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; outline: none; }   /* SDL 이 CSS 크기를 따라 캔버스 해상도를 맞춘다 */
+  </style>
+</head>
+<body>
+  <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    var Module = { canvas: document.getElementById('canvas') };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

@@ -95,7 +95,7 @@ const CARDS = {
   lastHit: {
     type: 'target', kind: 'enemy', name: '직전 표적', weight: 2,
     desc: '모든 슬롯에서 가장 최근에 행동을 받은 적을 고른다.',
-    resolve: (env, ctx) => { const e = ctx.deck.lastEnemy; return e && !e.dead ? [{ kind: 'enemy', e }] : []; },
+    resolve: (env, ctx) => { const e = ctx.deck.lastEnemy; return e && !e.dead ? [e] : []; },
   },
   all: {
     type: 'target', kind: 'all', name: '전체', weight: 1,
@@ -107,7 +107,7 @@ const CARDS = {
     type: 'target', kind: 'enemy', name: '가장 가까운 적', weight: 3,
     desc: '슬롯 주인 기준 시야 안에서 가장 가까운 적 하나를 고른다.',
     resolve: env => env.owner
-      ? env.game.nearestEnemies(env.owner.x, env.owner.y, 1, 600).map(e => ({ kind: 'enemy', e }))
+      ? env.game.nearestEnemies(env.owner.x, env.owner.y, 1, 600)
       : env.byDist(env.enemiesInSight(600)).slice(0, 1),
   },
   woundedEnemies: {
@@ -198,10 +198,6 @@ const CARDS = {
   amplify: {
     type: 'action', group: 1, name: '증폭', weight: 1, accepts: ALL_KINDS,
     desc: '6초간 범위 +40%.', run: buff('amplify'),
-  },
-  prolong: {
-    type: 'action', group: 1, name: '연장', weight: 1, accepts: ALL_KINDS,
-    desc: '8초간 지속시간 +50%.', run: buff('prolong'),
   },
   armor: {
     type: 'action', group: 1, name: '철갑', weight: 1, accepts: ALL_KINDS,
@@ -305,11 +301,6 @@ const CARDS = {
     type: 'action', group: 5, name: '궁수 소환', weight: 1, accepts: ALL_KINDS,
     desc: '궁수 소환 10초.', run: each('summonArcher'),
   },
-  rally: {
-    type: 'action', group: 5, name: '격려', weight: 1, accepts: ['object', 'ally', 'zone', 'shot'],
-    desc: '수명을 3초 늘린다.',
-    run: (ts, env) => ts.forEach((t) => env.rally(env.at(t))),
-  },
   ward: {
     type: 'action', group: 5, name: '결계', weight: 1, accepts: ALL_KINDS,
     desc: '3초간 반경 120의 결계를 만들어 적의 접근을 막는다.', run: (ts, env) => ts.forEach(t => env.ward(env.at(t), t, env.frameDt)),
@@ -327,14 +318,9 @@ const CARDS = {
     desc: '즉시 저격해 공격력의 1000% 피해를 준다.',
     run: (ts, env) => ts.forEach((t) => env.snipe(t)),
   },
-  refresh: {
-    type: 'action', group: 6, name: '갱신', weight: 2, accepts: ['object', 'ally', 'zone', 'shot'],
-    keys: ['placed'], desc: '남은 수명을 처음으로 되돌린다.',
-    run: (ts, env) => ts.forEach((t) => env.refresh(env.at(t))),
-  },
   split: {
     type: 'action', group: 6, name: '분열', weight: 1, accepts: ['self', 'enemy', 'object', 'ally', 'zone', 'shot'],
-    desc: '대상을 복제하거나 둘로 나눈다.',
+    desc: '대상을 복제하거나 둘로 나눈다. 분열로 생긴 개체는 분열을 쓸 수 없다.',
     run: (ts, env) => ts.forEach((t) => env.split(t)),
   },
   absorb: {
@@ -348,7 +334,7 @@ const CARDS = {
     run: (ts, env) => env.swap(env.at(ts[0])),
   },
 
-  /* ================= 아티팩트(개체 전용): 대상 조건 ================= */
+  /* ================= 연쇄 카드(개체 전용): 대상 조건 ================= */
   entityHurt: {
     type: 'artifact', eventKind: 'state', name: '부상일 때', weight: 0, icon: 'heal', entityOnly: true,
     desc: '체력이 최대보다 낮은 대상에게만 작동한다.',
@@ -363,9 +349,6 @@ const ACTION_RULES = {
   heal: { requires: ['health'] }, shield: { requires: ['health'] },
   armor: { requires: ['health'] },
   amplify: { requires: ['area'] },
-  prolong: { requires: ['lifetime'] },
-  rally: { requires: ['lifetime'] },
-  refresh: { requires: ['lifetime'] },
   haste: { requires: ['position'], supports: (t, o) => t.kind === 'self' || t.kind === 'ally' || 'speed' in o || 'vx' in o },
   rage: { requires: ['position'], exclude: ['point'], supports: (t, o) => t.kind === 'self' || t.kind === 'gem' || (t.kind === 'ally' ? o.def?.damage > 0 : t.kind === 'object' ? ['orb', 'mine', 'turret', 'barrel'].includes(o.kind) : t.kind === 'zone' ? ['poison', 'blades', 'meteor', 'slime', 'abyss'].includes(o.kind) : o.damage > 0 || o.def?.shoot?.damage > 0) },
   focus: { requires: ['position'], exclude: ['point'], supports: (t, o) => t.kind === 'self' || (t.kind === 'ally' ? o.def?.damage > 0 : t.kind === 'object' ? ['orb', 'turret'].includes(o.kind) : t.kind === 'zone' ? ['poison', 'slime', 'abyss'].includes(o.kind) : t.kind === 'enemy' && (o.def?.shoot?.damage > 0 || !!o.def?.summon)) },
@@ -391,8 +374,6 @@ CARDS.heal.desc = '체력 10 회복.';
 CARDS.shield.desc = '6초간 피해 25 흡수.';
 CARDS.armor.desc = '6초간 받는 피해 -5.';
 CARDS.amplify.desc = '6초간 범위·크기 +40%.';
-CARDS.prolong.desc = '남은 시간 +50%.';
-CARDS.refresh.desc = '남은 시간을 처음으로 되돌린다.';
 CARDS.haste.group = 'movement';
 CARDS.haste.desc = '4초간 이동 속도 +40%.';
 CARDS.rage.group = 'attack';

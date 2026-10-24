@@ -80,8 +80,26 @@ class GameZones {
     this.blast(z.x, z.y, blast.radius, blast.damage * this.player.stats.might * this.player.cardMul, blast.color, blast.elem, false, blast.knockback);
   }
 
+  /** 장판이 ZONE_UPDATE_BUDGET 보다 많으면 ZONE_MAX_PERIOD 프레임까지 돌려 가며 갱신한다 (건너뛴 시간은 모아서 넘긴다). 그보다 적으면 매 프레임. */
   updateZones(dt0) {
-    for (const z of this.zones) entitySlot(z, 'zone').update(dt0, this);
+    const zones = this.zones, n = zones.length;
+    const period = n > ZONE_UPDATE_BUDGET ? Math.min(ZONE_MAX_PERIOD, Math.ceil(n / ZONE_UPDATE_BUDGET)) : 1;
+    if (period === 1) {
+      for (const z of zones) {
+        const extra = z._lodDt;
+        if (extra) z._lodDt = 0;
+        entitySlot(z, 'zone').update(extra ? dt0 + extra : dt0, this);
+      }
+      return;
+    }
+    const tick = this._zoneTick = (this._zoneTick | 0) + 1;
+    for (let i = 0; i < zones.length; i++) {
+      const z = zones[i];
+      if (i < n && (tick + i) % period) { z._lodDt = (z._lodDt || 0) + dt0; continue; }
+      const step = dt0 + (z._lodDt || 0);
+      z._lodDt = 0;
+      entitySlot(z, 'zone').update(step, this);
+    }
   }
 
   cardZoneTick(z, dt0) {

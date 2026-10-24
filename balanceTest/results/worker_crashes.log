@@ -68,3 +68,345 @@ FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memor
 19: 00007FF617B7066E 
 20: 00007FF95493CD87 BaseThreadInitThunk+23
 21: 00007FF9557ECAEC
+10:04:38 artifactBell|shots|enemies|heal|refresh|magnet;artifactHorn|artifactHourglass|objects|woundedEnemies|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHorn|artifactHourglass|fallen|rage|blades;artifactBell|prey|all|lance|shield|heal|mine seed=288545019: node worker exited (code 134): <--- Last few GCs --->
+
+[13932:000001EDA26AD000]   176667 ms: Mark-Compact 4047.2 (4137.6) -> 4036.2 (4142.4) MB, pooled: 0 MB, 7323.43 / 0.00 ms  (average mu = 0.406, current mu = 0.037) allocation failure; scavenge might not succeed
+[13932:000001EDA26AD000]   196944 ms: Mark-Compact 4051.9 (4142.4) -> 4040.7 (4147.1) MB, pooled: 0 MB, 19837.83 / 0.00 ms  (average mu = 0.157, current mu = 0.022) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+10:05:22 artifactBell|shots|enemies|heal|refresh|magnet;artifactHorn|artifactHourglass|objects|woundedEnemies|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHorn|artifactHourglass|fallen|rage|blades;artifactBell|prey|all|lance|shield|heal|mine seed=1222356006: node worker exited (code 134): <--- Last few GCs --->
+
+[20316:000001BE72661000]   230498 ms: Scavenge (interleaved) 4039.3 (4123.3) -> 4034.8 (4140.8) MB, pooled: 0 MB, 50.88 / 0.00 ms  (average mu = 0.620, current mu = 0.550) allocation failure; 
+[20316:000001BE72661000]   240183 ms: Mark-Compact 4048.8 (4140.8) -> 4038.6 (4146.6) MB, pooled: 0 MB, 9617.16 / 0.00 ms  (average mu = 0.416, current mu = 0.065) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+10:05:27 artifactBell|shots|enemies|heal|refresh|magnet;artifactHorn|artifactHourglass|objects|woundedEnemies|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHorn|artifactHourglass|fallen|rage|blades;artifactBell|prey|all|lance|shield|heal|mine seed=1819850096: node worker exited (code 134): <--- Last few GCs --->
+
+[15248:000002A5E6851000]   236569 ms: Mark-Compact 4044.8 (4135.4) -> 4033.5 (4139.9) MB, pooled: 0 MB, 6220.20 / 0.00 ms  (average mu = 0.356, current mu = 0.030) allocation failure; scavenge might not succeed
+[15248:000002A5E6851000]   245608 ms: Mark-Compact 4049.3 (4139.9) -> 4037.9 (4144.4) MB, pooled: 0 MB, 8893.80 / 0.00 ms  (average mu = 0.205, current mu = 0.016) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+10:21:57 prey|shockwave|refresh|heal|scatter;artifactHorn|artifactHourglass|shots|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHourglass|enemies|fallen|poison|mark|explode;artifactBell|prey|all|heal|lance|shield seed=288545019: node worker exited (code 134): <--- Last few GCs --->
+
+[6552:0000025553B61000]  1223037 ms: Mark-Compact 4042.2 (4139.1) -> 4031.0 (4143.6) MB, pooled: 0 MB, 6110.84 / 0.00 ms  (average mu = 0.167, current mu = 0.017) allocation failure; scavenge might not succeed
+[6552:0000025553B61000]  1235218 ms: Mark-Compact 4046.7 (4143.6) -> 4035.5 (4147.6) MB, pooled: 0 MB, 11990.35 / 0.00 ms  (average mu = 0.072, current mu = 0.016) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+10:22:48 prey|shockwave|refresh|heal|scatter;artifactHorn|artifactHourglass|shots|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHourglass|enemies|fallen|poison|mark|explode;artifactBell|prey|all|heal|lance|shield seed=1222356006: node worker exited (code 134): <--- Last few GCs --->
+
+[1988:000001B2000C3000]  1285944 ms: Scavenge (interleaved) 4036.9 (4124.8) -> 4032.8 (4127.1) MB, pooled: 0 MB, 168.43 / 0.00 ms  (average mu = 0.594, current mu = 0.466) allocation failure; 
+[1988:000001B2000C3000]  1286416 ms: Scavenge (interleaved) 4038.9 (4127.1) -> 4034.7 (4144.8) MB, pooled: 0 MB, 402.97 / 0.00 ms  (average mu = 0.594, current mu = 0.466) allocation failure; 
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+10:23:42 prey|shockwave|refresh|heal|scatter;artifactHorn|artifactHourglass|shots|dash|scatter|absorb|rally;self|allies|split|decoy|lance|burn;artifactHourglass|enemies|fallen|poison|mark|explode;artifactBell|prey|all|heal|lance|shield seed=1819850096: node worker exited (code 134): <--- Last few GCs --->
+
+[8752:000002801FE71000]  1332018 ms: Mark-Compact 4038.6 (4139.1) -> 4027.3 (4143.8) MB, pooled: 0 MB, 4897.48 / 0.00 ms  (average mu = 0.148, current mu = 0.024) allocation failure; scavenge might not succeed
+[8752:000002801FE71000]  1340618 ms: Mark-Compact 4043.1 (4143.8) -> 4031.9 (4147.8) MB, pooled: 0 MB, 8489.69 / 0.00 ms  (average mu = 0.065, current mu = 0.013) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF67B6820AD node::SetCppgcReference+17245
+ 2: 00007FF67B5EA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF67C16A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF67C157096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF67BFA6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF67BFA39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF67BFB9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF67BFB9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF67BFCA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF67BC9348B v8::internal::Version::GetString+434795
+11: 00007FF61C1ED4BA
+14:24:31 self|enemies|focus|refresh;artifactHourglass|nearestEnemy|scatter;artifactFeather|shots|decoy|focus|lance|burn;artifactHorn|ahead|rally|orb|rage;artifactBell|behind|all|heal|lance|shield seed=1222356006: node worker exited (code 1): 
+14:24:31 artifactBell|self|enemies|heal|refresh;behind|ahead|lance|drain;artifactHorn|self|allies|focus|decoy|lance|burn;artifactChalice|artifactHourglass|ahead|rally|orb|rage;artifactRing|artifactBell|behind|all|heal|lance|shield seed=288545019: node worker exited (code 1): 
+14:24:31 self|enemies|focus|refresh;artifactHourglass|nearestEnemy|scatter;artifactFeather|shots|decoy|focus|lance|burn;artifactHorn|ahead|rally|orb|rage;artifactBell|behind|all|heal|lance|shield seed=1819850096: node worker exited (code 1): 
+01:31:36 all|summon|artifactHorn|eventSubject|lance|artifactChalice|shots|homing|artifactThorns;on_hit|lastHit|refresh;eventOwner|drain|artifactThorns|enemies|fear|artifactBell|ahead|bolt;enemies|decoy|artifactBell|shots|archer|on_complete|allies;fallen|bolt|artifactRing|ahead|absorb|artifactHourglass|allies|orb|artifactFeather seed=1249609123: node worker exited (code 134): <--- Last few GCs --->
+
+[20164:000001EEFE06B000]  1225334 ms: Mark-Compact 4021.7 (4137.3) -> 4010.1 (4141.6) MB, pooled: 0 MB, 9829.93 / 0.00 ms  (average mu = 0.398, current mu = 0.018) allocation failure; scavenge might not succeed
+[20164:000001EEFE06B000]  1241333 ms: Mark-Compact 4027.2 (4143.1) -> 4015.7 (4147.3) MB, pooled: 0 MB, 15697.17 / 0.00 ms  (average mu = 0.198, current mu = 0.019) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF5A756D4BA
+01:32:52 all|summon|artifactHorn|eventSubject|lance|artifactChalice|shots|homing|artifactThorns;on_hit|lastHit|refresh;eventOwner|drain|artifactThorns|enemies|fear|artifactBell|ahead|bolt;enemies|decoy|artifactBell|shots|archer|on_complete|allies;fallen|bolt|artifactRing|ahead|absorb|artifactHourglass|allies|orb|artifactFeather seed=403003186: node worker exited (code 134): <--- Last few GCs --->
+
+[11060:0000024D55903000]  1318284 ms: Scavenge (interleaved) 4037.3 (4128.8) -> 4032.1 (4130.3) MB, pooled: 0 MB, 113.97 / 0.00 ms  (average mu = 0.649, current mu = 0.347) allocation failure; 
+[11060:0000024D55903000]  1318618 ms: Scavenge (interleaved) 4038.6 (4130.3) -> 4033.4 (4147.6) MB, pooled: 0 MB, 242.91 / 0.00 ms  (average mu = 0.649, current mu = 0.347) allocation failure; 
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF5A756D4BA
+04:40:02 allies|archer|artifactHorn|self|spread|artifactBell;self|magnet|on_hit|eventOwner;self|frost|artifactBell|pickups;objects|shield|artifactThorns|shots|chain|artifactHorn|behind|fear|artifactBell;artifactHorn|ahead|scatter|artifactFeather|eventSubject|archer|on_hit|enemies seed=1249609123: node worker exited (code 134): <--- Last few GCs --->
+
+[14356:00000211C74F1000]  8194496 ms: Scavenge (interleaved) 4019.1 (4125.3) -> 4015.0 (4143.1) MB, pooled: 0 MB, 122.03 / 0.00 ms  (average mu = 0.686, current mu = 0.657) allocation failure; 
+[14356:00000211C74F1000]  8226415 ms: Mark-Compact 4028.8 (4143.1) -> 4018.8 (4148.8) MB, pooled: 0 MB, 31806.80 / 0.00 ms  (average mu = 0.437, current mu = 0.095) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF5A756D4BA
+04:41:33 allies|archer|artifactHorn|self|spread|artifactBell;self|magnet|on_hit|eventOwner;self|frost|artifactBell|pickups;objects|shield|artifactThorns|shots|chain|artifactHorn|behind|fear|artifactBell;artifactHorn|ahead|scatter|artifactFeather|eventSubject|archer|on_hit|enemies seed=806614758: node worker exited (code 134): <--- Last few GCs --->
+
+[18472:000002770D601000]  8304024 ms: Scavenge (interleaved) 4025.3 (4122.3) -> 4020.9 (4140.1) MB, pooled: 0 MB, 116.61 / 0.00 ms  (average mu = 0.703, current mu = 0.526) allocation failure; 
+[18472:000002770D601000]  8317457 ms: Mark-Compact 4034.9 (4140.1) -> 4024.4 (4145.8) MB, pooled: 0 MB, 13293.83 / 0.00 ms  (average mu = 0.460, current mu = 0.084) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF5A756D4BA
+04:42:27 allies|archer|artifactHorn|self|spread|artifactBell;self|magnet|on_hit|eventOwner;self|frost|artifactBell|pickups;objects|shield|artifactThorns|shots|chain|artifactHorn|behind|fear|artifactBell;artifactHorn|ahead|scatter|artifactFeather|eventSubject|archer|on_hit|enemies seed=403003186: node worker exited (code 134): - Last few GCs --->
+
+[23224:00000158A1C41000]  8361391 ms: Mark-Compact 4036.6 (4139.7) -> 4024.1 (4143.0) MB, pooled: 0 MB, 5714.12 / 0.00 ms  (average mu = 0.162, current mu = 0.033) allocation failure; scavenge might not succeed
+[23224:00000158A1C41000]  8371303 ms: Mark-Compact 4039.8 (4143.0) -> 4027.3 (4146.2) MB, pooled: 0 MB, 9814.22 / 0.00 ms  (average mu = 0.071, current mu = 0.010) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF607344B2D v8::Isolate::GetHeapProfiler+55149
+10: 00007FF6073547A2 v8::Isolate::GetHeapProfiler+119778
+11: 00007FF60735A80B v8::Isolate::GetHeapProfiler+144459
+12: 00007FF607246432 v8::Object::GetIsolate+329554
+13: 00007FF6072449A9 v8::Object::GetIsolate+322761
+14: 00007FF60748CCF2 v8::SharedValueConveyor::SharedValueConveyor+265538
+15: 00007FF5A756D3FA
+06:45:11 enemies|laser|artifactRing;prey|burn|on_complete|randomPoint|lance;all|split|on_hit|zones|burn|artifactRing;behind|mine|artifactFeather|lastHit;artifactRing|shots|frost seed=806614758: node worker exited (code 134): <--- Last few GCs --->
+
+[3144:000001EA62891000] 15713326 ms: Mark-Compact 4042.6 (4137.5) -> 4030.6 (4141.2) MB, pooled: 0 MB, 3853.22 / 0.00 ms  (average mu = 0.930, current mu = 0.767) allocation failure; scavenge might not succeed
+[3144:000001EA62891000] 15734604 ms: Mark-Compact 4046.3 (4141.2) -> 4034.3 (4145.0) MB, pooled: 0 MB, 8157.65 / 0.00 ms  (average mu = 0.832, current mu = 0.617) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 000001EA1FEAD4BA
+06:48:05 enemies|laser|artifactRing;prey|burn|on_complete|randomPoint|lance;all|split|on_hit|zones|burn|artifactRing;behind|mine|artifactFeather|lastHit;artifactRing|shots|frost seed=1249609123: node worker exited (code 134): <--- Last few GCs --->
+
+[7348:0000018E4CD81000]  7664867 ms: Mark-Compact 4043.3 (4139.0) -> 4031.3 (4142.7) MB, pooled: 0 MB, 2378.04 / 0.00 ms  (average mu = 0.948, current mu = 0.782) allocation failure; scavenge might not succeed
+[7348:0000018E4CD81000]  7681086 ms: Mark-Compact 4047.0 (4142.7) -> 4035.1 (4146.7) MB, pooled: 0 MB, 5173.13 / 0.00 ms  (average mu = 0.876, current mu = 0.681) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF6075A556E v8::PropertyDescriptor::writable+725998
+12: 00007FF60750891A v8::PropertyDescriptor::writable+83866
+13: 00007FF5C360DED5
+06:49:01 enemies|laser|artifactRing;prey|burn|on_complete|randomPoint|lance;all|split|on_hit|zones|burn|artifactRing;behind|mine|artifactFeather|lastHit;artifactRing|shots|frost seed=403003186: node worker exited (code 134): <--- Last few GCs --->
+
+[11160:0000016B5D101000]  7637550 ms: Mark-Compact 4043.5 (4138.5) -> 4031.5 (4142.2) MB, pooled: 0 MB, 1958.97 / 0.00 ms  (average mu = 0.957, current mu = 0.759) allocation failure; scavenge might not succeed
+[11160:0000016B5D101000]  7646682 ms: Mark-Compact 4047.2 (4142.2) -> 4035.2 (4146.0) MB, pooled: 0 MB, 3025.30 / 0.00 ms  (average mu = 0.903, current mu = 0.669) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF606A020AD node::SetCppgcReference+17245
+ 2: 00007FF60696A4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF6074EA1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF6074D7096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF607326920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF6073239BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF607339251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF607339ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF60734A567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF60701348B v8::internal::Version::GetString+434795
+11: 00007FF5A756D4BA
+12:10:39 allies|archer|artifactThorns|shots|lance;fallen|magnet|artifactHorn|nearestEnemy;zones|burn|artifactFeather|nearestEnemy;ahead|mine|artifactFeather|self|meteor|artifactHourglass|randomPoint|split;artifactFeather|objects|archer|artifactBell|nearestEnemy|explode seed=756924660: node worker exited (code 134): <--- Last few GCs --->
+
+[11548:0000018A5D1B1000]   169917 ms: Mark-Compact 4001.0 (4137.0) -> 3989.5 (4141.2) MB, pooled: 0 MB, 2585.42 / 0.00 ms  (average mu = 0.391, current mu = 0.035) allocation failure; scavenge might not succeed
+[11548:0000018A5D1B1000]   174444 ms: Mark-Compact 4006.9 (4142.2) -> 3995.3 (4146.5) MB, pooled: 0 MB, 4461.37 / 0.00 ms  (average mu = 0.191, current mu = 0.014) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF7B3D820AD node::SetCppgcReference+17245
+ 2: 00007FF7B3CEA4D8 v8::base::CPU::num_virtual_address_bits+92376
+ 3: 00007FF7B486A1B1 v8::Isolate::ReportExternalAllocationLimitReached+65
+ 4: 00007FF7B4857096 v8::Function::Experimental_IsNopFunction+2790
+ 5: 00007FF7B46A6920 v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+31392
+ 6: 00007FF7B46A39BA v8::internal::StrongRootAllocatorBase::StrongRootAllocatorBase+19258
+ 7: 00007FF7B46B9251 v8::Isolate::GetHeapProfiler+7825
+ 8: 00007FF7B46B9ACA v8::Isolate::GetHeapProfiler+9994
+ 9: 00007FF7B46CA567 v8::Isolate::GetHeapProfiler+78247
+10: 00007FF7B439348B v8::internal::Version::GetString+434795
+11: 00007FF7548ED4BA
+12:12:42 allies|dash|on_complete|enemies;eventOwner|magnet|on_hit|ahead|frost;randomPoint|poison|artifactHourglass|eventSubject|bolt|artifactChalice|all;artifactFeather|all|boomerang|artifactChalice;lastHit|poison|artifactHourglass|pickups|turret|artifactFeather|ahead seed=1380385374: node worker exited (code 143): 
+12:12:42 allies|dash|on_complete|enemies;eventOwner|magnet|on_hit|ahead|frost;randomPoint|poison|artifactHourglass|eventSubject|bolt|artifactChalice|all;artifactFeather|all|boomerang|artifactChalice;lastHit|poison|artifactHourglass|pickups|turret|artifactFeather|ahead seed=1057244321: node worker exited (code 143): 
+12:12:42 ahead|frost|on_hit|shots|shockwave|on_complete;on_hit|gems|archer|artifactRing|self|turret|artifactBell|fallen;artifactFeather|enemies|laser|artifactChalice|self|turret;zones|root|artifactFeather|behind;nearestEnemy|burn|artifactFeather|eventOwner|shield|artifactChalice|lastHit seed=1057244321: node worker exited (code 143): 

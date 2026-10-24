@@ -3,6 +3,7 @@
   "check-basic-state-inheritance.cjs": "1:d1e72b66ca",
   "check-batches.cjs": "0:187e09ba03",
   "check-card-distance-ui.cjs": "0:f7a40beac9",
+  "check-chain-cards.cjs": "0:c394bcf978",
   "check-common-action-modes.cjs": "0:53a2f071e0",
   "check-common-mechanics.cjs": "0:336663a5dd",
   "check-controls.cjs": "0:f7c76cccc6",
@@ -21,14 +22,17 @@
   "check-mechanic-migrations.cjs": "0:709ab40aa6",
   "check-mine-sequence.cjs": "0:5f9852f330",
   "check-play-logs.cjs": "skipped:playwright",
-  "check-slot-sections.cjs": "0:2fbb2193ad",
+  "check-slot-sections.cjs": "0:09748afbd2",
   "check-slots.cjs": "0:a5f2b953da",
+  "check-snap-pack.cjs": "0:04f1cf4c40",
   "check-spread.cjs": "0:6a84727497",
   "check-stage-pressure.cjs": "0:51dea8d026",
   "check-stat-ratios.cjs": "0:205adc5ae2",
+  "check-stat-readers.cjs": "0:03f0fada59",
   "check-targets.cjs": "1:b788b6bd90",
   "check-teams.cjs": "1:d1e72b66ca",
+  "check-wasm-math.cjs": "0:4e445b098d",
   "check-worker-sim.cjs": "skipped:playwright",
-  "bench-frame fp": "idle:3f7f61fa enemies:c27e7932 deck:e7a762cc gems:0038d349 crowd:0addc0b7 decoy:8e72d8a2",
-  "play-stages": "df566bee6f"
+  "bench-frame fp": "idle:3f7f61fa enemies:c27e7932 deck:a356137e gems:144f246f crowd:64bc680c decoy:eb69a38a",
+  "play-stages": "70ec5056b7"
 }

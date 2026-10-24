@@ -11,24 +11,16 @@ const checkpoint = ${process.env.PLAY_CHECKPOINT ? fs.readFileSync(process.env.P
 let rng = 1;
 Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);
 const preferred = ['frost', 'poison', 'chain', 'snipe', 'burn', 'explode', 'shield', 'heal', 'mark', 'bolt'];
+// 슬롯은 대상 → 행동 → 연쇄 순서로만 쌓이므로, 비어 있는 슬롯마다 [대상, 행동] 한 쌍씩 채운다.
 function edit(g) {
   const d = g.player.deck;
   for (const id of d.inventory.slice()) {
     if (!preferred.includes(id)) continue;
     const target = ['heal', 'shield'].includes(id) ? 'self' : 'nearestEnemy';
-    let s = d.slots.find(s => s.cards.includes(target) && !s.cards.includes('inputMove'));
-    const actions = s ? s.cards.filter(c => CARDS[c].type === 'action') : [];
-    if (s && actions.length >= 3) {
-      const worst = actions.sort((a,b)=>preferred.indexOf(b)-preferred.indexOf(a))[0];
-      if(preferred.indexOf(id)>=preferred.indexOf(worst))continue;
-      d.move({src:'slot',slot:d.slots.indexOf(s),idx:s.cards.indexOf(worst)}, {dest:'inv'});
-    }
-    if (!s && d.inventory.includes(target)) {
-      s = d.slots.find(s => !s.cards.length);
-      if (s) d.move({src:'inv', idx:d.inventory.indexOf(target)}, {dest:'slot',slot:d.slots.indexOf(s)});
-    }
-    if (!s) continue;
-    d.move({src:'inv',idx:d.inventory.indexOf(id)}, {dest:'slot',slot:d.slots.indexOf(s)});
+    const slot = d.slots.findIndex(s => !s.cards.length);
+    if (slot < 0 || !d.inventory.includes(target)) continue;
+    d.move({src:'inv', idx:d.inventory.indexOf(target)}, {dest:'slot', slot});
+    d.move({src:'inv', idx:d.inventory.indexOf(id)}, {dest:'slot', slot});
   }
 }
 function steer(g) {

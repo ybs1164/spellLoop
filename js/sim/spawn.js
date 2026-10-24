@@ -66,8 +66,19 @@ class GameSpawn {
   /** 화면에서 너무 멀어진 적은 반대편 스폰 링으로 재배치 (뱀서식 무한 필드) */
   recycleFarEnemies() {
     const far = this.spawnRing() * 1.6;
-    const p = this.player;
-    for (const e of this.enemies) {
+    const p = this.player, list = this.enemies;
+    // 목록 번호 → SoA 슬롯 표(ORD)가 이번 프레임 rebuildHash 로 채워져 있으면 C 가 먼 적만 골라 준다 (판정식은 아래와 같다)
+    if (this._hashByWasm && WasmCore.on() && list.length === this._hashN) {
+      const c = WasmCore.exports.far_scan(list.length, p.x, p.y, far * far), cand = WasmCore.cand;
+      for (let k = 0; k < c; k++) {
+        const e = list[cand[k]];
+        const ang = Math.atan2(p.y - e.y, p.x - e.x) + rand(-0.6, 0.6);
+        const pos = this.spawnPoint(ang, 20);
+        e.x = pos.x; e.y = pos.y;
+      }
+      return;
+    }
+    for (const e of list) {
       if (dist2(e.x, e.y, p.x, p.y) > far * far) {
         const ang = Math.atan2(p.y - e.y, p.x - e.x) + rand(-0.6, 0.6);
         const pos = this.spawnPoint(ang, 20);

@@ -12,7 +12,6 @@ const BUFFS = {
   haste:   { dur: 4,  name: '질주', color: '#5be37a' },
   focus:   { dur: 5,  name: '집중', color: '#c3a6ff' },
   amplify: { dur: 6,  name: '증폭', color: '#ffb3e6' },
-  prolong: { dur: 8,  name: '연장', color: '#b8f0ff' },
   armor:   { dur: 6,  name: '철갑', color: '#c0c8d8' },
 };
 
@@ -57,7 +56,7 @@ class Player {
     s.might = this.has('rage') ? 1.5 : 1;
     s.cooldownRate = this.has('focus') ? 1 / 0.65 : 1;
     s.area = this.has('amplify') ? 1.4 : 1;
-    s.duration = this.has('prolong') ? 1.5 : 1;
+    s.duration = 1;
     s.moveSpeed = this.has('haste') ? 1.4 : 1;
     s.armor = this.has('armor') ? this.stats.maxHp * ACTION_STAT_RATIOS.armor.armor : 0;
     s.xpGain = 1;
@@ -66,7 +65,7 @@ class Player {
   applyBuff(kind, game) {
     if (kind === 'heal') { const amount = this.stats.maxHp * ACTION_STAT_RATIOS.heal.heal; this.heal(amount); game.addText(this.x, this.y - 28, '+' + Math.round(amount), '#5be37a'); return; }
     if (kind === 'shield') { this.shield = Math.max(this.shield, this.stats.maxHp * ACTION_STAT_RATIOS.shield.shield); this.shieldT = 6 * this.stats.duration; return; }
-    const dur = BUFFS[kind].dur * (kind === 'prolong' ? 1 : this.stats.duration);
+    const dur = BUFFS[kind].dur * this.stats.duration;
     this.buffs[kind] = Math.max(this.buffs[kind] || 0, dur);
     this.refreshStats();
   }

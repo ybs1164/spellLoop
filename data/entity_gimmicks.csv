@@ -1,0 +1,8 @@
+_key,name,kinds,cards,team,period,desc
+healing,힐 장판,zone,entityHurt|all|heal,same,3,장판 범위 안 같은 팀의 부상 개체를 3초마다 치유합니다.
+shelter,보호 장판,zone,all|shield,same,4,장판 범위 안 같은 팀에 4초마다 보호막을 부여합니다.
+medic,이동 치유사,ally|enemy,entityHurt|all|heal,same,3,주변 160 안 같은 팀의 부상 개체를 3초마다 치유합니다.
+command,격려 오라,ally|enemy|object,all|rage|focus,same,5,주변 160 안 같은 팀에 분노와 집중을 부여합니다.
+curse,약화 탄환,shot,all|mark|root,opposing,2,탄환 주변 40 안 다른 팀에 표식과 속박을 부여합니다.
+burning,화상 지대,zone,all|burn,opposing,2,장판 범위 안 다른 팀에 2초마다 화상을 부여합니다.
+blessing,회복 아이템,pickup|gem,entityHurt|self|heal,same,3,습득 전 주변 90 안 플레이어를 3초마다 치유합니다.

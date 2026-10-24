@@ -1,3 +1,11 @@
 .claude/
 __pycache__/
 *.py[cod]
+
+# C 판 (c/tools/build.py)
+c/build/
+c/third_party/
+c/android/.gradle/
+c/android/local.properties
+c/android/app/build/
+c/android/app/.cxx/
