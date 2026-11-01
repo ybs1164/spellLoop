@@ -12,7 +12,7 @@ get(`
   const env = { owner: { x: 0, y: 0 }, game: { player: { x: 0, y: 0 } }, alive: t => !t.dead, features: () => ({ health: true, position: true, area: true, lifetime: true }), at: t => t, setMul: m => { multiplier = m; }, flag() {} };
   const game = { cardEnv: () => env, projectiles: [], hazards: [], allies: [], objects: [], zones: [], enemies: [], pickups: [] }, player = { stats: { cooldown: 1 } };
   CARDS.group = { type: 'target', kind: 'point', cost: 1, resolve: () => targets };
-  CARDS.record = { type: 'action', cost: 1, delay: 0.2, accepts: ALL_KINDS, run: ts => ts.forEach(t => hits.push({ id: t.id, at: clock, mul: multiplier })) };
+  CARDS.record = { type: 'action', cost: 1, cd: '+1', delay: 0.2, accepts: ALL_KINDS, run: ts => ts.forEach(t => hits.push({ id: t.id, at: clock, mul: multiplier })) };
   const run = cards => {
     hits.length = 0; clock = 0; targets.forEach(t => { t.dead = false; });
     deck.timer = 0; deck.slots = [{ cards, cd: 0, cast: null }];
@@ -22,7 +22,7 @@ get(`
 `);
 assert.equal(get('hits.length'), 3);
 assert.equal(get('new Set(hits.map(h => h.at)).size'), 1, 'all targets fire in the same frame');
-assert.ok(Math.abs(get('deck.slots[0].cd') - 1) < 1e-9, 'one execution starts the base 1s slot cooldown once for all targets');
+assert.ok(Math.abs(get('deck.slots[0].cd - (BASE_COOLDOWN + 1)')) < 1e-9, 'one execution starts the slot cooldown once for all targets');
 get('targets[1].dead = true; hits.length = 0; deck.slots[0].cd = 0; deck.update(0.01, game, player);');
 assert.equal(get('hits.length'), 2, 'dead targets are skipped');
 console.log('Simultaneous target and cooldown checks passed.');

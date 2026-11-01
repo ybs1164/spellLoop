@@ -15,7 +15,7 @@ class GameSpawn {
   }
 
   spawnEnemy(type, pos = this.spawnPoint()) {
-    const e = new Enemy(type, pos.x, pos.y, this.hpMul(type), this.stage.dmgMul);
+    const e = Enemy.create(type, pos.x, pos.y, this.hpMul(type), this.stage.dmgMul);
     this.enemies.push(e);
     return e;
   }
@@ -93,17 +93,43 @@ class GameSpawn {
     if (owner.dead && settings.death) settings = settings.death;
     if (settings.blockFear && hasTargetState(owner, 'fear')) return;
     if (settings.minions && this.enemies.length >= MAX_ENEMIES * 0.75) return;
+    const team = entityTeam(owner), deathSplit = !!settings.deathSplit;
     for (let i = 0; i < settings.n; i++) {
-      if (this._enemyBudget <= 0) break;
+      const a = i / settings.n * TAU + (deathSplit ? 0 : rand(-0.3, 0.3));
+      const d = deathSplit ? owner.radius * 0.8 : owner.radius + 30;
+      const x = at.x + Math.cos(a) * d, y = at.y + Math.sin(a) * d;
+      // 프레임당 생성 안전장치(ENEMY_SPAWN_BUDGET)를 넘으면 버리지 않고 다음 프레임으로 미룬다
+      if (this._enemyBudget <= 0) { this.queueEnemy({ type: settings.type, x, y, team, deathSplit, a, split: null }); continue; }
       this._enemyBudget--;
-      const a = i / settings.n * TAU + (settings.deathSplit ? 0 : rand(-0.3, 0.3));
-      const d = settings.deathSplit ? owner.radius * 0.8 : owner.radius + 30;
-      const child = this.spawnEnemy(settings.type, { x: at.x + Math.cos(a) * d, y: at.y + Math.sin(a) * d });
-      child.team = entityTeam(owner);
-      if (settings.deathSplit) { child.kx = Math.cos(a) * 320; child.ky = Math.sin(a) * 320; }
-      else { child.xp = 0; child.flash = 0.2; }
+      this.summonChild(settings.type, x, y, team, deathSplit, a);
     }
-    if (!settings.deathSplit) this.circleFx(at.x, at.y, owner.radius + 40, owner.color, { life: 0.45, fill: 0.35 });
+    if (!deathSplit) this.circleFx(at.x, at.y, owner.radius + 40, owner.color, { life: 0.45, fill: 0.35 });
+  }
+
+  summonChild(type, x, y, team, deathSplit, a) {
+    const child = this.spawnEnemy(type, { x, y });
+    child.team = team;
+    if (deathSplit) { child.kx = Math.cos(a) * 320; child.ky = Math.sin(a) * 320; }
+    else { child.xp = 0; child.flash = 0.2; }
+    return child;
+  }
+
+  /** 안전장치를 넘은 적 생성(소환·분열)을 대기열에 둔다. 대기열이 ENEMY_QUEUE_MAX 를 넘으면 그때만 버린다 */
+  queueEnemy(entry) {
+    if (this._enemyQueue.length - this._enemyQueueHead < ENEMY_QUEUE_MAX) this._enemyQueue.push(entry);
+  }
+
+  /** 지난 프레임에 넘친 적 생성을 예산만큼 이어서 한다 (생성 순서 그대로) */
+  drainEnemyQueue() {
+    const q = this._enemyQueue;
+    if (!q || this._enemyQueueHead >= q.length) return;
+    while (this._enemyBudget > 0 && this._enemyQueueHead < q.length) {
+      const e = q[this._enemyQueueHead]; q[this._enemyQueueHead++] = null;
+      this._enemyBudget--;
+      if (e.split) this.finishSplit('enemy', e.split, this.splitEnemy(e.split, e, e.a));
+      else this.summonChild(e.type, e.x, e.y, e.team, e.deathSplit, e.a);
+    }
+    if (this._enemyQueueHead >= q.length) { q.length = 0; this._enemyQueueHead = 0; }
   }
 }
 mixin(Game, GameSpawn);

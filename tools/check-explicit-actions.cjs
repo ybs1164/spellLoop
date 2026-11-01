@@ -105,9 +105,6 @@ vm.runInContext(`
   hostile.slot.cards = ['entitySelf', mechanicCard(shot, 'entityHit')]; hostile.slot.changed();
   game.collideShot(hostile);
   assert.equal(victim.hp, victim.maxHp - 17, 'transferring an action preserves the projectile team');
-  hostile.slot.cards = ['entitySelf', 'entityHitTeam_same', mechanicCard(shot, 'entityHit')]; hostile.slot.changed();
-  game.collideShot(hostile);
-  assert.equal(victim.hp, victim.maxHp - 26, 'the team condition can explicitly enable same-team damage');
   const harmlessToPlayer = game.spawnProjectile({ x: 0, y: 0, vx: 0, vy: 0, damage: 1, life: 0 });
   harmlessToPlayer.slot.cards = ['on_death', 'entitySelf', 'explode'];
   harmlessToPlayer.slot.changed(); setEntityActionConfig(harmlessToPlayer, 'explode', entityActionConfig(meteor, 'explode')); 

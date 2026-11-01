@@ -1,0 +1,74 @@
+﻿card_id,name,type,top_count,top_share,all_count,all_share,lift
+enemies,적,target,84,1.0,699,0.827,1.21
+artifactHorn,포위의 뿔피리,artifact,84,1.0,645,0.763,1.31
+on_complete,행동 완료 시,artifact,84,1.0,637,0.754,1.33
+explode,폭발,action,84,1.0,604,0.715,1.4
+self,플레이어,target,84,1.0,466,0.551,1.81
+archer,궁수 소환,action,84,1.0,386,0.457,2.19
+frost,빙결,action,84,1.0,332,0.393,2.55
+nearestEnemy,가장 가까운 적,target,83,0.988,621,0.735,1.34
+artifactFeather,질주의 깃털,artifact,83,0.988,602,0.712,1.39
+allies,아군,target,83,0.988,537,0.636,1.55
+poison,독 장판,action,82,0.976,497,0.588,1.66
+prey,사냥감,target,81,0.964,320,0.379,2.55
+artifactThorns,가시 갑옷,artifact,79,0.94,568,0.672,1.4
+gems,보석,target,79,0.94,436,0.516,1.82
+artifactHourglass,고요의 모래시계,artifact,78,0.929,632,0.748,1.24
+artifactBell,공명의 종,artifact,78,0.929,551,0.652,1.42
+behind,후방 지점,target,78,0.929,476,0.563,1.65
+woundedEnemies,마무리 대상,target,77,0.917,540,0.639,1.43
+shots,탄환,target,76,0.905,556,0.658,1.38
+amplify,증폭,action,76,0.905,377,0.446,2.03
+all,전체,target,75,0.893,531,0.628,1.42
+mine,지뢰,action,75,0.893,421,0.498,1.79
+fear,공포,action,72,0.857,342,0.405,2.12
+burn,화상,action,66,0.786,474,0.561,1.4
+on_hit,타격 시,artifact,63,0.75,589,0.697,1.08
+eventOwner,행동 주체,target,23,0.274,272,0.322,0.85
+slash,참격,action,17,0.202,125,0.148,1.37
+artifactChalice,피의 성배,artifact,9,0.107,370,0.438,0.24
+eventSubject,이벤트 상대,target,9,0.107,248,0.293,0.37
+ahead,전방 지점,target,7,0.083,309,0.366,0.23
+objects,설치물,target,6,0.071,232,0.275,0.26
+artifactRing,절제의 반지,artifact,5,0.06,446,0.528,0.11
+orb,부유 구체,action,5,0.06,160,0.189,0.31
+zones,장판,target,4,0.048,230,0.272,0.17
+lastHit,직전 표적,target,4,0.048,209,0.247,0.19
+shockwave,충격파,action,4,0.048,172,0.204,0.23
+shield,보호막,action,4,0.048,122,0.144,0.33
+swap,위치 교환,action,4,0.048,78,0.092,0.52
+fallen,쓰러진 자리,target,3,0.036,146,0.173,0.21
+laser,레이저,action,3,0.036,78,0.092,0.39
+rage,분노,action,3,0.036,66,0.078,0.46
+artifactSeal,외길의 인장,artifact,3,0.036,62,0.073,0.49
+bolt,마탄,action,2,0.024,223,0.264,0.09
+randomPoint,무작위 지점,target,2,0.024,130,0.154,0.15
+haste,질주,action,2,0.024,127,0.15,0.16
+vortex,소용돌이,action,2,0.024,123,0.146,0.16
+spread,전염,action,2,0.024,94,0.111,0.21
+turret,포탑,action,2,0.024,90,0.107,0.22
+homing,유도탄,action,1,0.012,106,0.125,0.09
+blades,회전 칼날,action,1,0.012,52,0.062,0.19
+armor,철갑,action,1,0.012,49,0.058,0.21
+summon,기사 소환,action,1,0.012,37,0.044,0.27
+scatter,산탄,action,0,0.0,208,0.246,0.0
+boomerang,부메랑,action,0,0.0,143,0.169,0.0
+meteor,유성,action,0,0.0,128,0.151,0.0
+mark,표식,action,0,0.0,115,0.136,0.0
+pickups,아이템,target,0,0.0,110,0.13,0.0
+ward,결계,action,0,0.0,106,0.125,0.0
+drain,흡혈,action,0,0.0,105,0.124,0.0
+magnet,자력,action,0,0.0,100,0.118,0.0
+root,속박,action,0,0.0,89,0.105,0.0
+snipe,저격,action,0,0.0,88,0.104,0.0
+heal,치유,action,0,0.0,86,0.102,0.0
+lance,관통탄,action,0,0.0,79,0.093,0.0
+decoy,미끼,action,0,0.0,74,0.088,0.0
+pull,끌어당기기,action,0,0.0,72,0.085,0.0
+dash,돌진,action,0,0.0,70,0.083,0.0
+blink,순간이동,action,0,0.0,54,0.064,0.0
+focus,집중,action,0,0.0,46,0.054,0.0
+split,분열,action,0,0.0,35,0.041,0.0
+chain,번개,action,0,0.0,29,0.034,0.0
+absorb,흡수,action,0,0.0,19,0.022,0.0
+artifactBoots,바람의 장화,artifact,0,0.0,0,0.0,

@@ -3,6 +3,7 @@
 Sprites.init();
 const game = new Game(document.getElementById('game'));
 PlayLog.attach(game);
+Sound.attach(game);
 Input.init();
 UI.init(game);
 if (SimBridge.supported()) SimBridge.attach(game);   // ?worker=1 (http/https): 시뮬레이션을 워커에서 돌린다
@@ -34,6 +35,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);   // 탭 복귀 등 긴 프레임은 잘라낸다
   last = now;
   if (Input.consume('F3')) perf.on = !perf.on;
+  if (Input.consume('KeyM') && !document.activeElement?.matches?.('input, textarea, select')) Sound.toggleMute();
   const t0 = performance.now();
   game.update(dt);
   const t1 = performance.now();

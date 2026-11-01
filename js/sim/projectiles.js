@@ -301,6 +301,27 @@ class GameProjectiles {
     return null;
   }
 
+  /**
+   * 일제 사격: 같은 설정(opts)으로 속도만 다른 탄 n 발 (vxs[i], vys[i]). shoot 을 n 번 부른 것과 같은 탄·같은 순서·같은 예산 처리이고,
+   * 설정 객체(shoot·spawnProjectile 이 탄마다 두 번 펼쳐 만들던 것)와 주인·팀 계산을 한 번만 한다. Projectile.init 은 설정 객체를 붙잡지 않으므로 속도만 바꿔 다시 넘긴다.
+   */
+  shootVolley(opts, vxs, vys, n) {
+    const p = this.actionOrigin || this.actionActor || this.player;
+    const full = { source: this.actionActor || p, x: p.x, y: p.y, knockback: 150, pierce: 0, ...opts };
+    const source = full.source ?? this.player;
+    const spawn = { source, ...full, team: full.team ?? entityTeam(source), pierce: Infinity };
+    for (let i = 0; i < n; i++) {
+      const budgeted = this._shotBudget !== undefined;
+      if (budgeted && !(this._shotBudget > 0 && this._shotQueueHead >= this._shotQueue.length)) {
+        if (this._shotQueue.length - this._shotQueueHead < SHOT_QUEUE_MAX) this._shotQueue.push({ full: { ...full, vx: vxs[i], vy: vys[i] }, rule: this.actionHitTeamRule });
+        continue;
+      }
+      if (budgeted) this._shotBudget--;
+      spawn.vx = vxs[i]; spawn.vy = vys[i];
+      this.attachProjectile(Projectile.create(spawn));
+    }
+  }
+
   /** 지난 프레임에 넘친 투사체를 예산만큼 만든다 */
   drainShotQueue() {
     const q = this._shotQueue;
@@ -326,7 +347,11 @@ class GameProjectiles {
 
   spawnProjectile(opts) {
     const source = opts.source ?? this.player;
-    const pr = new Projectile({ source, ...opts, team: opts.team ?? entityTeam(source), pierce: Infinity });
+    return this.attachProjectile(Projectile.create({ source, ...opts, team: opts.team ?? entityTeam(source), pierce: Infinity }));
+  }
+
+  /** 새 탄을 목록에 넣는다 (행동의 충돌 팀 규칙이 있으면 명중 슬롯에 붙인다) */
+  attachProjectile(pr) {
     if (this.actionHitTeamRule) {
       for (const slot of pr.slots) if (slot.cards.some(id => cardBaseId(id) === 'entityHit')) {
         slot.cards = [`entityHitTeam_${this.actionHitTeamRule}`, ...slot.cards];

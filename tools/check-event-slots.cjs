@@ -15,12 +15,12 @@ vm.runInContext(`
   const player = game.player, deck = player.deck;
   deck.slots = []; game.enemies = []; game.objects = [];
   let casts = 0;
-  CARDS.testAction = { type: 'action', actionId: 'testAction', name: '검증 행동', desc: '실행 횟수 검증', requires: ['position'], accepts: ALL_KINDS, run: () => casts++ };
+  CARDS.testAction = { type: 'action', actionId: 'testAction', name: '검증 행동', desc: '실행 횟수 검증', cd: '+' + (1 - BASE_COOLDOWN), requires: ['position'], accepts: ALL_KINDS, run: () => casts++ };
   const slot = { cards: ['self', 'testAction'], cd: 0 };
   deck.slots = [slot];
-  // Cooldown: default 1s, the first run is immediate, then once per cooldown.
+  // Cooldown: base + the card op = 1s, the first run is immediate, then once per cooldown.
   deck.update(1/60, game, player); assert.equal(casts, 1, 'ready slot runs at once');
-  assert.equal(slot.cd, BASE_COOLDOWN, 'a run starts the 1s cooldown');
+  assert.equal(slot.cd, slotCooldown(slot), 'a run starts the slot cooldown');
   for (let i = 0; i < 30; i++) deck.update(1/60, game, player);
   assert.equal(casts, 1, 'cooling slot waits');
   for (let i = 0; i < 30; i++) deck.update(1/60, game, player);
@@ -132,6 +132,11 @@ vm.runInContext(`
   subjects = []; struck.slots = [new EntitySlot(struck, 'enemy', ['on_hit', 'eventSubject', 'subjectProbe'])];
   reportSlotHit(game, struck, player, 1); flushSlotEvents(game);
   assert.deepEqual(subjects, [player], 'enemy hit event subject is the struck player');
+  subjects = []; game.enemyShoot(struck, { n: 1, speed: 100, damage: 1 }, player);
+  const fired = [...game.hazards, ...game.projectiles].find(s => s.attackEventOwner === struck);
+  assert.ok(fired, 'a projectile fired by an entity that listens for hits forwards its hits');
+  reportSlotHit(game, fired, player, 1); flushSlotEvents(game);
+  assert.deepEqual(subjects, [player], 'entity projectile hit reaches the entity on_hit slot');
 
   UI.open = function(html,mode) { this.html=html; this.mode=mode; };
   UI.overlay = {querySelector:()=>null};
@@ -141,4 +146,4 @@ vm.runInContext(`
   assert.ok(UI.html.includes('=0.016'), 'boots show the frame cooldown');
   assert.ok(!UI.html.includes('코스트'), 'no cost is shown');
 `, context);
-console.log('Cooldown slots: base 1s cooldown, ordered ops, every-frame mechanics, rule/gate/trigger artifacts, projectile/summon/burn chains, native periods, clone isolation and UI passed.');
+console.log('Cooldown slots: base cooldown, ordered ops, every-frame mechanics, rule/gate/trigger artifacts, projectile/summon/burn chains, native periods, clone isolation and UI passed.');

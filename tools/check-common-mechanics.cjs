@@ -88,17 +88,13 @@ vm.runInContext(`
   game.enemies = [teamVictim];
   teamOwner.slot.cards = ['nearestEnemy', 'entityHitTeam_opposing', 'snipe']; teamOwner.slot.changed();
   teamOwner.update(0.01, game.player, game); assert.equal(teamVictim.hp, teamHp);
-  teamOwner.slot.cards = ['nearestEnemy', 'entityHitTeam_same', 'snipe']; teamOwner.slot.changed();
-  teamOwner.update(0.01, game.player, game); assert.ok(teamVictim.hp < teamHp);
   const aoeOwner = new Enemy('grunt', 0, 0, 1), aoeHp = teamVictim.hp;
   aoeOwner.slot.cards = ['entitySelf', 'entityHitTeam_opposing', 'explode']; aoeOwner.slot.changed();
   game.rebuildHash(); aoeOwner.update(0.01, game.player, game);
   assert.equal(teamVictim.hp, aoeHp, 'area damage honors opposing team without excluding its origin');
-  aoeOwner.slot.cards = ['entitySelf', 'entityHitTeam_same', 'explode']; aoeOwner.slot.changed();
-  aoeOwner.update(0.01, game.player, game); assert.ok(teamVictim.hp < aoeHp);
-  aoeOwner.slot.cards = ['nearestEnemy', 'entityHitTeam_same', 'bolt']; aoeOwner.slot.changed();
+  aoeOwner.slot.cards = ['nearestEnemy', 'entityHitTeam_opposing', 'bolt']; aoeOwner.slot.changed();
   game.projectiles = []; aoeOwner.update(0.01, game.player, game);
-  assert.equal(game.projectiles[0].slot.effect('entityHit')?.hitTeamRule, 'same', 'projectiles retain the selected team rule');
+  assert.equal(game.projectiles[0].slot.effect('entityHit')?.hitTeamRule, 'opposing', 'projectiles retain the selected team rule');
 
   const p = game.player; let playerDeath = 0, ordinary = 0, ended = 0;
   CARDS.testPlayerDeath = { type: 'action', cost: 1, requires: ['position'], accepts: ALL_KINDS, run: ts => { playerDeath++; assert.equal(game.targetObj(ts[0]), p); assert.equal(p.dead, true); } };

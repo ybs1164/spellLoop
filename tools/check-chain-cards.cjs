@@ -59,5 +59,20 @@ vm.runInContext(`
   assert.equal(slotAnalysis(slot).chainRest, null);
   const legacy = game.projectiles.at(-1);
   assert.ok(legacy.slots.some(s => s.cards.includes('explode')));
+
+  // 연쇄 실행 상한: 같은 스택·같은 시전 개체는 프레임마다 CHAIN_RUN_RATE × dt 번까지만 이어진다.
+  const capped = { _chainCap: 2 }, chainA = ['on_hit', 'eventSubject', 'chain'], chainB = chainA.slice();
+  const linkA = { chainKey: chainA, linkActor: player }, linkB = { chainKey: chainB, linkActor: player };
+  assert.deepEqual([1, 2, 3].map(() => takeChainRun(capped, linkA)), [true, true, false], 'a chain stack stops at the frame cap');
+  assert.equal(takeChainRun(capped, linkB), true, 'another stack has its own cap');
+  assert.equal(takeChainRun(capped, { chainKey: chainA, linkActor: {} }), true, 'another caster has its own cap');
+  game.step(0.05); assert.equal(game._chainCap, Math.round(CHAIN_RUN_RATE * 0.05)); assert.equal(takeChainRun(game, linkA), true, 'the cap refills every frame');
+
+  // 실행될 수 없는 플레이어 슬롯 모양은 편집에서 거부한다.
+  assert.ok(slotCycleError(['on_hit', 'self', 'bolt']), 'on_hit needs a previous action');
+  assert.equal(slotCycleError(['on_complete', 'self', 'heal']), null, 'on_complete listens to the owner');
+  assert.ok(slotCycleError(['self', 'swap']), 'swap cannot target the player');
+  assert.ok(slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'ahead', 'blink']), 'blink cannot target a point');
+  assert.equal(slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'chain']), null);
 `, context);
 console.log('Chain card checks passed.');

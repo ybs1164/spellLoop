@@ -166,7 +166,8 @@ class Player {
     }
 
     const w = 36, ratio = this.hp / this.stats.maxHp;
-    const bx = Px.snap(x - w / 2), by = Px.snap(y + r + 12);
+    // 위치는 스프라이트와 같은 1px 반올림 (3px 격자에 붙이면 카메라가 따라가는 동안 막대만 떨린다)
+    const bx = Math.round(x - w / 2), by = Math.round(y + r + 12);
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(bx, by, w, Px.G * 2);
     ctx.fillStyle = ratio > 0.3 ? '#5be37a' : '#ff5a5a';

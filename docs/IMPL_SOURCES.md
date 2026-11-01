@@ -30,13 +30,13 @@
 ## cards/randomPoint/resolve
 
 ```js
-(env) => [env.randomPoint(80, 260)]
+(env) => [env.randomPoint(80, 260), env.randomPoint(80, 260), env.randomPoint(80, 260)]
 ```
 
 ## cards/fallen/resolve
 
 ```js
-(env) => env.fallenPoints(1.5)
+(env) => env.fallenPoints(3)
 ```
 
 ## cards/objects/resolve
@@ -66,7 +66,7 @@
 ## cards/gems/resolve
 
 ```js
-(env) => env.gems(600)
+(env) => env.gems(900)
 ```
 
 ## cards/prey/resolve
@@ -98,13 +98,7 @@ env => env.owner
 ## cards/woundedEnemies/resolve
 
 ```js
-env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.3)
-```
-
-## cards/pickups/resolve
-
-```js
-env => env.pickups(600)
+env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.5)
 ```
 
 ## cards/bolt/run
@@ -299,7 +293,14 @@ env => env.ownerTarget ? [env.ownerTarget] : []
 env => {
     const o = env.owner;
     const r = entityStats(o).range * (entityActionConfig(o, 'snipe')?.scaleArea ? env.game.player.stats.area : 1);
-    return env.game.enemies.filter(e => !e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2);
+    const list = env.game.enemies;
+    if (typeof WasmCore !== 'undefined' && WasmCore.on() && WasmCore.syncOrd(list)) {
+      // 같은 판정을 C 가 SoA 에서 넉넉하게 먼저 거른다 (목록 순서 그대로). 최종 판정은 원래 식
+      const c = WasmCore.exports.cull(list.length, o.x, o.y, r, 1), cand = WasmCore.cand, out = [];
+      for (let k = 0; k < c; k++) { const e = list[cand[k]]; if (!e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2) out.push(e); }
+      return out;
+    }
+    return list.filter(e => !e.dead && dist2(o.x, o.y, e.x, e.y) <= (r + e.radius) ** 2);
   }
 ```
 
@@ -442,7 +443,7 @@ cards => countType(cards, 'action') <= 3 ? null : '「절제의 반지」 슬롯
 ## cards/artifactSeal/rule
 
 ```js
-cards => countType(cards, 'action') <= 1 && countType(cards, 'target') <= 1 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 1장씩만 써야 합니다'
+cards => countType(cards, 'action') <= 2 && countType(cards, 'target') <= 2 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다'
 ```
 
 ## cards/artifactFeather/when

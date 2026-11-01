@@ -1,4 +1,4 @@
-# Amagos C 판
+# 오늘도 평화로운 마법 생활 C 판
 
 JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_REWRITE_PLAN.md](../docs/C_REWRITE_PLAN.md) 에 있다. 게임 데이터의 원본은 [data/*.csv](../data) 이고, 빌드할 때 `tools/gen_data.py` 가 C 소스로 바꾼다.
 

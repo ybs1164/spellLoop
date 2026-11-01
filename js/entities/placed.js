@@ -92,11 +92,11 @@ class Placed {
         break;
       }
     }
-    const w = 30, by = y - this.radius - 18;
+    const w = 30, bx = Math.round(x - w / 2), by = Math.round(y - this.radius - 18);
     ctx.fillStyle = '#191c29';
-    ctx.fillRect(Px.snap(x - w / 2), Px.snap(by), w, 4);
+    ctx.fillRect(bx, by, w, 4);
     ctx.fillStyle = this.hp / this.maxHp > 0.3 ? '#7dff9a' : '#ff6464';
-    ctx.fillRect(Px.snap(x - w / 2), Px.snap(by), w * Math.max(0, this.hp / this.maxHp), 4);
+    ctx.fillRect(bx, by, Math.round(w * Math.max(0, this.hp / this.maxHp)), 4);
     ctx.globalAlpha = 1;
   }
 }

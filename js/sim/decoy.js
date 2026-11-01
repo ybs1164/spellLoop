@@ -94,7 +94,7 @@ class GameDecoy {
         const en = cell[i], o = en.owner;
         if (o === unit || o.dead) continue;
         const d = dist2(o.x, o.y, unit.x, unit.y);
-        if (d < en.r2 && d < st.distance) { st.best = en.wrap ? en.wrap(o) : { kind: 'self' }; st.distance = d; }
+        if (d < en.r2 && d < st.distance) { st.best = en.wrap ? this.decoyWrap(o, en.wrap) : SELF_TARGET; st.distance = d; }
       }
       return st.best;
     }
@@ -107,6 +107,14 @@ class GameDecoy {
     return st.best;
   }
 
+  /** 유인 대상 래퍼: allTargets 와 같은 개체별 래퍼를 쓴다 (받는 쪽은 읽거나 복사만 한다) */
+  decoyWrap(o, wrap) {
+    const wraps = this._targetWraps ||= new WeakMap();
+    let w = wraps.get(o);
+    if (!w) wraps.set(o, w = wrap(o));
+    return w;
+  }
+
   visitDecoy(owner, wrap, unit, st) {
     if (owner === unit || owner.dead) return;
     const effect = this.decoyEffectOf(owner);
@@ -115,7 +123,7 @@ class GameDecoy {
     if (!effect.targets) {
       // 대상 지정이 없으면 유인 중심은 개체 자신이다: 거리부터 보고 가까울 때만 대상 래퍼를 만든다.
       const d = dist2(owner.x, owner.y, unit.x, unit.y);
-      if (d < r2 && d < st.distance) { st.best = wrap ? wrap(owner) : { kind: 'self' }; st.distance = d; }
+      if (d < r2 && d < st.distance) { st.best = wrap ? this.decoyWrap(owner, wrap) : SELF_TARGET; st.distance = d; }
       return;
     }
     const targets = effect.targets;

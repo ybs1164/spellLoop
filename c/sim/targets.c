@@ -107,7 +107,7 @@ static int r_wounded(Ctx *c, Target *out, int cap) {
   int n = r_enemies(c, out, cap), m = 0;
   for (int k = 0; k < n; k++) {
     int i = target_index(c->w, &out[k]);
-    if (c->w->hp[i] <= c->w->stat[i][STAT_MAX_HP] * 0.3f) out[m++] = out[k];
+    if (c->w->hp[i] <= c->w->stat[i][STAT_MAX_HP] * 0.5f) out[m++] = out[k];
   }
   return m;
 }
@@ -133,7 +133,7 @@ static int r_fallen(Ctx *c, Target *out, int cap) {
   int p = player_i(w), n = 0;
   static ByDist buf[60];
   if (p < 0) return 0;
-  for (int k = 0; k < w->nfallen; k++) if (w->time - w->fallen[k].t <= 1.5) buf[n++] = (ByDist){ k, d2(w->fallen[k].x, w->fallen[k].y, w->x[p], w->y[p]) };
+  for (int k = 0; k < w->nfallen; k++) if (w->time - w->fallen[k].t <= 3) buf[n++] = (ByDist){ k, d2(w->fallen[k].x, w->fallen[k].y, w->x[p], w->y[p]) };
   qsort(buf, (size_t)n, sizeof *buf, cmp_dist);
   n = mini(n, cap);
   for (int k = 0; k < n; k++) out[k] = (Target){ TK_POINT, 0, HANDLE_NONE, w->fallen[buf[k].i].x, w->fallen[buf[k].i].y };
@@ -155,7 +155,6 @@ static int r_allies(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK_
 static int r_zones(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK_ZONE, out, cap, NULL); }
 static int r_shots(Ctx *c, Target *out, int cap) { return in_range_of_player(c->w, 1u << TK_SHOT, NULL, SIGHT, out, cap); }
 static int r_gems(Ctx *c, Target *out, int cap) { return in_range_of_player(c->w, 1u << TK_GEM, NULL, SIGHT, out, cap); }
-static int r_pickups(Ctx *c, Target *out, int cap) { return in_range_of_player(c->w, 1u << TK_PICKUP, NULL, SIGHT, out, cap); }
 static int r_prey(Ctx *c, Target *out, int cap) {
   World *w = c->w;
   int e = ent_index(w, w->prey), p = player_i(w);
@@ -293,15 +292,15 @@ static const ResolveImpl RESOLVES[] = {
   { CARD_SELF, r_self }, { CARD_ENTITY_SELF, r_owner }, { CARD_ENEMIES, r_enemies }, { CARD_NEAREST_ENEMY, r_nearest_enemy },
   { CARD_WOUNDED_ENEMIES, r_wounded }, { CARD_AHEAD, r_ahead }, { CARD_BEHIND, r_behind }, { CARD_RANDOM_POINT, r_random_point },
   { CARD_FALLEN, r_fallen }, { CARD_OBJECTS, r_objects }, { CARD_ALLIES, r_allies }, { CARD_ZONES, r_zones }, { CARD_SHOTS, r_shots },
-  { CARD_GEMS, r_gems }, { CARD_PICKUPS, r_pickups }, { CARD_PREY, r_prey }, { CARD_LAST_HIT, r_last_hit }, { CARD_ALL, r_all },
+  { CARD_GEMS, r_gems }, { CARD_PREY, r_prey }, { CARD_LAST_HIT, r_last_hit }, { CARD_ALL, r_all },
   { CARD_ENTITY_AREA, r_entity_area }, { CARD_ENTITY_MOVEMENT_TARGET, r_movement_target }, { CARD_EVENT_SUBJECT, r_event_subject },
   { CARD_EVENT_OWNER, r_event_owner },
 };
 static const TestImpl TESTS[] = {
   { CARD_ENTITY_HURT, t_hurt, false }, { CARD_IF_PLAYER_CONTACT, t_player_contact, false }, { CARD_ENTITY_MOVEMENT_DISTANCE, t_movement_distance, false },
-  { CARD_ENTITY_IN_SIGHT, t_in_sight, false }, { CARD_ENTITY_IN_REACH, t_in_reach, false }, { CARD_ENTITY_RANGE, t_in_reach, false },
+  { CARD_ENTITY_IN_SIGHT, t_in_sight, false }, { CARD_ENTITY_IN_REACH, t_in_reach, false },
   { CARD_ENTITY_IN_AREA, t_in_area, false }, { CARD_ENTITY_ENEMY_IN_REACH, t_enemy_in_reach, false }, { CARD_ENTITY_SAME_TEAM, t_same_team, false },
-  { CARD_ENTITY_TEAM, t_same_team, false }, { CARD_ENTITY_OTHER_TEAM, t_other_team, false }, { CARD_ENTITY_PLAYER_IN_SIGHT, g_player_in_sight, true },
+  { CARD_ENTITY_OTHER_TEAM, t_other_team, false }, { CARD_ENTITY_PLAYER_IN_SIGHT, g_player_in_sight, true },
 };
 static const WhenImpl WHENS[] = {
   { CARD_ARTIFACT_FEATHER, w_feather }, { CARD_ARTIFACT_HOURGLASS, w_hourglass }, { CARD_ARTIFACT_CHALICE, w_chalice }, { CARD_ARTIFACT_HORN, w_horn },

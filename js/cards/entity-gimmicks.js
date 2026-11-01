@@ -2,7 +2,8 @@
 
 // entitySlot 생성, 기믹 레시피 설치, 슬롯 상속
 
-function entitySlot(owner, kind) {
+/** reuse: 재사용 껍데기의 지난 생애 슬롯 묶음 (같은 틀이고 그대로 쓸 수 있으면 새로 만들지 않는다, reuseSlotGroup) */
+function entitySlot(owner, kind, reuse) {
   owner.team ??= owner.source?.team ?? (kind === 'enemy' || (kind === 'shot' && !owner.cardTick) ? 'hostile' : kind === 'object' && owner.kind === 'barrel' ? 'neutral' : 'friendly');
   if (owner.slot?.owner === owner) return owner.slot;
   if (owner.combatStats) delete owner.combatStats;
@@ -11,7 +12,7 @@ function entitySlot(owner, kind) {
   if (kind === 'object' && owner.kind === 'turret') { owner.knockback ??= 90; owner.shotSpeed ??= 460; }
   if (kind === 'object' && owner.kind === 'orb') owner.knockback ??= 40;
   // 아이템의 이동 속도와 끌려오기 시작하는 사거리. 경험치 보석은 일반 아이템의 20배 거리에서 다가온다.
-  if (kind === 'pickup') { owner.baseSpeed ??= 1100; owner.reach ??= owner.kind === 'gem' ? 90 * 20 : 90; }
+  if (kind === 'pickup') { owner.baseSpeed ??= 1100; owner.reach ??= owner.kind === 'gem' ? 90 * 10 : 90; }
   // 보석은 정지 상태에서 0.3초에 걸쳐 이동 속도까지 가속한다.
   if (kind === 'pickup' && (owner.kind === 'gem' || owner.kind === 'vitalGem')) owner.acceleration ??= owner.baseSpeed / 0.3;
   if (kind === 'shot') owner.pierceLimit ??= owner.cardTick && Number.isFinite(owner.pierce) ? owner.pierce : owner.cardTick ? Infinity : 0;
@@ -21,19 +22,25 @@ function entitySlot(owner, kind) {
   const templateKey = !owner.slot && kind === 'shot' ? shotSlotTemplateKey(owner) : null;
   const template = templateKey && SHOT_SLOT_TEMPLATES.get(templateKey);
   if (template) {
-    owner.slots = template.map(t => new EntitySlot(owner, kind, t.cards, t));
     // 합친 카드·기본값 배열도 틀에서 함께 쓴다 (EntitySlots 가 만드는 것과 같은 내용)
     const combined = template.combined ||= { cards: template.flatMap(t => t.cards) };
     combined.defaults ??= combined.cards.slice();
-    return (owner.slot = new EntitySlots(owner, kind, owner.slots, combined));
+    if (reuse && reuseSlotGroup(owner, reuse, template, combined)) return owner.slot;
+    owner.slots = template.map(t => new EntitySlot(owner, kind, t.cards, t));
+    owner.slot = new EntitySlots(owner, kind, owner.slots, combined);
+    owner.slot._template = template;
+    return owner.slot;
   }
   // 적도 같은 종류·같은 피해면 슬롯 구성이 같다: 틀의 카드·분석과 슬롯 구성 중 주인에게 남긴 주기 상태를 그대로 쓴다 (소환·대량 생성 비용)
   const enemyKey = !owner.slot && !owner.slots && kind === 'enemy' ? enemySlotTemplateKey(owner) : null;
   const enemyTemplate = enemyKey && ENEMY_SLOT_TEMPLATES.get(owner.def)?.get(enemyKey);
   if (enemyTemplate && enemyTemplate.cards.every(id => CARDS[id])) {
     for (const [field, value] of enemyTemplate.state) owner[field] ??= value;
+    if (reuse && reuseSlotGroup(owner, reuse, enemyTemplate.slots, enemyTemplate.combined)) return owner.slot;
     owner.slots = enemyTemplate.slots.map(t => new EntitySlot(owner, kind, t.cards, t));
-    return (owner.slot = new EntitySlots(owner, kind, owner.slots, enemyTemplate.combined));
+    owner.slot = new EntitySlots(owner, kind, owner.slots, enemyTemplate.combined);
+    owner.slot._template = enemyTemplate.slots;
+    return owner.slot;
   }
   const stateBefore = enemyKey ? ENEMY_TEMPLATE_STATE.map(field => owner[field]) : null;
   const inherited = owner.slot?.cards.slice();
@@ -140,7 +147,7 @@ function entitySlot(owner, kind) {
   if (kind === 'ally' && owner.def.damage) {
     const ranged = owner.kind === 'archer', action = ranged ? 'bolt' : 'snipe';
     settings[action] ??= ranged ? {
-      damageRatio: 1, playerPower: true, afterMovement: true, look: 'arrowShot',
+      damageRatio: 1, playerPower: true, afterMovement: true, look: 'arrowShot', lead: true,
       radius: 4, life: 0.8, pierce: 0, shape: 'arrow', color: '#f4e1a1', offsetY: 0,
       statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } },
     } : {
@@ -154,7 +161,7 @@ function entitySlot(owner, kind) {
     chain.push('entityArea', entityPeriodAction(owner, 'snipe', 0.4), 'entitySelf');
   }
   if (owner.kind === 'turret' && kind === 'object') {
-      settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true, look: 'turretShot',
+      settings.bolt ??= { damageRatio: 1, radius: 4, life: 1, pierce: 0, offsetY: -6, playerPower: true, look: 'turretShot', lead: true,
         statRatios: { knockback: { stat: 'knockback', ratio: 1 }, speed: { stat: 'shotSpeed', ratio: 1 } } };
     chain.push(...entityReachCards(owner, 420), 'nearestEnemy', entityPeriodAction(owner, 'bolt', 0.7), 'entitySelf');
   }

@@ -14,9 +14,45 @@ const PROJECTILE_GUARD_PROPS = ['radius', 'markStacks', 'cardBuffs', 'burnStacks
   'damage', 'knockback', 'speed', 'baseSpeed', 'pierceLimit'];
 // 위 접근자가 지키는 참조 스탯 (attackPower=damage, knockback, moveSpeed=baseSpeed??speed, pierce=pierceLimit): 이것만 참조하는 표는 C 휴면을 쓸 수 있다
 const SHOT_NAP_STATS = new Set(['attackPower', 'knockback', 'moveSpeed', 'pierce']);
+// 빈 opts 로 만든 탄의 자기 필드 전부 (init 이 채우는 순서). 생애 중에 흔히 붙는 필드(source·스탯 기본값·카드 상태)도 미리 둔다.
+// 재사용 껍데기는 이 필드들을 init 이 다시 채우고, opts 로 들어온 그 밖의 필드(_extra)는 undefined 로 되돌린다. tools/check-pool.cjs 가 실제 생성 결과와 같은지 확인한다.
+const PROJECTILE_INIT_KEYS = new Set(['_pi', '_slot', '_slots', '_freezeT', '_directFrozen', '_fearT', '_directStates', '_effectSlots', '_burnEventEffects', '_cardMove', '_directMove',
+  '_radius', '_markStacks', '_cardBuffs', '_burnStacks', '_directBurnStacks', '_damage', '_knockback', '_speed', '_baseSpeed', '_pierceLimit', '_moveEffect', '_moveSpeed', '_hitEffect',
+  '_slotSpawned', '_extra', 'source', 'knockbackResistance', 'statusResistance', 'range', 'sight', 'keepDistance', 'shotSpeed', 'shotCount', 'summonCount', 'shotPower',
+  'combatStats', 'cardScales', 'cardPower', 'cardRate', 'cardArmor', 'cardShield', 'targetFeatures', 'splitBorn', 'attackEventOwner', 'markT', 'directBurnPending', 'directBurnTick',
+  'pierce', 'color', 'shape', 'boomerang', 'returnTime', 'back', 'homing', 'turn', 'spin', 'blastOnEnd', 'team', 'max', 'hitSet']);
+// opts 의 키 중 따로 기록하지 않아도 init 이 다시 채우는 것 (위 필드와 접근자)
+const PROJECTILE_OPT_KEYS = new Set([...PROJECTILE_INIT_KEYS, ...PROJECTILE_SOA_PROPS, ...PROJECTILE_GUARD_PROPS]);
+/** 탄 껍데기 풀의 키: 슬롯 틀을 가르는 값(부메랑·유도·폭발)의 조합. 같은 키의 껍데기는 대개 같은 틀이라 슬롯 묶음을 그대로 쓴다 */
+function shotShellKey(o) { return (o.boomerang ? 1 : 0) | (o.homing ? 2 : 0) | (o.blastOnEnd ? 4 : 0); }
 class Projectile {
-  constructor(opts) {
-    const pi = this._pi = PSoA.alloc();
+  /**
+   * 탄 하나를 만든다. 사라진 탄의 객체는 SoA 슬롯과 같은 재사용 대기(SHOT_SLOT_REUSE_DELAY)를 거쳐 PSoA.shells 로 돌아오므로,
+   * 같은 틀 종류의 껍데기가 있으면 새로 만들지 않고 생성자와 같은 상태로 되돌려 쓴다 (사라진 탄을 가리키는 참조가 잠시 남는 것은 SoA 슬롯과 같다).
+   */
+  static create(opts) {
+    const pi = PSoA.alloc(), shell = PSoA.shells.take(shotShellKey(opts));
+    if (shell === undefined) return new Projectile(opts, pi);
+    shell._pi = pi;
+    shell.reuse(opts);
+    return shell;
+  }
+  constructor(opts, pi = PSoA.alloc()) {
+    this._pi = pi;
+    this.init(opts, null);
+  }
+  /** 껍데기를 새 탄으로: 지난 생애에만 붙은 필드를 지우고 생성자와 같은 순서로 다시 채운다. 슬롯 묶음·명중 기록 Set 은 같은 틀이면 그대로 쓴다. */
+  reuse(opts) {
+    const extra = this._extra;
+    // 시험용 (POOL_VERIFY=1): 위 목록·_extra 밖에서 생애 중에 붙은 필드가 있으면 예외 (재사용이 그 값을 남기게 되므로)
+    if (POOL_VERIFY) for (const k of Object.keys(this)) if (!PROJECTILE_INIT_KEYS.has(k) && !extra?.includes(k)) throw new Error(`재사용 탄에 init 이 되돌리지 않는 필드: ${k}`);
+    if (extra) for (let i = 0; i < extra.length; i++) this[extra[i]] = undefined;
+    const hits = this.hitSet instanceof Set ? this.hitSet : null;
+    hits?.clear();
+    this.init(opts, this._slot, hits);
+  }
+  init(opts, reuse, hits) {
+    const pi = this._pi;
     PSoA.napOn[pi] = 0; PSoA.lodDt[pi] = 0; PSoA.lodSkip[pi] = 0; PSoA.dead[pi] = 0; PSoA.seq[pi] = PSoA.seqNo = (PSoA.seqNo + 1) % 1073741824;
     this._slot = undefined; this._slots = undefined; this._freezeT = 0; this._directFrozen = undefined; this._fearT = undefined; this._directStates = undefined;
     this._effectSlots = undefined; this._burnEventEffects = undefined; this._cardMove = undefined; this._directMove = undefined;
@@ -25,6 +61,11 @@ class Projectile {
     this._damage = undefined; this._knockback = undefined; this._speed = undefined; this._baseSpeed = undefined; this._pierceLimit = undefined;
     this._moveEffect = undefined; this._moveSpeed = undefined; this._hitEffect = undefined;
     this._slotSpawned = false;   // 프레임 루프가 나중에 붙이는 필드를 미리 둔다 (복사한 탄은 아래 assign 이 덮는다)
+    this._extra = null;
+    this.source = undefined; this.knockbackResistance = undefined; this.statusResistance = undefined; this.range = undefined; this.sight = undefined;
+    this.keepDistance = undefined; this.shotSpeed = undefined; this.shotCount = undefined; this.summonCount = undefined; this.shotPower = undefined;
+    this.combatStats = undefined; this.cardScales = undefined; this.cardPower = undefined; this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
+    this.targetFeatures = undefined; this.splitBorn = undefined; this.attackEventOwner = undefined; this.markT = undefined; this.directBurnPending = undefined; this.directBurnTick = undefined;
     if (opts._pi !== undefined) { opts = { ...opts }; delete opts._pi; }   // 펼쳐 복사한 탄의 슬롯 번호는 물려받지 않는다
     this.x = 0; this.y = 0; this.vx = 0; this.vy = 0;
     this.radius = 5;
@@ -39,12 +80,37 @@ class Projectile {
     this.spin = 0;
     this.blastOnEnd = false;   // 사라질 때 화약통처럼 터진다
     this.freezeT = 0;          // 「빙결」: 이 시간 동안 제자리에 멈춘다
-    Object.assign(this, opts);
+    // Object.assign(this, opts) 와 같은 순서·같은 대입이다 (opts 는 평범한 객체). 접근자가 있는 객체에 이름이 정해지지 않은 대입은 느린 길로 가므로
+    // 흔한 키는 이름으로 대입한다.
+    for (const k in opts) {
+      const v = opts[k];
+      switch (k) {
+        case 'source': this.source = v; break;
+        case 'x': this.x = v; break;
+        case 'y': this.y = v; break;
+        case 'vx': this.vx = v; break;
+        case 'vy': this.vy = v; break;
+        case 'knockback': this.knockback = v; break;
+        case 'pierce': this.pierce = v; break;
+        case 'radius': this.radius = v; break;
+        case 'damage': this.damage = v; break;
+        case 'life': this.life = v; break;
+        case 'shape': this.shape = v; break;
+        case 'color': this.color = v; break;
+        case 'team': this.team = v; break;
+        case 'homing': this.homing = v; break;
+        case 'boomerang': this.boomerang = v; break;
+        case '_extra': break;   // 펼쳐 복사한 탄의 목록은 물려받지 않는다 (이 탄의 목록은 아래에서 다시 만든다)
+        default:
+          this[k] = v;
+          if (!PROJECTILE_OPT_KEYS.has(k)) (this._extra ||= []).push(k);
+      }
+    }
     this.team = opts.team ?? opts.source?.team ?? 'friendly';
     this.max = opts.max ?? this.life;   // 처음 수명 (「갱신」·「곧 사라짐」)
-    this.hitSet = new Set();   // 같은 적을 두 번 맞히지 않도록
+    this.hitSet = hits || new Set();   // 같은 적을 두 번 맞히지 않도록 (껍데기는 비운 Set 을 다시 쓴다)
     this.dead = false;
-    entitySlot(this, "shot");
+    entitySlot(this, "shot", reuse);
   }
 
   get x() { return PSoA.x[this._pi]; }

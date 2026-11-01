@@ -68,10 +68,20 @@
 | `SLOT_EVENT_QUEUE_MAX` (4096, `cards/slot-events.js`) | 발동 이벤트 대기열 상한. 넘친 새 이벤트는 버린다 (사망·만료는 남김) |
 | `ENEMY_UPDATE_BUDGET` (800) / `CROWD_ENEMIES` (3000) | 적 갱신 주기 / 과밀 렌더·겹침 해소·충돌 반경 기준 |
 | `SHOT_UPDATE_BUDGET` (1200), `SHOT_MAX_PERIOD` (4) | 투사체가 많으면 가까운 것도 돌려 가며 갱신 (모인 시간을 넘기고, 갱신 안 한 프레임은 충돌 생략). 과밀 회전의 차례는 탄의 생성 순번(`PSoA.seq`)으로 정한다 — 목록 순번은 앞 탄이 정리될 때마다 당겨져 같은 탄이 계속 건너뛰어졌다 |
-| `SHOT_SPAWN_BUDGET_CROWD` (40) | 투사체가 `SHOT_UPDATE_BUDGET` 보다 많을 때의 프레임당 생성 수 (평소는 `SHOT_SPAWN_BUDGET`) |
+| `SHOT_SPAWN_BUDGET` (4096), `ENEMY_SPAWN_BUDGET` (1024) | 프레임당 생성 안전장치. 평소 플레이에서는 닿지 않고 연쇄 분열처럼 한 프레임에 수천 개가 몰릴 때만 작동한다. 넘친 투사체·소환·분열 적은 버리지 않고 대기열(`SHOT_QUEUE_MAX`, `ENEMY_QUEUE_MAX`)에 두었다가 다음 프레임부터 순서대로 만든다 |
 | `ZONE_UPDATE_BUDGET` (150), `ZONE_MAX_PERIOD` (3) | 장판이 많으면 돌려 가며 갱신 |
 
 휴면: 쿨타임·조건 슬롯이 없는 표는 `SLEEP_AFTER_IDLE`(1) 프레임 뒤 잠들고 `SLEEP_FRAMES_IDLE`(120)에서 `SLEEP_IDLE_SPREAD`(48)만큼 엇갈린 길이로 잔다 (깨어날 때 모아서 반영할 쿨타임이 없어 결과가 같다). 쿨타임 표는 그대로 `SLEEP_AFTER`·`SLEEP_FRAMES`.
+
+## 생성 비용: 껍데기 재사용
+
+생성 수를 막지 않고 생성 비용을 줄인다 (`bench-frame` 지문·`play-stages` 결과 동일).
+- **껍데기 재사용**: 목록에서 빠진 `Projectile`·`Enemy` 객체는 SoA 슬롯과 같은 재사용 대기(240틱)를 거쳐 `PSoA.shells`·`ESoA.shells`(`DelayedPool`, 탄은 틀 종류·적은 종류별)로 돌아오고, `Projectile.create`·`Enemy.create` 가 생성자 본문(`init`)을 다시 돌려 쓴다. 생애 중에 흔히 붙는 필드는 `init` 이 미리 두고 매번 비운다(객체 형태도 하나). 탄은 opts 로 들어온 목록 밖 필드를 `_extra` 로 기억해 비운다.
+- **슬롯 묶음 재사용** (`reuseSlotGroup`): 같은 틀이고 카드 배열이 그대로인 슬롯 묶음은 생애 상태(쿨타임·실행 횟수·휴면 장부·사망)만 되돌려 그대로 쓴다. 표본(`_fast`)과 켜진 메커니즘 표가 남아 있어, 참조 스탯이 지난 생애와 같으면 첫 프레임부터 고정 슬롯 경로를 타고 바로 잠들어 C(`run_shots`)로 넘어간다. 쿨타임 슬롯이 있는 표본은 잠드는 시점이 새 개체와 같게 `_stable` 을 한 칸 뒤에서 시작한다. 연계·연쇄·유인 필드가 붙은 묶음은 새로 만든다.
+- **새로 만드는 경로**: 틀의 합친 카드 배열을 다시 만들지 않고, 유인 카드 여부는 틀마다 한 번만 본다. `entityNumber` 는 문자열 없이 `Number(n.toFixed(3))` 과 비트까지 같은 값을 낸다. 명중 기록 `hitSet` 은 껍데기가 비운 Set 을 다시 쓴다.
+- **일제 사격** (`shootVolley`): 한 행동의 여러 발(`bolt` 의 n 발, `scatter`)은 설정 객체·주인·팀을 한 번만 만들고 속도만 바꿔 생성한다 (`shoot` 을 n 번 부른 것과 같다).
+- **SoA 슬롯 대기열**: 재사용 대기 슬롯은 고리 버퍼(`SlotDelayQueue`)라 대량 소멸 뒤 `alloc` 이 대기 슬롯 수에 비례하지 않는다.
+- 검사: `POOL_VERIFY=1` 이면 재사용할 객체에 `init` 이 되돌리지 않는 필드가 남아 있을 때 예외를 낸다 (`tools/check-pool.cjs`). 개체에 새 필드를 붙이는 코드를 넣으면 `init` 의 목록(`PROJECTILE_INIT_KEYS`, `Enemy.init`)이나 `REUSABLE_*_KEYS` 에 함께 넣는다.
 
 ## 투사체 SoA
 

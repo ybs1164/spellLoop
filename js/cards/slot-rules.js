@@ -19,8 +19,9 @@ for (const [id, name] of Object.entries(LEGACY_EVENT_NAMES)) {
 }
 
 // 앞 행동의 결과를 이어받는 기본 연쇄 카드는 플레이어도 쓴다 (나머지 발동 카드는 개체 전용).
-Object.assign(CARDS.on_hit, { weight: 2, entityOnly: false, desc: '앞 행동이 적중시킨 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 타격된 대상을 고를 수 있다.' });
-Object.assign(CARDS.on_complete, { weight: 2, entityOnly: false, desc: '앞 행동이 끝난 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 행동을 받은 대상을 고를 수 있다.' });
+// 쿨타임 연산: 연쇄를 쌓을수록 본 슬롯이 느려진다 (연쇄 슬롯 자체는 쿨타임 없이 이벤트마다 작동).
+Object.assign(CARDS.on_hit, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 적중시킨 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 타격된 대상을 고를 수 있다.' });
+Object.assign(CARDS.on_complete, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 끝난 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 행동을 받은 대상을 고를 수 있다.' });
 
 /*
  * 플레이어 연쇄 카드: 슬롯 안의 변수에 제약을 거는 대신 쿨타임을 줄인다. 제약이 카드의 본문 설명이다.
@@ -37,15 +38,15 @@ function ownerMoving(env) {
   return !!o.moving || Math.hypot(o.vx || 0, o.vy || 0) > 1;
 }
 Object.assign(CARDS, {
-  artifactBoots: { type: 'artifact', name: '바람의 장화', weight: 1, icon: 'haste', cd: '=0.016',
+  artifactBoots: { type: 'artifact', name: '바람의 장화', weight: 0, icon: 'haste', cd: '=0.016',
     desc: '이동 카드가 포함된 슬롯에만 넣을 수 있다.',
     rule: cards => cards.some(isMoveCard) ? null : '「바람의 장화」는 이동 카드가 포함된 슬롯에만 넣을 수 있습니다' },
   artifactRing: { type: 'artifact', name: '절제의 반지', weight: 2, icon: 'focus', cd: '+0.6',
     desc: '행동 카드를 3장 이하로 쓴 슬롯에만 넣을 수 있다.',
     rule: cards => countType(cards, 'action') <= 3 ? null : '「절제의 반지」 슬롯은 행동 카드를 3장 이하로 써야 합니다' },
-  artifactSeal: { type: 'artifact', name: '외길의 인장', weight: 2, icon: 'nearest', cd: '+0.45',
-    desc: '행동 카드와 대상 카드가 각각 1장뿐인 슬롯에만 넣을 수 있다.',
-    rule: cards => countType(cards, 'action') <= 1 && countType(cards, 'target') <= 1 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 1장씩만 써야 합니다' },
+  artifactSeal: { type: 'artifact', name: '외길의 인장', weight: 2, icon: 'nearest', cd: '+0', actionPower: 1.5,
+    desc: '행동 카드와 대상 카드가 각각 2장 이하인 슬롯(연쇄 한 번까지)에만 넣을 수 있다. 이 슬롯 행동의 효과량 +50%.',
+    rule: cards => countType(cards, 'action') <= 2 && countType(cards, 'target') <= 2 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다' },
   artifactFeather: { type: 'artifact', name: '질주의 깃털', weight: 2, icon: 'dash', cd: '+0.3',
     desc: '슬롯 주인이 이동하는 동안에만 작동한다.', when: env => ownerMoving(env) },
   artifactHourglass: { type: 'artifact', name: '고요의 모래시계', weight: 2, icon: 'prolong', cd: '+0.3',
@@ -68,16 +69,6 @@ function slotRuleError(cards) {
     if (err) return err;
   }
   return null;
-}
-// 같은 판정에 값만 다른 개체 전용 카드는 도감에 대표 카드 한 장으로 보인다 (슬롯에는 값이 정해진 카드가 들어간다).
-const ENTITY_CARD_FAMILIES = {
-  entityRange: ['entityInReach', '거리 이내', '슬롯 주인과의 거리가 값(숫자·시야·사거리·범위) 이내인 대상에게만 작동한다.', ['entityInSight', 'entityInReach', 'entityInArea']],
-  entityTeam: ['entitySameTeam', '팀 조건', '슬롯 주인과 같은 팀 또는 다른 팀인 대상에게만 작동한다.', ['entitySameTeam', 'entityOtherTeam']],
-  entityHitTeam: ['entityHitTeam_opposing', '충돌 대상 팀', '충돌 행동은 지정한 팀(다른 팀, 같은 팀, 아군, 적군, 전체)에게만 작동한다.', Object.keys(CARDS).filter(id => id.startsWith('entityHitTeam_'))],
-};
-for (const [head, [base, name, desc, members]] of Object.entries(ENTITY_CARD_FAMILIES)) {
-  CARDS[head] = { ...CARDS[base], name, desc, variantOf: undefined };
-  for (const id of members) CARDS[id].variantOf = head;
 }
 CARDS.eventSubject = { type: 'target', kind: 'all', name: '이벤트 상대', weight: 2, icon: 'lastHit',
   desc: '이벤트 상대를 고른다: 타격·처치 시 타격된 대상, 피격 시 공격자, 그 외는 이벤트가 일어난 개체. 사라진 상대는 마지막 위치를 사용한다.',

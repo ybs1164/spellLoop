@@ -158,7 +158,7 @@ get(`
   game.magnet(selected);
 `);
 assert.equal(get('entityStats(selected).reach'), Infinity);
-assert.equal(get('entityStats(other).reach'), 1800, 'magnet does not query neighboring gems');
+assert.equal(get('entityStats(other).reach'), 900, 'magnet does not query neighboring gems');
 get('game.enemies[1].hp = 3; game.player.hp = 40; game.castBuff("heal", { kind: "self" })');
 assert.equal(get('game.player.hp'), 50);
 assert.equal(get('game.enemies[1].hp'), 3, 'heal affects only the selected target');

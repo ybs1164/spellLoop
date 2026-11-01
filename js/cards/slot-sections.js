@@ -50,7 +50,27 @@ function slotOrderError(cards) {
   }
   return null;
 }
-/** 플레이어 슬롯 편집이 지켜야 할 구성: 순환 순서와 최대 장수. */
+/** 플레이어 슬롯 편집이 지켜야 할 구성: 순환 순서, 최대 장수, 실행될 수 있는 모양. */
 function slotCycleError(cards) {
-  return slotOrderError(cards) || (cards.length > MAX_SLOT_CARDS ? `슬롯에는 카드를 ${MAX_SLOT_CARDS}장까지만 놓을 수 있습니다` : null);
+  return slotOrderError(cards) || (cards.length > MAX_SLOT_CARDS ? `슬롯에는 카드를 ${MAX_SLOT_CARDS}장까지만 놓을 수 있습니다` : null) || slotDeadError(cards);
+}
+/**
+ * 절대 실행되지 않는 모양이면 사유: 앞 행동이 없는 첫 칸의 타격 시, 앞에 발동 연쇄 카드가 없는 이벤트 상대,
+ * 행동이 받지 않는 종류(exclude·accepts·필수 속성)의 대상 바로 뒤 행동.
+ */
+function slotDeadError(cards) {
+  if (CARDS[cards[0]]?.eventKind === 'hit') return `${CARDS[cards[0]].name}은(는) 앞 행동이 있어야 작동하므로 첫 칸에 놓을 수 없습니다`;
+  // 행동 뒤의 연쇄 카드는 그 행동의 이벤트를 넘기고, 첫 구간의 연쇄 카드는 발동 순간(eventKind)이 있어야 이벤트를 준다.
+  let acted = false, event = false;
+  for (let i = 0; i < cards.length; i++) {
+    const card = CARDS[cards[i]], target = CARDS[cards[i - 1]];
+    if (card?.type === 'action') acted = true;
+    else if (card?.type === 'artifact' && (acted || EVENT_NAMES[card.eventKind])) event = true;
+    if (cardBaseId(cards[i]) === 'eventSubject' && !event) return `${card.name}은(는) 앞에 발동 연쇄 카드가 있어야 작동하므로 이 칸에 놓을 수 없습니다`;
+    if (card?.type !== 'action' || target?.type !== 'target') continue;
+    const features = KIND_FEATURES[target.kind];
+    if (card.exclude?.includes(target.kind) || (features && (card.accepts && !card.accepts.includes(target.kind) || card.requires?.some(f => !features[f]))))
+      return `${card.name}은(는) ${target.name}을(를) 대상으로 삼을 수 없습니다`;
+  }
+  return null;
 }

@@ -17,7 +17,7 @@ const TARGET_KINDS = {
   zone: { label: '장판', key: 'z', card: 'zones', inAll: true },
   shot: { label: '탄환', key: 's', card: 'shots', inAll: true },
   gem: { label: '보석', key: 'g', card: 'gems', inAll: true },
-  pickup: { label: '아이템', key: 'g', card: 'pickups', inAll: true },
+  pickup: { label: '아이템', key: 'g', inAll: true },
 };
 
 const KIND_LABEL = { ...Object.fromEntries(Object.entries(TARGET_KINDS).map(([k, v]) => [k, v.label])), all: '전체' };

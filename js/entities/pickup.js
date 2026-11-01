@@ -75,16 +75,16 @@ class Pickup {
         break;
       case 'gem': {
         const v = this.value;
-        // 도트 마름모 보석 (큰 보석은 한 칸 더 크다)
-        const G = Px.G, n = v <= 6 ? 2 : 3;
+        // 도트 마름모 보석 (큰 보석은 한 칸 더 크다). 전투를 가리지 않게 작고 흐린 색으로 반투명하게 깐다
+        const G = Px.G, n = v <= 6 ? 1 : 2;
         const gx = Math.round(x / G) * G, gy = Math.round(y / G) * G;
-        ctx.fillStyle = v <= 1 ? '#ffe45c' : v <= 6 ? '#ffd11a' : '#ffb300';
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = v <= 1 ? '#a89a5a' : v <= 6 ? '#b8a046' : '#c99a3a';
         for (let j = -n; j <= n; j++) {
           const w = n - Math.abs(j);
           ctx.fillRect(gx - w * G, gy + j * G, (w * 2 + 1) * G, G);
         }
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillRect(gx - G, gy - (n - 1) * G, G, G * (n - 1));
+        ctx.globalAlpha = 1;
         break;
       }
       case 'magnet': {

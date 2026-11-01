@@ -67,12 +67,10 @@ function entityCanHit(source, target, effect) {
   if (rule === 'same') return sourceBit === targetBit;
   return ((HIT_RULE_MASKS[rule] ?? ~sourceBit) & targetBit) !== 0;
 }
-for (const [rule, name] of Object.entries({ opposing: '충돌 대상: 다른 팀', same: '충돌 대상: 같은 팀', friendly: '충돌 대상: 아군 팀', hostile: '충돌 대상: 적군 팀', all: '충돌 대상: 모든 팀' })) {
-  CARDS[`entityHitTeam_${rule}`] = {
-    type: 'artifact', eventKind: 'rule', name, desc: `${name}. 이 슬롯의 충돌 행동은 이 팀에게만 작동한다.`,
-    weight: 0, entityOnly: true, icon: 'fNearEnemy', hitTeamRule: rule,
-  };
-}
+CARDS.entityHitTeam_opposing = {
+  type: 'artifact', eventKind: 'rule', name: '충돌 대상: 다른 팀', desc: '충돌 대상: 다른 팀. 이 슬롯의 충돌 행동은 이 팀에게만 작동한다.',
+  weight: 0, entityOnly: true, icon: 'fNearEnemy', hitTeamRule: 'opposing',
+};
 // 카드의 수치가 실행의 유일한 원본이다. 개체 속성은 기본 카드를 고를 때만 읽는다.
 const ENTITY_EFFECT_DEFAULTS = {
   entityFollow: {},
@@ -85,7 +83,21 @@ const ENTITY_EFFECT_DEFAULTS = {
   entityGuard: { reduction: 0.85, frontDot: -0.35 },
   orbit: { count: 3, speed: 4, hitRadius: 14 },
 };
-const entityNumber = n => typeof n === 'number' ? Number(n.toFixed(3)) : n;
+/**
+ * Number(n.toFixed(3)) 과 비트까지 같은 값 (탄 생성마다 불리는 길목이라 문자열을 만들지 않는다).
+ * |n| < 1e9 이면 n*1000 의 정확한 값(p + e, Dekker 곱)을 반올림(0.5 는 올림, toFixed 와 같다)한 정수 k 의 k/1000 이고, 나눗셈은 정확히 반올림되므로 문자열 해석과 같다.
+ * 그 밖(NaN·무한·큰 값)은 원래 식. -0 은 toFixed 처럼 0, 0 으로 반올림되는 음수는 -0.
+ */
+function entityNumber(n) {
+  if (typeof n !== 'number') return n;
+  const a = n < 0 ? -n : n + 0;
+  if (!(a < 1e9)) return Number(n.toFixed(3));
+  const p = a * 1000, c = 134217729 * a, ah = c - (c - a), al = a - ah;
+  const e = (ah * 1000 - p) + al * 1000;
+  const kc = Math.floor(p), f = p - kc;
+  const k = f > 0.5 || (f === 0.5 && e >= 0) ? kc + 1 : kc;
+  return n < 0 ? (k === 0 ? -0 : -(k / 1000)) : k / 1000;
+}
 function entityEffectText(id, e) {
   const n = entityNumber;
   const scaled = (value, ratio) => Number.isFinite(value) ? n(value * ratio) : value;
@@ -141,7 +153,7 @@ function entityChainCard(type, value, radius = false) {
   if (ENTITY_CHAIN_CARDS.has(key)) return ENTITY_CHAIN_CARDS.get(key);
   const id = `entityChain_${ENTITY_CHAIN_CARDS.size + 1}`;
   CARDS[id] = {
-    type: 'artifact', eventKind: 'state', variantOf: type === 'range' ? 'entityRange' : undefined, entityOnly: true, weight: 0,
+    type: 'artifact', eventKind: 'state', variantOf: type === 'range' ? 'entityInReach' : undefined, entityOnly: true, weight: 0,
     icon: 'fNearEnemy',
     name: `거리 ${value} 이내`,
     desc: `슬롯 주인과 거리 ${value}${radius ? ' + 대상 반경' : ''} 이내인 대상에게만 작동한다.`,

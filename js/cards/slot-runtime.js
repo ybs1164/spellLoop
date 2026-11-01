@@ -11,23 +11,46 @@ function slotEventTarget(game, event) {
   if (event.subject && !event.subject.dead) return slotTarget(game, event.subject);
   return { kind: 'point', x: event.x, y: event.y };
 }
+// selectSlotTargets 가 호출 동안만 쓰는 작업 배열 (중첩 호출도 각자 빌린다).
+// 길이를 0 으로 줄이면 V8 이 저장 공간을 놓아 다시 할당하므로, 개수를 따로 세고 쓴 칸만 비운다.
+const SLOT_SCRATCH_POOL = [];
+function releaseSlotScratch(arr, n) {
+  for (let i = 0; i < n; i++) arr[i] = undefined;
+  SLOT_SCRATCH_POOL.push(arr);
+}
 function selectSlotTargets(slot, env, keep) {
   // 대상은 대개 한두 개라 개체 목록으로 중복을 거르고, 많아지면 Set 으로 바꾼다.
-  const selected = [], objs = [];
-  let seen = null;
+  const selected = [], objs = SLOT_SCRATCH_POOL.pop() || [];
+  let seen = null, nObjs = 0;
   // 연쇄 카드 뒤의 대상 카드는 이어지는 연쇄 슬롯의 몫이라 첫 행동까지의 카드만 훑는다.
   for (const id of slotAnalysis(slot).stage) {
     const card = CARDS[id];
     if (card.type !== 'target') continue;
-    // 「전체」는 조건이 어차피 걸러낼 먼 개체를 래퍼로 감싸기 전에 거른다.
-    for (const t of keep && id === 'all' ? env.allTargets(keep) : card.resolve(env, { deck: env.game.player.deck })) {
-      const o = env.at(t);
-      if (!o || (o.dead && !(env.deathEvent && o === env.owner)) || (seen ? seen.has(o) : objs.includes(o))) continue;
+    // 「전체」는 조건이 어차피 걸러낼 먼 개체를 래퍼로 감싸기 전에 거른다 (목록은 이 반복 동안만 쓰므로 빌린 배열에 받는다).
+    let list, count, scratch = null;
+    if (keep && id === 'all' && env.allTargetsInto) { scratch = list = SLOT_SCRATCH_POOL.pop() || []; count = env.allTargetsInto(keep, scratch); }
+    else {
+      if (keep && id === 'all') list = env.allTargets(keep);
+      else {
+        // 대상 카드의 문맥은 읽기만 하므로 게임마다 하나를 두고 덱만 맞춘다
+        const ctx = env.game._resolveCtx ||= { deck: null };
+        ctx.deck = env.game.player.deck;
+        list = card.resolve(env, ctx);
+      }
+      count = list.length;
+    }
+    for (let i = 0; i < count; i++) {
+      const t = list[i], o = env.at(t);
+      if (!o || (o.dead && !(env.deathEvent && o === env.owner))) continue;
+      if (seen) { if (seen.has(o)) continue; }
+      else { let dup = false; for (let k = 0; k < nObjs; k++) if (objs[k] === o) { dup = true; break; } if (dup) continue; }
       selected.push(t);
       if (seen) seen.add(o);
-      else if (objs.push(o) > 8) seen = new Set(objs);
+      else if ((objs[nObjs++] = o, nObjs > 8)) { seen = new Set(); for (let k = 0; k < nObjs; k++) seen.add(objs[k]); }
     }
+    if (scratch) releaseSlotScratch(scratch, count);
   }
+  releaseSlotScratch(objs, nObjs);
   return selected;
 }
 
@@ -37,7 +60,11 @@ function slotNearFilter(conditions, env) {
   for (const card of conditions) if (card.near && !card.gate) (preds ||= []).push(card.near(env));
   if (!preds) return undefined;
   if (preds.length === 1) return preds[0];
-  const all = o => preds.every(p => p(o));
+  // 개체마다 불리므로 every(p => p(o)) 처럼 판정마다 클로저를 만들지 않는다 (같은 순서로 보고 처음 거짓에서 멈춘다)
+  const all = o => {
+    for (let i = 0; i < preds.length; i++) if (!preds[i](o)) return false;
+    return true;
+  };
   const cull = preds.find(p => p.cull)?.cull;   // 하나라도 거리 조건이면 그것으로 먼저 거를 수 있다
   if (cull) all.cull = cull;
   return all;
@@ -76,6 +103,8 @@ function slotAnalysis(slot) {
     conditions: artifacts.filter(c => c.eventKind === 'state'),
     enters: artifacts.some(c => c.eventKind === 'enter'),
     selector: stage.map(id => CARDS[id]).find(c => c.hitTeamRule || c.summonMode),
+    // 행동 효과량 배율 (외길의 인장): 슬롯 전체 제약 카드라 놓인 자리와 상관없이 슬롯 전체에 건다
+    power: cards.reduce((m, id) => m * (CARDS[id]?.actionPower ?? 1), 1),
     every: slotEveryFrame(slot),
     plan: undefined,
     blockers: undefined,
@@ -250,7 +279,15 @@ function cachedResolvedEffect(slot, owner, id, effect) {
 const SHARED_RESOLVED = new WeakMap();
 // runFixedSlot 의 효과 값 공유: 해석 결과 → 계획 → { plan, resolved, value } (대상 목록이 들어가지 않는 값만, 읽기 전용)
 const SHARED_PLAN_VALUES = new WeakMap();
-function runEventSlot(slot, owner, game, dt, context = {}) {
+// runEventSlot 은 문맥을 읽기만 한다
+const NO_SLOT_CONTEXT = Object.freeze({});
+// 비어 있는 진입 상태·진입 대상 (읽기만 한다)
+const NO_EVENT_STATE = new Set(), NO_ENTERED = Object.freeze([]);
+function hasTriggerKind(triggers, kind) {
+  for (let i = 0; i < triggers.length; i++) if (triggers[i].eventKind === kind) return true;
+  return false;
+}
+function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   const signal = context.event;
   if (!signal) tickSlotCooldown(slot, dt, owner);
   if (owner.dead && !signal) return false;
@@ -260,7 +297,7 @@ function runEventSlot(slot, owner, game, dt, context = {}) {
   // 쿨타임 중인 슬롯은 환경을 만들기 전에 끝낸다 (발동 연쇄 카드가 없을 때만: 진입 상태는 매 프레임 갱신해야 한다).
   if (!signal && !triggers.length && !slot.linked && !analysis.every && slot.cd > 1e-8) return false;
   // 발동 연쇄 카드가 진입뿐이 아닌 슬롯은 신호가 올 때만 작동하고, 신호는 맞는 발동 연쇄 카드가 있는 슬롯만 받는다.
-  if (signal ? !triggers.some(c => c.eventKind === signal.kind) : triggers.length && !analysis.enters) return false;
+  if (signal ? !hasTriggerKind(triggers, signal.kind) : triggers.length && !analysis.enters) return false;
   // 공용 환경(수십 개 함수)을 매번 복사하지 않고 프로토타입으로 물려받는다.
   // 실제 게임은 프로토타입이 하나뿐인 새 환경을 주고, 단순한 대역(game)은 개체 환경을 물려받는다.
   const env = game.newCardEnv ? game.newCardEnv(owner) : Object.create(game.cardEnv(owner));
@@ -271,15 +308,18 @@ function runEventSlot(slot, owner, game, dt, context = {}) {
   let targets;
   // 발동 연쇄 카드는 하나라도 일어나면 작동하고, 조건 연쇄 카드는 모두 만족하는 대상만 남긴다.
   if (signal) {
-    if (!triggers.some(c => c.eventKind === signal.kind)) return false;
+    if (!hasTriggerKind(triggers, signal.kind)) return false;
   } else if (triggers.length) {
     let due = false;
     for (const card of triggers) {
       if (card.eventKind !== 'enter') continue;
       const matching = slotConditionTargets(card, selectSlotTargets(slot, env), env);
-      const previous = slot.eventState || new Set();
-      slot.eventState = new Set(matching.map(t => env.at(t)));
-      const entered = card.gate ? (matching.length && !previous.size ? matching : []) : matching.filter(t => !previous.has(env.at(t)));
+      // 진입 상태는 여기서만 읽고 새로 만들어 바꾼다 (고쳐 쓰지 않는다): 비었으면 빈 표 하나를 함께 쓴다.
+      const previous = slot.eventState || NO_EVENT_STATE;
+      let next = NO_EVENT_STATE;
+      if (matching.length) { next = new Set(); for (let i = 0; i < matching.length; i++) next.add(env.at(matching[i])); }
+      slot.eventState = next;
+      const entered = !matching.length ? NO_ENTERED : card.gate ? (!previous.size ? matching : NO_ENTERED) : matching.filter(t => !previous.has(env.at(t)));
       if (entered.length) { targets = entered; due = true; }
     }
     if (!due) return false;
@@ -297,9 +337,17 @@ function runEventSlot(slot, owner, game, dt, context = {}) {
   }
   if (!ownerCanAct(owner) && !env.deathEvent && !CARDS[actions[0]].runsWhileBlocked) return false;
   targets ||= selectSlotTargets(slot, env);
+  // 대상 목록은 이 호출에서 새로 만든 배열이라, 모두 통과하면 그대로 쓰고 하나라도 빠질 때만 새 배열을 만든다 (판정은 대상마다 한 번, 순서대로).
   const first = CARDS[actions[0]];
-  targets = targets.filter(t => actionApplies(first, t, env));
+  let applied = null;
+  for (let i = 0; i < targets.length; i++) {
+    const ok = actionApplies(first, targets[i], env);
+    if (applied) { if (ok) applied.push(targets[i]); }
+    else if (!ok) applied = targets.slice(0, i);
+  }
+  if (applied) targets = applied;
   if (!targets.length) return false;
+  if (slot.chainKey && !takeChainRun(game, slot)) return false;
   if (counted) {
     const budget = game._cardBudget, cap = budget > 1 ? budget : 1;
     if (targets.length > cap) targets = targets.slice(0, cap);
@@ -314,8 +362,10 @@ function runEventSlot(slot, owner, game, dt, context = {}) {
   env.enableMechanic = (id, effect, selected) => {
     enabled.add(id);
     const resolved = cachedResolvedEffect(slot, owner, id, effect);
-    effects.set(id, { ...resolved, ...(selector?.hitTeamRule ? { hitTeamRule: selector.hitTeamRule } : {}),
-      ...((effect.redirectTargets || effect.playerTargeted) ? { targets: selected } : {}) });
+    const value = { ...resolved };
+    if (selector?.hitTeamRule) value.hitTeamRule = selector.hitTeamRule;
+    if (effect.redirectTargets || effect.playerTargeted) value.targets = selected;
+    effects.set(id, value);
   };
   executeLinkedAction(game, slot, owner, actions, targets, env, selector?.hitTeamRule, analysis.chainRest);
   if (owner.deck) for (const t of targets) if (t.kind === 'enemy') owner.deck.lastEnemy = t.e;

@@ -9,7 +9,8 @@ globalThis.PlayLog = (() => {
   const uuid = () => crypto.randomUUID();
   let db, game, run, sequence = 0, pending = [], busy = false;
   let persisting = null, lastSnapshot = -1;
-  let ids = new WeakMap(), nextId = 0, known = new Map();
+  let ids = new WeakMap(), nextId = 0, known = new Map(), spareKnown = new Map();
+  const SNAPSHOT_LISTS = ['enemies', 'allies', 'objects', 'zones', 'projectiles', 'hazards', 'pickups'];
   const repeatedCards = new Map();
   const status = { enabled, persisted: 0, uploaded: 0, error: null };
   const fail = error => { status.error = String(error?.message || error); console.warn('[PlayLog]', status.error); };
@@ -138,14 +139,19 @@ globalThis.PlayLog = (() => {
   }
   function snapshot(force = false) {
     if (!game.player || !run) return;
-    const current = new Map();
+    // 표 두 벌을 번갈아 쓴다 (프레임마다 새 Map·개체 배열을 만들지 않는다)
+    const current = spareKnown;
+    current.clear();
     const full = force || game.time - lastSnapshot >= 1;
-    for (const o of [game.player, ...game.enemies, ...game.allies, ...game.objects, ...game.zones, ...game.projectiles, ...game.hazards, ...game.pickups]) {
+    const visit = o => {
       const id = ref(o);
       if (!known.has(id)) current.set(id, spawn(o));
       else current.set(id, full ? observe(o, known.get(id)) : known.get(id));
-    }
+    };
+    visit(game.player);
+    for (const name of SNAPSHOT_LISTS) for (const o of game[name]) visit(o);
     for (const id of known.keys()) if (!current.has(id)) event('entity_removed', id);
+    spareKnown = known;
     known = current;
     if (full) lastSnapshot = game.time;
   }

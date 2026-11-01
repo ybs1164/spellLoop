@@ -83,8 +83,8 @@ static void test_cooldown(void) {
   s = make_slot(boots, 3); CHECK(NEAR(slot_cooldown(w, &s), FRAME_COOLDOWN), "이동 슬롯은 매 프레임");
   s = make_slot(a, 1); CHECK(!slot_runnable(&s), "행동 카드가 없으면 실행하지 않는다");
   s = make_slot(ring, 6); CHECK(!slot_runnable(&s) && slot_rule_error(s.cards, s.n) == CARD_ARTIFACT_RING, "절제의 반지: 행동 4장이면 위반");
-  const char *seal[] = { "artifactSeal", "self", "enemies", "bolt" };
-  s = make_slot(seal, 4); CHECK(slot_rule_error(s.cards, s.n) == CARD_ARTIFACT_SEAL, "외길의 인장: 대상 2장이면 위반");
+  const char *seal[] = { "artifactSeal", "self", "enemies", "nearestEnemy", "bolt" };
+  s = make_slot(seal, 5); CHECK(slot_rule_error(s.cards, s.n) == CARD_ARTIFACT_SEAL, "외길의 인장: 대상 3장이면 위반");
   const char *boots_bad[] = { "artifactBoots", "self", "bolt" };
   s = make_slot(boots_bad, 3); CHECK(slot_rule_error(s.cards, s.n) == CARD_ARTIFACT_BOOTS, "바람의 장화는 이동 카드가 있어야 한다");
   world_destroy(w);

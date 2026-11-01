@@ -39,7 +39,6 @@ vm.runInContext(`
   for (const [rule, friendly, hostile] of [['same', true, false], ['friendly', true, false], ['hostile', false, true], ['all', true, true]]) {
     assert.equal(entityCanHit(playerShot, ally, { hitTeamRule: rule }), friendly);
     assert.equal(entityCanHit(playerShot, enemy, { hitTeamRule: rule }), hostile);
-    assert.ok(iconIndex('entityHitTeam_' + rule) >= 0);
   }
   assert.equal(game.splitShot(playerShot).team, 'friendly');
   enemyShot.hitSet = new Set([ally]);
@@ -64,11 +63,8 @@ vm.runInContext(`
   assert.equal(shot.dead, true, 'team condition does not reset pierce each frame');
   assert.equal(another.hp, another.maxHp - 5);
   const contact = new Enemy('grunt', 0, 0, 1);
-  contact.slot.cards = ['entitySelf', 'entityHitTeam_same', 'entityHit']; contact.slot.changed();
-  assert.equal(contact.slot.effect('entityHit').hitTeamRule, 'same');
-  assert.equal(entityCanHit(contact, ally, contact.slot.effect('entityHit')), false);
-  contact.slot.cards = ['entitySelf', 'entityHitTeam_all', 'entityHit']; contact.slot.changed();
-  assert.equal(contact.slot.effect('entityHit').hitTeamRule, 'all');
+  contact.slot.cards = ['entitySelf', 'entityHitTeam_opposing', 'entityHit']; contact.slot.changed();
+  assert.equal(contact.slot.effect('entityHit').hitTeamRule, 'opposing');
   contact.slot.cards.push('entitySelf', 'entityHit'); contact.slot.changed();
   assert.equal(contact.slot.effect('entityHit').hitTeamRule, undefined, 'team options reset at a new target');
 `, context);

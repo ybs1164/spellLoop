@@ -202,8 +202,7 @@ Handle spawn_shot(Ctx *c, float x, float y, float vx, float vy, float radius, fl
   w->source[s] = ent_handle(w, a);
   SLOT(h, "entitySelf", "entityMove");
   if (c->rule != RULE_NONE) {
-    static const char *const RULES[] = { "entityHitTeam_opposing", "entityHitTeam_same", "entityHitTeam_friendly", "entityHitTeam_hostile", "entityHitTeam_all" };
-    const char *ids[] = { "entitySelf", RULES[c->rule], "entityHit" };
+    const char *ids[] = { "entitySelf", "entityHitTeam_opposing", "entityHit" };
     slot_add_entity_ids(w, h, ids, 3);
   } else SLOT(h, "entitySelf", "entityHit");
   return h;
@@ -442,7 +441,7 @@ Handle spawn_pickup(World *w, int kind, float x, float y, float value) {
   w->phase[g] = rng_range(&w->fx_rng, 0, TAU_F);
   // 아이템: 플레이어가 사거리 안이면 다가가고 (보석은 20배 거리에서, 0.3초에 걸쳐 가속), 닿으면 흡수된다
   w->stat[g][STAT_MOVE_SPEED] = 1100;
-  w->stat[g][STAT_REACH] = kind == PICK_GEM ? 90 * 20 : 90;
+  w->stat[g][STAT_REACH] = kind == PICK_GEM ? 90 * 10 : 90;
   SLOT(h, "entityInReach", "self", "entityMove", "entitySelf");
   SLOT(h, "ifPlayerContact", "entitySelf", "absorb");
   return h;

@@ -1,5 +1,23 @@
 'use strict';
 
+// updateTargetBuffs 가 프레임마다 객체를 만들지 않도록 쓰는 상수·도우미
+const NO_STATES = Object.freeze({});
+const BUFF_TARGETS_POOL = [];
+const BUFF_RATE_TIMERS = ['cd', 'shootCd', 'summonCd'];
+function buffActive(o, k) { return o.cardBuffs?.[k] > 0; }
+function scaleBuffField(o, key, factor) {
+  if (!Number.isFinite(o[key])) return;
+  o.cardScales ||= {};
+  const old = o.cardScales[key] || 1;
+  o[key] = o[key] / old * factor;
+  o.cardScales[key] = factor;
+}
+/** 시간이 남은 스택만 (모두 남았으면 같은 배열을 돌려준다: 스택 배열은 개체끼리 함께 쓰지 않는다) */
+function liveStacks(list) {
+  for (let i = 0; i < list.length; i++) if (!(list[i].time > 1e-9)) return list.filter(s => s.time > 1e-9);
+  return list;
+}
+
 class GameDamage {
   healTarget(o, n) {
     if (o.dead || !Number.isFinite(o.hp)) return;
@@ -121,23 +139,16 @@ class GameDamage {
 
   // 필드 값을 누적 곱하지 않고 활성 버프의 배율만 적용하고 만료 시 복구한다.
   syncTargetBuffs(o) {
-    const active = k => o.cardBuffs?.[k] > 0;
-    const scale = (key, factor) => {
-      if (!Number.isFinite(o[key])) return;
-      o.cardScales ||= {};
-      const old = o.cardScales[key] || 1;
-      o[key] = o[key] / old * factor;
-      o.cardScales[key] = factor;
-    };
-    for (const key of ['radius', 'r']) scale(key, active('amplify') ? 1.4 : 1);
+    scaleBuffField(o, 'radius', buffActive(o, 'amplify') ? 1.4 : 1);
+    scaleBuffField(o, 'r', buffActive(o, 'amplify') ? 1.4 : 1);
     // 적은 speed를, 아군·탄환·아이템은 이동 계산의 cardMove를 사용한다.
-    if (o instanceof Enemy) scale('speed', active('haste') ? 1.4 : 1);
-    scale('damage', active('rage') ? 1.5 : 1);
-    if (o instanceof Pickup && o.kind === 'gem') scale('value', active('rage') ? 1.5 : 1);
-    o.cardMove = !(o instanceof Enemy) && active('haste') ? 1.4 : 1;
-    o.cardPower = active('rage') ? 1.5 : 1;
-    o.cardRate = active('focus') ? 1 / 0.65 : 1;
-    o.cardArmor = active('armor') ? this.actionValue('armor', 'armor', o) : 0;
+    if (o instanceof Enemy) scaleBuffField(o, 'speed', buffActive(o, 'haste') ? 1.4 : 1);
+    scaleBuffField(o, 'damage', buffActive(o, 'rage') ? 1.5 : 1);
+    if (o instanceof Pickup && o.kind === 'gem') scaleBuffField(o, 'value', buffActive(o, 'rage') ? 1.5 : 1);
+    o.cardMove = !(o instanceof Enemy) && buffActive(o, 'haste') ? 1.4 : 1;
+    o.cardPower = buffActive(o, 'rage') ? 1.5 : 1;
+    o.cardRate = buffActive(o, 'focus') ? 1 / 0.65 : 1;
+    o.cardArmor = buffActive(o, 'armor') ? this.actionValue('armor', 'armor', o) : 0;
   }
 
   /**
@@ -146,8 +157,8 @@ class GameDamage {
    */
   buffTargets() {
     const wraps = this._targetWraps ||= new WeakMap();
-    const out = [{ kind: 'self' }];
-    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
+    const out = BUFF_TARGETS_POOL.pop() || [];
+    out.push({ kind: 'self' });
     // 적: 상태 비트(ESoA.buffy)가 0 이면 아무 일도 없다 — 직접 얼림·이동 배율만 초기화한다 (Enemy 접근자 대신 SoA 에 바로 쓴다).
     const enemies = this.enemies;
     if (WasmCore.on() && WasmCore.syncOrd(enemies)) {
@@ -162,8 +173,8 @@ class GameDamage {
         out.push(o);
       }
     }
-    for (let i = 1; i < lists.length; i++) {
-      const list = lists[i];
+    for (let i = 1; i < TARGET_LIST_KEYS.length; i++) {
+      const list = this[TARGET_LIST_KEYS[i]];
       if (!list) continue;
       if (i === 4 && this.buffShotsWasm(list, out, wraps)) continue;   // 투사체: 상태 있는 탄만 C 가 골라 준다
       for (const o of list) {
@@ -178,9 +189,11 @@ class GameDamage {
   }
 
   updateTargetBuffs(dt) {
-    for (const t of this.buffTargets()) {
+    // 목록은 이 반복 동안만 쓰고 돌려준다
+    const targets = this.buffTargets();
+    for (const t of targets) {
       const o = this.targetObj(t);
-      const states = o.directStates || {};
+      const states = o.directStates || NO_STATES;
       o.directFrozen = states.freeze > 0;
       o.directMove = states.freeze > 0 || states.root > 0 || states.fear > 0 ? 0 : 1;
       if (states.fear > 0 && !o.directFrozen && !(states.root > 0)) {
@@ -193,9 +206,10 @@ class GameDamage {
         if (o.follow) o.follow = null;
       }
       if (o.directBurnStacks) {
-        const damage = o.directBurnStacks.reduce((sum, s) => sum + s.dps * Math.min(dt, s.time), 0);
+        let damage = 0;
+        for (const s of o.directBurnStacks) damage = damage + s.dps * Math.min(dt, s.time);
         for (const stack of o.directBurnStacks) stack.time = Math.max(0, stack.time - dt);
-        o.directBurnStacks = o.directBurnStacks.filter(s => s.time > 1e-9);
+        o.directBurnStacks = liveStacks(o.directBurnStacks);
         o.directBurnPending = (o.directBurnPending || 0) + damage;
         o.directBurnTick = (o.directBurnTick || 0) + dt;
         if (o.directBurnPending > 0 && (o.directBurnTick >= 0.5 || !o.directBurnStacks.length)) {
@@ -205,23 +219,29 @@ class GameDamage {
       } else if (states.burn > 0) this.damageTarget(t, 9 * Math.min(dt, states.burn), 0, 'fire');
       if (!(o instanceof Enemy) && o.burnStacks) {
         for (const stack of o.burnStacks) stack.time = Math.max(0, stack.time - dt);
-        o.burnStacks = o.burnStacks.filter(s => s.time > 1e-9);
-        o.burnT = o.burnStacks.reduce((max, s) => Math.max(max, s.time), 0);
-        o.burnDps = o.burnStacks.reduce((sum, s) => sum + s.dps, 0);
+        o.burnStacks = liveStacks(o.burnStacks);
+        let burnT = 0, burnDps = 0;
+        for (const s of o.burnStacks) burnT = Math.max(burnT, s.time);
+        for (const s of o.burnStacks) burnDps = burnDps + s.dps;
+        o.burnT = burnT; o.burnDps = burnDps;
       }
       if (o.markStacks) {
         for (const stack of o.markStacks) stack.time = Math.max(0, stack.time - dt);
-        o.markStacks = o.markStacks.filter(s => s.time > 1e-9);
-        o.markT = o.markStacks.reduce((max, s) => Math.max(max, s.time), 0);
+        o.markStacks = liveStacks(o.markStacks);
+        let markT = 0;
+        for (const s of o.markStacks) markT = Math.max(markT, s.time);
+        o.markT = markT;
       }
-      for (const k of Object.keys(states)) states[k] = Math.max(0, states[k] - dt);
+      for (const k in states) states[k] = Math.max(0, states[k] - dt);
       if (!o.cardBuffs) continue;
-      for (const k of Object.keys(o.cardBuffs)) o.cardBuffs[k] = Math.max(0, o.cardBuffs[k] - dt);
+      const buffs = o.cardBuffs;
+      for (const k in buffs) buffs[k] = Math.max(0, buffs[k] - dt);
       if (!(o.cardBuffs.shield > 0)) o.cardShield = 0;
       this.syncTargetBuffs(o);
       // 공격·소환·설치물 타이머만 가속하고 수명은 정상 속도로 흐른다.
-      for (const k of ['cd', 'shootCd', 'summonCd']) if (Number.isFinite(o[k])) o[k] -= dt * (o.cardRate - 1);
+      for (let i = 0; i < BUFF_RATE_TIMERS.length; i++) { const k = BUFF_RATE_TIMERS[i]; if (Number.isFinite(o[k])) o[k] -= dt * (o.cardRate - 1); }
     }
+    targets.length = 0; BUFF_TARGETS_POOL.push(targets);
   }
 
   resolveEntityDeaths() {

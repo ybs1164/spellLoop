@@ -7,9 +7,31 @@
  * ==================================================================== */
 // Enemy.update 가 슬롯에 넘기는 문맥. 슬롯 묶음이 시작하자마자 chase 만 읽어 가므로 하나를 재사용해도 안전하다.
 const ENEMY_CONTEXT = { chase: null };
+// 시험용 (POOL_VERIFY=1): 새로 만든 적이 가진 필드의 합집합. 재사용 껍데기에 이 밖의 필드(생애 중에만 붙어 init 이 되돌리지 않는 필드)가 있으면 예외.
+const ENEMY_INIT_KEYS = new Set();
 class Enemy {
-  constructor(type, x, y, hpMul, dmgMul = 1) {
-    this._si = ESoA.alloc();   // 좌표·반지름 SoA 슬롯 (enemy-soa.js)
+  /**
+   * 적 하나를 만든다. 사라진 적의 객체는 SoA 슬롯과 같은 재사용 대기(SLOT_REUSE_DELAY)를 거쳐 ESoA.shells 로 돌아오므로,
+   * 같은 종류의 껍데기가 있으면 생성자와 같은 상태로 되돌려 쓴다 (Projectile.create 와 같은 방식). 슬롯 묶음도 같은 틀이면 그대로 쓴다.
+   */
+  static create(type, x, y, hpMul, dmgMul) {
+    const si = ESoA.alloc(), shell = ESoA.shells.take(type);
+    if (shell === undefined) return new Enemy(type, x, y, hpMul, dmgMul, si);
+    shell._si = si;
+    if (POOL_VERIFY) for (const k of Object.keys(shell)) if (!ENEMY_INIT_KEYS.has(k)) throw new Error(`재사용 적에 init 이 되돌리지 않는 필드: ${k}`);
+    shell.init(type, x, y, hpMul, dmgMul, shell._slot);
+    return shell;
+  }
+  constructor(type, x, y, hpMul, dmgMul = 1, si = ESoA.alloc()) {
+    this._si = si;   // 좌표·반지름 SoA 슬롯 (enemy-soa.js)
+    this.init(type, x, y, hpMul, dmgMul, null);
+    if (POOL_VERIFY) for (const k of Object.keys(this)) ENEMY_INIT_KEYS.add(k);
+  }
+  /** 생성자 본문. 재사용 껍데기는 지난 생애 값을 남기지 않도록 생애 중에 흔히 붙는 필드도 먼저 비운다 (객체 형태도 하나로 맞춘다). */
+  init(type, x, y, hpMul, dmgMul = 1, reuse) {
+    this.team = undefined; this.max = undefined; this.range = undefined; this._keepDistance = undefined; this.shotSpeed = undefined; this.shotCount = undefined;
+    this.summonCount = undefined; this._pierceLimit = undefined; this.combatStats = undefined; this._slots = undefined; this._slot = undefined; this._slotSpawned = undefined;
+    this._effectSlots = undefined; this._burnEventEffects = undefined; this.splitBorn = undefined; this.hp = undefined; this.facing = undefined; this.vx = undefined; this.vy = undefined;
     ESoA.napOn[this._si] = 0; ESoA.buffy[this._si] = 0;
     const def = ENEMY_TYPES[type];
     this.type = type;
@@ -65,7 +87,7 @@ class Enemy {
     this.cardRate = undefined; this.cardArmor = undefined; this.cardShield = undefined;
     this._lodDt = 0;     // 화면 밖에서 건너뛴 시간 (Game.step 의 먼 적 갱신)
     this._body = null;   // 그리기용 몸체 합성 묶음 (Sprites.bodyFamily)
-    entitySlot(this, "enemy");
+    entitySlot(this, "enemy", reuse);
     for (const recipe of def.slotRecipes || []) installEntityRecipe(this, 'enemy', recipe);
   }
 
@@ -317,7 +339,8 @@ class Enemy {
 
     if (this.boss || ((this.def.elite || this.radius >= 20) && this.hp < this.maxHp)) {
       const w = Px.snap(r * 2), ratio = Math.max(0, this.hp / this.maxHp);
-      const bx = Px.snap(x - w / 2), by = Px.snap(y - r - 18);
+      // 위치는 몸체 스프라이트와 같은 1px 반올림 (3px 격자에 붙이면 이동 중 몸체와 엇갈려 떨린다)
+      const bx = Math.round(x - w / 2), by = Math.round(y - r - 18);
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(bx, by, w, G * 2);
       ctx.fillStyle = this.boss ? '#ffd166' : '#ff6b8b';

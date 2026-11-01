@@ -27,46 +27,59 @@ function linkSlot(owner, kind, actions, actor, eventKind, chain) {
   const slot = new EntitySlot(owner, kind, cards);
   slot.linkActor = actor;
   slot.linked = true;
+  if (chain) slot.chainKey = chain;   // 연쇄 실행 상한을 세는 단위: 같은 스택(slotAnalysis 가 재사용하는 배열) + 시전 개체
   return slot;
 }
+/** 연쇄 스택 실행 한 번을 프레임 상한(CHAIN_RUN_RATE × dt)에서 뺀다. 다 썼으면 false. */
+function takeChainRun(game, slot) {
+  const runs = game._chainRuns ||= new Map(), actor = slot.linkActor;
+  let byChain = runs.get(actor);
+  if (!byChain) runs.set(actor, byChain = new Map());
+  const n = byChain.get(slot.chainKey) || 0;
+  if (n >= (game._chainCap ?? Infinity)) return false;
+  byChain.set(slot.chainKey, n + 1);
+  return true;
+}
 const EXECUTION_COLLECTIONS = ['projectiles', 'hazards', 'allies', 'objects', 'zones', 'enemies', 'pickups'];
+// 꼬리 행동이 없을 때의 tail, 만든 개체가 없을 때의 created (둘 다 읽기만 한다)
+const NO_TAIL = Object.freeze([]), NO_CREATED = Object.freeze([]);
+// 개체(플레이어 아님)가 쓰면 직접 상태로 거는 행동
+const DIRECT_STATUS_ACTIONS = new Set(['mark', 'root', 'burn']);
+// 실행 전 목록 길이 (실행 동안만 빌린다. 중첩 실행도 각자 빌린다)
+const EXECUTION_COUNTS_POOL = [];
 function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule, chainRest) {
-  const id = actions[0], card = CARDS[id], base = cardBaseId(id), tail = actions.slice(1);
+  const id = actions[0], card = CARDS[id], base = cardBaseId(id), tail = actions.length > 1 ? actions.slice(1) : NO_TAIL;
   // 연쇄 카드로 이어진 스택이면 그 카드들이 연쇄 슬롯이 되고, 연쇄 카드 없이 쌓인 행동 카드(tail)는 이벤트·대상을 자동으로 이어 붙인다.
   const chain = tail.length ? null : chainRest, follows = tail.length || chain;
   const nativeKind = base === 'split' ? 'spawn' : actionLinkEvent(base);
   const linkKind = (chain && chainEventKind(chain[0])) || nativeKind;
   const actor = slot.linkActor || owner;
-  const previous = { actor: game.actionActor, card: game.actionCard, rule: game.actionHitTeamRule, execution: game._slotExecution, origin: game.actionOrigin };
-  const counts = [game.projectiles.length, game.hazards.length, game.allies.length, game.objects.length, game.zones.length, game.enemies.length, game.pickups.length];
+  const prevActor = game.actionActor, prevCard = game.actionCard, prevRule = game.actionHitTeamRule, prevExecution = game._slotExecution, prevOrigin = game.actionOrigin, prevPower = game.actionPower;
+  const counts = EXECUTION_COUNTS_POOL.pop() || new Array(7);
+  for (let i = 0; i < 7; i++) counts[i] = game[EXECUTION_COLLECTIONS[i]].length;
   const execution = { owner, actor, slot, hits: [], applied: [], tail, chain, base, depth: (env.slotEvent?.depth || 0) + 1 };
   game.actionActor = actor; game.actionCard = card; game.actionHitTeamRule = teamRule; game._slotExecution = execution;
+  game.actionPower = slotAnalysis(slot).power;
   game.actionOrigin = env.slotEvent ? { x: env.slotEvent.x, y: env.slotEvent.y } : actor;
   // 직전 상태는 꼬리 행동이 즉발 효과의 성공 여부를 가릴 때만 쓴다.
   const before = follows ? targets.map(t => { const o = env.at(t); return [o, o.hp, o.x, o.y, o.life, o.dead]; }) : null;
   try {
-    globalThis.PlayLog?.card(id, targets, env, { cards: slot.cards });
+    globalThis.PlayLog?.card(id, targets, env, slot);
     if (card.effect?.passive) env.enableMechanic(base, card.effect, targets);
-    else {
-      const perform = list => {
-        if (owner !== game.player && ['mark', 'root', 'burn'].includes(base)) for (const t of list) game.directAction(base, t);
-        else card.run(list, env);
-      };
-      perform(targets);
-    }
+    else if (owner !== game.player && DIRECT_STATUS_ACTIONS.has(base)) for (const t of targets) game.directAction(base, t);
+    else card.run(targets, env);
   } finally {
-    game.actionActor = previous.actor; game.actionCard = previous.card; game.actionHitTeamRule = previous.rule;
-    game._slotExecution = previous.execution; game.actionOrigin = previous.origin;
+    game.actionActor = prevActor; game.actionCard = prevCard; game.actionHitTeamRule = prevRule;
+    game._slotExecution = prevExecution; game.actionOrigin = prevOrigin; game.actionPower = prevPower;
   }
-  const created = [];
+  let created = NO_CREATED;
   for (let i = 0; i < 7; i++) {
     const list = game[EXECUTION_COLLECTIONS[i]];
-    for (let j = counts[i]; j < list.length; j++) created.push(list[j]);
+    for (let j = counts[i]; j < list.length; j++) (created === NO_CREATED ? created = [] : created).push(list[j]);
   }
-  // A summon forwards only its native attack projectiles, never descendants of a linked action.
-  if (!slot.linked && owner.slots?.some(s => s.linked && CARDS[s.cards[0]]?.eventKind === 'hit')) {
-    for (const child of created) if (child.slot?.kind === 'shot') child.attackEventOwner = owner;
-  }
+  EXECUTION_COUNTS_POOL.push(counts);
+  // 개체가 만든 투사체의 명중은 「타격 시」를 듣는 그 개체에도 전한다. 연쇄로 이어진 행동이 만든 투사체는 제외한다 (연쇄가 자기 자신을 다시 부르지 않게).
+  if (!slot.linked) forwardShotHits(game, owner, created);
   if (follows && card.mechanic) {
     const key = actions.join('|') + (chain ? `>${chain.join('|')}` : '');
     if (slot.mechanicLinkKey !== key) {
@@ -114,6 +127,11 @@ function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule,
   emitSlotEvent(game, owner, 'complete', { subject: targets[0] && env.at(targets[0]), depth: execution.depth, exclude: slot });
 }
 
+/** 개체가 「타격 시」를 들으면 그 개체가 만든 투사체(shots)의 명중을 개체 자신의 타격 이벤트로도 보낸다. */
+function forwardShotHits(game, owner, shots) {
+  if (!shots.length || !ownerListens(owner, 'hit')) return;
+  for (const child of shots) if (child.slot?.kind === 'shot') child.attackEventOwner = owner;
+}
 function queueSlotEvent(game, owner, event) {
   const queue = game._slotEvents ||= [];
   if (queue.length >= SLOT_EVENT_QUEUE_MAX && event.kind !== 'death' && event.kind !== 'expired') return;   // 대기열 상한: 넘친 이벤트는 버린다 (사망은 남긴다)

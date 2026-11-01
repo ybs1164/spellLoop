@@ -33,12 +33,13 @@ globalThis.JS_MANIFEST = (() => {
       'sim/actions-attack.js', 'sim/actions-status.js', 'sim/actions-move.js', 'sim/actions-summon.js',
       'sim/zones.js', 'sim/fx.js', 'sim/hazards.js', 'render/gl-sprites.js', 'render/render.js',
     ],
+    sound: ['audio/sound.js'],
     'log-config': ['log/log-config.js'],
     'play-log': ['log/play-log.js'],
     'sim-bridge': ['worker/protocol.js', 'worker/sim-bridge.js'],
     main: ['main.js'],
   };
   const main = Object.values(groups).flat();
-  const NOT_IN_WORKER = new Set([...groups.pixel, ...groups['log-config'], ...groups['play-log'], ...groups['sim-bridge'], ...groups.main]);
+  const NOT_IN_WORKER = new Set([...groups.pixel, ...groups.sound, ...groups['log-config'], ...groups['play-log'], ...groups['sim-bridge'], ...groups.main]);
   return { groups, main, worker: [...main.filter(p => !NOT_IN_WORKER.has(p)), 'worker/protocol.js'] };
 })();

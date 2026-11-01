@@ -12,7 +12,7 @@ const ACTION_STAT_RATIOS = {
   laser: { damage: 1.6 }, chain: { damage: 1.2 }, meteor: { damage: 4.8 },
   blades: { damage: 0.8 }, burn: { damage: 0.9 }, drain: { damage: 3.6, heal: 0.04 }, snipe: { damage: 10 },
   heal: { heal: 0.1 }, shield: { shield: 0.25 }, armor: { armor: 0.05 },
-  blink: { distance: 160 / 170 }, dash: { distance: 1 }, pull: { pullDistance: 1.6 },
+  blink: { distance: 160 / 170 }, dash: { distance: 1, damage: 1.5 }, pull: { pullDistance: 1.6 },
   vortex: { forceSpeed: 2.6 }, ward: { forceSpeed: 6 },
   summon: { summonHp: 0.5, summonAttack: 1.2, summonSpeed: 150 / 170 },
   archer: { summonHp: 0.5, summonAttack: 1, summonSpeed: 130 / 170 },
@@ -20,7 +20,7 @@ const ACTION_STAT_RATIOS = {
   mine: { summonHp: 0.2, summonAttack: 1, damage: 4 },
   turret: { summonHp: 0.6, summonAttack: 0.9 }, decoy: { summonHp: 0.25 },
 };
-for (const [id, speed] of Object.entries({ bolt: 150, slash: 80, explode: 260, shockwave: 520, scatter: 150, lance: 60, boomerang: 80, homing: 150, laser: 60, chain: 40, drain: 40, snipe: 80 })) {
+for (const [id, speed] of Object.entries({ bolt: 150, slash: 80, explode: 260, shockwave: 520, scatter: 150, lance: 60, boomerang: 80, homing: 150, laser: 60, chain: 40, drain: 40, snipe: 80, dash: 80 })) {
   CARDS[id].fixedValues = { knockback: speed };
 }
 for (const [id, speed] of Object.entries({ bolt: 420, scatter: 400, lance: 900, boomerang: 520, homing: 340 })) {
@@ -52,8 +52,8 @@ CARDS.drain.desc += ' 피해를 주면 시전자 최대 체력의 6%를 회복�
 CARDS.heal.desc = '대상 최대 체력 10% 회복.';
 CARDS.shield.desc = '6초간 대상 최대 체력 25%만큼 피해 흡수.';
 CARDS.armor.desc = '6초간 매 타격 피해를 대상 최대 체력 5%만큼 감소.';
-CARDS.blink.desc = `바라보는 방향으로 대상 ${statRatioText('moveSpeed', ACTION_STAT_RATIOS.blink.distance)} × 1초만큼 이동.`;
-CARDS.dash.desc = '바라보는 방향으로 대상 이동 속도 100% × 1초만큼 돌진.';
+CARDS.blink.desc = `바라보는 방향으로 대상 ${statRatioText('moveSpeed', ACTION_STAT_RATIOS.blink.distance)} × 1초만큼 이동. 플레이어는 0.3초간 무적.`;
+CARDS.dash.desc = `바라보는 방향으로 대상 이동 속도 100% × 1초만큼 돌진하며 경로의 적에게 피해 ${statRatioText('attackPower', ACTION_STAT_RATIOS.dash.damage)}를 준다. 넉백 80. 플레이어는 0.2초간 무적.`;
 CARDS.pull.desc = `선택한 대상을 시전자 쪽으로 최대 시전자 ${statRatioText('knockback', ACTION_STAT_RATIOS.pull.pullDistance)} × 1초만큼 끌어당긴다.`;
 CARDS.vortex.desc += ` 끌어당기는 속도: 시전자 ${statRatioText('knockback', ACTION_STAT_RATIOS.vortex.forceSpeed)}.`;
 CARDS.ward.desc += ` 밀어내는 속도: 시전자 ${statRatioText('knockback', ACTION_STAT_RATIOS.ward.forceSpeed)}.`;

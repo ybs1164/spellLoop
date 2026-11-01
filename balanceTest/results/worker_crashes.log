@@ -410,3 +410,60 @@ FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memor
 12:12:42 allies|dash|on_complete|enemies;eventOwner|magnet|on_hit|ahead|frost;randomPoint|poison|artifactHourglass|eventSubject|bolt|artifactChalice|all;artifactFeather|all|boomerang|artifactChalice;lastHit|poison|artifactHourglass|pickups|turret|artifactFeather|ahead seed=1380385374: node worker exited (code 143): 
 12:12:42 allies|dash|on_complete|enemies;eventOwner|magnet|on_hit|ahead|frost;randomPoint|poison|artifactHourglass|eventSubject|bolt|artifactChalice|all;artifactFeather|all|boomerang|artifactChalice;lastHit|poison|artifactHourglass|pickups|turret|artifactFeather|ahead seed=1057244321: node worker exited (code 143): 
 12:12:42 ahead|frost|on_hit|shots|shockwave|on_complete;on_hit|gems|archer|artifactRing|self|turret|artifactBell|fallen;artifactFeather|enemies|laser|artifactChalice|self|turret;zones|root|artifactFeather|behind;nearestEnemy|burn|artifactFeather|eventOwner|shield|artifactChalice|lastHit seed=1057244321: node worker exited (code 143): 
+17:00:09 on_complete|enemies|scatter|artifactThorns|lastHit;enemies|laser|artifactHorn;pickups|bolt|artifactRing|behind|mine|artifactThorns;on_hit|self|burn|artifactFeather|fallen|chain;behind|shield|artifactHourglass|objects|armor seed=378827403: node worker exited (code 2147483651): #
+# Fatal process out of memory: Zone
+#
+----- Native stack trace -----
+
+ 1: 00007FF6553C20AD 
+ 2: 00007FF6552A62CF 
+ 3: 00007FF6564716E6 
+ 4: 00007FF655E96EA1 
+ 5: 00007FF655968ECB 
+ 6: 00007FF6566AF45A 
+ 7: 00007FF6566AFABD 
+ 8: 00007FF6566B4DB9 
+ 9: 00007FF6566B3A81 
+10: 00007FF6565BE227 
+11: 00007FF656590D61 
+12: 00007FF6565BDE0E 
+13: 00007FF6565BE5BE 
+14: 00007FF6565BE2B2 
+15: 00007FF6565929BD 
+16: 00007FF65658E76B 
+17: 00007FF65658934A 
+18: 00007FF655E137E4 
+19: 00007FF655DCCFFF 
+20: 00007FF65609B995 
+21: 00007FF6552A8B59 
+22: 00007FF655422323 
+23: 00007FF656B8066E 
+24: 00007FFFE3D3DDA7 
+25: 00007FFFE503EE4C
+17:04:41 randomPoint|pull;artifactSeal|self|bolt|artifactHorn;self|meteor|artifactHorn;artifactHorn|eventSubject|slash|artifactRing|enemies|snipe|artifactFeather|gems;prey|ward|artifactFeather|enemies|armor seed=378827403: node worker exited (code 2147483651): #
+# Fatal process out of memory: Zone
+#
+----- Native stack trace -----
+
+ 1: 00007FF6553C20AD 
+ 2: 00007FF6552A62CF 
+ 3: 00007FF6564716E6 
+ 4: 00007FF655E96EA1 
+ 5: 00007FF655968ECB 
+ 6: 00007FF656934535 
+ 7: 00007FF65693C7B9 
+ 8: 00007FF65694FD74 
+ 9: 00007FF65692812E 
+10: 00007FF656926156 
+11: 00007FF65692575E 
+12: 00007FF65696A88F 
+13: 00007FF65658F65F 
+14: 00007FF65658934A 
+15: 00007FF655E137E4 
+16: 00007FF655DCCFFF 
+17: 00007FF65609B995 
+18: 00007FF6552A8B59 
+19: 00007FF655422323 
+20: 00007FF656B8066E 
+21: 00007FFFE3D3DDA7 
+22: 00007FFFE503EE4C

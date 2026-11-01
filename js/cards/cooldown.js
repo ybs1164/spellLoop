@@ -2,9 +2,9 @@
 
 // 슬롯 쿨타임 연산과 휴면
 
-// 모든 슬롯은 쿨타임으로 작동한다. 쿨타임은 기본 1초에서 시작해 슬롯 카드의 쿨타임 연산(+, -, ×, =)을 배치 순서대로 적용한 값이다.
+// 모든 슬롯은 쿨타임으로 작동한다. 쿨타임은 기본 FRAME_COOLDOWN(매 프레임)에서 시작해 슬롯 카드의 쿨타임 연산(+, -, ×, =)을 배치 순서대로 적용한 값이다.
 // 결과가 FRAME_COOLDOWN 이하이면 매 프레임 작동한다.
-const BASE_COOLDOWN = 1;
+const BASE_COOLDOWN = 0.016;
 // 휴면: 표가 SLEEP_AFTER 프레임 연달아 같았던 개체는 한 번에 최대 SLEEP_FRAMES 프레임씩 슬롯 검증을 건너뛴다.
 const SLEEP_AFTER = 2;
 const SLEEP_FRAMES = 6;
@@ -19,14 +19,15 @@ let sleepIdleSeq = 0;
 const FRAME_COOLDOWN = 0.016;
 // 카드별 쿨타임 연산. 대상이 많거나 효과가 큰 카드일수록 쿨타임을 늘린다.
 // 카드 연산은 쿨타임을 줄이지 않는다(+ 또는 1 이상의 ×): 행동을 쌓은 체인이 매 프레임 작동으로 무너지지 않게 한다.
+// 기본값이 매 프레임이라 ×는 슬롯 맨 앞에 놓으면 거의 공짜가 되므로(0.016 × 3.5) 보상 카드는 + 만 쓴다.
 const CARD_COOLDOWNS = {
-  self: '+0', ahead: '+0', behind: '+0.2', randomPoint: '+0.3', fallen: '+0.6', nearestEnemy: '+0.2', lastHit: '+0', prey: '+0.2',
-  woundedEnemies: '+0.3', enemies: '×3', all: '×3.5', objects: '+0', allies: '+0.5', zones: '+0', shots: '+0.8', gems: '+1.2', pickups: '+1.3',
-  bolt: '+0.1', slash: '+1', explode: '+0.1', frost: '+0.8', poison: '+6', vortex: '+0', shockwave: '+0.2', summon: '+0.75', spawnOrb: '+0',
-  heal: '+2', shield: '+2.8', haste: '+1.8', rage: '+4.5', scatter: '+0', lance: '+0.1', focus: '+3', amplify: '+0.2', armor: '+1',
-  pull: '+0', magnet: '+0', orb: '+0.75', mine: '+0.7', turret: '+0.2', decoy: '+2.5', boomerang: '+0.55', homing: '+2.2', laser: '+0.8', chain: '+0.1',
-  meteor: '+1.2', blades: '+0.8', root: '+1.2', mark: '+0.2', burn: '+0.2', fear: '+2', drain: '+8', blink: '+0.5', dash: '+1.2', archer: '+0.6',
-  ward: '+1.5', spread: '+0', snipe: '×1.8', split: '+1', absorb: '+0.2', swap: '+0', inputMove: '+0',
+  self: '+0', ahead: '+0', behind: '+0.25', randomPoint: '+0', fallen: '+0.6', nearestEnemy: '+0.2', lastHit: '+0', prey: '+0.25',
+  woundedEnemies: '+0.4', enemies: '+0.9', all: '+1.45', objects: '+0', allies: '+0.5', zones: '+0', shots: '+0.8', gems: '+0.3',
+  bolt: '+0.1', slash: '+1', explode: '+0.15', frost: '+1.1', poison: '+6', vortex: '+0', shockwave: '+0.2', summon: '+0.45', spawnOrb: '+0',
+  heal: '+0.4', shield: '+1.75', haste: '+1.8', rage: '+3.55', scatter: '+1', lance: '+0.1', focus: '+3', amplify: '+0.2', armor: '+0.6',
+  pull: '+0', magnet: '+0.15', orb: '+0.5', mine: '+0.7', turret: '+0.2', decoy: '+1.5', boomerang: '+0.55', homing: '+1.2', laser: '+0.8', chain: '+0.1',
+  meteor: '+1.2', blades: '+0.8', root: '+0.65', mark: '+0.2', burn: '+0.2', fear: '+2', drain: '+4.5', blink: '+0.6', dash: '+0.8', archer: '+0.8',
+  ward: '+1', spread: '+0', snipe: '+0.35', split: '+1', absorb: '+0.2', swap: '+0.4', inputMove: '+0',
 };
 for (const [id, op] of Object.entries(CARD_COOLDOWNS)) CARDS[id].cd = op;
 const COOLDOWN_OPS = new Map();
@@ -45,7 +46,7 @@ function cooldownOpText(card) {
   const { op, value } = cooldownOp(card);
   return `${op === '-' ? '−' : op}${value}`;
 }
-/** 슬롯 쿨타임: 기본 1초에 카드 연산을 배치 순서대로 적용한다 (매 프레임보다 짧아지지 않는다). */
+/** 슬롯 쿨타임: 기본 BASE_COOLDOWN 에 카드 연산을 배치 순서대로 적용한다 (매 프레임보다 짧아지지 않는다). */
 function slotCooldown(slot) {
   let v = BASE_COOLDOWN;
   for (const id of slot.cards) if (CARDS[id]) v = applyCooldownOp(v, cooldownOp(CARDS[id]));

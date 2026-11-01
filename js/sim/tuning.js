@@ -17,17 +17,21 @@ const CROWD_MAX_PARTICLES = 800;
 // 분열 상한: 분열로 늘어나는 개체 수 (복제가 다시 분열하며 기하급수로 늘어나 멈추는 것을 막는다)
 const SPLIT_CAPS = { enemy: ['enemies', MAX_ENEMIES], self: ['allies', Infinity], ally: ['allies', Infinity], object: ['objects', Infinity], zone: ['zones', Infinity], shot: ['projectiles', Infinity], gem: ['pickups', Infinity], pickup: ['pickups', Infinity] };
 
-// 프레임당 생성 예산: 개체 수 상한을 풀어도 한 프레임에 몰리는 생성 작업량은 막는다 (SLOT_EVENT_BUDGET 과 같은 방식).
-// 투사체는 넘친 것을 대기열에 두었다 다음 프레임부터 이어서 만들고, 소환·분열로 늘어나는 적은 넘친 것을 만들지 않는다.
-const SHOT_SPAWN_BUDGET = 200;
-const SHOT_SPAWN_BUDGET_CROWD = 40;   // 투사체가 SHOT_UPDATE_BUDGET 보다 많을 때의 프레임당 생성 수 (새 탄은 첫 갱신 두 번이 무거워 과밀 때 생성이 프레임을 넘기지 않게)
+// 프레임당 생성 안전장치: 평소 플레이에서는 닿지 않는 값이다. 생성·첫 갱신 비용은 껍데기 재사용(Projectile.create·Enemy.create)과
+// 슬롯 묶음 재사용(reuseSlotGroup)으로 줄였고, 이 값은 연쇄 분열처럼 한 프레임에 수천 개가 몰리는 경우만 막는다.
+// 넘친 생성은 버리지 않고 대기열에 두었다 다음 프레임부터 순서대로 이어서 만든다 (투사체·소환·분열 적 모두). 대기열 상한을 넘을 때만 버린다.
+const SHOT_SPAWN_BUDGET = 4096;
 const SHOT_QUEUE_MAX = 20000;
-const ENEMY_SPAWN_BUDGET = 80;
+const ENEMY_SPAWN_BUDGET = 1024;
+const ENEMY_QUEUE_MAX = 20000;
 // 프레임당 카드 이벤트 예산: 행동 카드 하나가 대상 하나에 작동하는 것(슬롯 실행의 대상 수)이 이벤트 하나다.
 // 다 쓰면 그 프레임의 나머지 슬롯 실행은 쿨타임을 걸지 않고 다음 프레임으로 미루고(사망 연계는 예외), 대상이 남은 예산보다 많으면 앞에서부터 남은 만큼만 작동한다.
 // 투사체 충돌 한 번도 이벤트 하나로 SHOT_HIT_BUDGET 에서 세고, 다 쓰면 멈춘 자리부터 다음 프레임에 이어서 충돌을 본다. 발동 이벤트 대기열 상한은 cards/slot-events.js 의 SLOT_EVENT_QUEUE_MAX.
 const CARD_EVENT_BUDGET = 400;
 const CARD_EVENT_BUDGET_CROWD = 300;   // 과밀(적이 ENEMY_UPDATE_BUDGET 또는 투사체가 SHOT_UPDATE_BUDGET 보다 많을 때)
+// 연쇄 실행 상한: 연쇄 카드로 이어진 스택 하나(시전한 개체 기준)가 초당 이어서 실행되는 횟수. 프레임마다 dt 만큼 나눠 주고 넘친 이벤트는 버린다.
+// 연쇄 슬롯은 쿨타임 없이 앞 행동이 맞힐 때마다 작동해, 광역 다단 히트에 붙이면 초당 수천 번까지 불어난다.
+const CHAIN_RUN_RATE = 300;
 // 투사체 충돌은 따로 센다 (장판·슬롯 실행이 예산을 먼저 다 써서 탄이 적을 뚫고 지나가지 않게)
 const SHOT_HIT_BUDGET = 600;
 const SHOT_HIT_BUDGET_CROWD = 400;

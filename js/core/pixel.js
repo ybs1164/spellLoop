@@ -23,6 +23,7 @@ const Px = {
   _seen: new Map(),
   _stampArea: 0,
   _patterns: new WeakMap(),
+  _codes: [],
 
   setScale(s) {
     if (s === this.scale) return;
@@ -48,7 +49,9 @@ const Px = {
     }
     if (styleKey !== null) {
       let maxX = 0;
-      const codes = new Array(rows * 3);
+      // 키 문자 코드는 빌린 작업 배열에 담는다 (길이를 맞춰 fromCharCode 가 이번 칸만 읽게 한다)
+      const codes = this._codes;
+      codes.length = rows * 3;
       for (let i = 0, k = 0; i < rows * 3; i += 3, k++) {
         codes[i] = spans[i] + 32768; codes[i + 1] = spans[i + 1] / g; codes[i + 2] = spans[i + 2] / g;
         if (spans[i + 2] > maxX) maxX = spans[i + 2];

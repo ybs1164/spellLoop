@@ -9,7 +9,7 @@
   - 레벨업·보물 상자 보상은 무시한다 (카드 조합 고정). 레벨은 능력치를 올리지 않는다.
   - 이동은 tools/play-stages.cjs 와 같은 자동 조향 (적 회피 + 보스/전리품 쪽으로).
   - 화약통은 기본 제거 (폭발 피해가 카드 피해로 섞이지 않게). --barrels 로 켤 수 있다.
-  - 슬롯은 쿨타임제: 기본 1초에 카드별 쿨타임 연산(+, -, ×, =)을 배치 순서대로 적용한 값 (slot_cooldown 열).
+  - 슬롯은 쿨타임제: 기본 0.016초(매 프레임)에 카드별 쿨타임 연산(+, -, ×, =)을 배치 순서대로 적용한 값 (slot_cooldown 열).
   - 아티팩트 제약(행동 장수 등)을 어기는 조합은 실행하지 않고 다시 뽑는다.
 
 사용 예:
@@ -64,6 +64,20 @@ new Function('console', 'TD', 'api', 'Math', sources + `
 UI.hideOverlay = UI.showHud = UI.showEnd = () => {};
 let rng = 1;
 Math.random = () => ((rng = (Math.imul(rng, 1664525) + 1013904223) >>> 0) / 4294967296);
+// 연쇄 실행 집계: 플레이어가 놓은 연쇄 카드로 이어진 슬롯(연쇄 슬롯)이 실제로 행동을 실행한 횟수
+let chainOwner = null, chainRuns = 0, chainDepth = 0, chainLevel = 0;
+const makeLink = linkSlot, runLinked = executeLinkedAction;
+linkSlot = function (owner, kind, actions, actor, eventKind, chain) {
+  const slot = makeLink(owner, kind, actions, actor, eventKind, chain);
+  if (chain) slot.chainLevel = chainLevel + 1;   // 연쇄 카드 없이 쌓인 행동 꼬리(자동 연계)는 세지 않는다
+  return slot;
+};
+executeLinkedAction = function (game, slot, owner, actions, targets, env, ...rest) {
+  if (slot.chainLevel && chainOwner && slot.linkActor === chainOwner) { chainRuns++; chainDepth = Math.max(chainDepth, slot.chainLevel); }
+  const level = chainLevel;
+  chainLevel = slot.chainLevel || 0;
+  try { return runLinked.call(this, game, slot, owner, actions, targets, env, ...rest); } finally { chainLevel = level; }
+};
 const rewardable = id => !CARDS[id].entityOnly && !CARDS[id].configured && CARDS[id].group !== 'entity' && (CARDS[id].weight ?? 1) > 0;
 
 function steer(g) {
@@ -94,7 +108,14 @@ api.catalog = () => ({
 
 api.rule = job => job.slots.map(cards => slotCycleError(cards) || slotRuleError(cards));
 
+// job.cd = { 카드 id: '+0.3' } 이면 이 판에서만 카드 쿨타임 연산을 바꾼다 (패치안 미리 보기)
 api.run = (job) => {
+  const saved = Object.keys(job.cd || {}).filter(id => CARDS[id]).map(id => [id, CARDS[id].cd]);
+  for (const [id] of saved) CARDS[id].cd = job.cd[id];
+  try { return runJob(job); } finally { for (const [id, op] of saved) CARDS[id].cd = op; }
+};
+
+function runJob(job) {
   const lists = job.slots || [job.cards];
   if (lists.length > MAX_SLOTS - 1) return { error: 'too many slots ' + lists.length };
   const tests = [];
@@ -110,6 +131,7 @@ api.run = (job) => {
   if (stageIdx < 0) return { error: 'unknown stage ' + job.stage };
 
   rng = (job.seed >>> 0) || 1;
+  ESoA.reset(); PSoA.reset();   // 판마다 새 Game 이라 앞 판의 적·탄 슬롯을 돌려줄 곳이 없다 (전역 SoA 가 쌓여 고갈된다)
   const g = Object.create(Game.prototype);
   Object.assign(g, { events: new EventBus(), hash: new SpatialHash(64), _near: [], w: 1000, h: 800, clock: 0 });
   for (const k of ['addText', 'burst', 'circleFx', 'addFx', 'shake', 'showBanner', 'markTargets']) g[k] = () => {};
@@ -118,6 +140,7 @@ api.run = (job) => {
   g.openLevelUp = () => { g.pendingLevelUps = 0; };   // 보상 무시: 조합 고정
 
   const p = g.player, deck = p.deck;
+  chainOwner = p; chainRuns = 0; chainDepth = 0;
   // 슬롯은 MAX_SLOTS 칸 고정: 0번 = 기본 이동 슬롯, 1번~ = 테스트 슬롯, 나머지는 빈 칸
   const move = deck.slots.find(s => s.cards.includes('inputMove'))?.cards || ['artifactBoots', 'self', 'inputMove'];
   deck.slots = Array.from({ length: MAX_SLOTS }, (_, i) => i === 0 ? { cards: move.slice(), cd: 0, cast: null } : tests[i - 1] || { cards: [], cd: 0, cast: null });
@@ -155,10 +178,11 @@ api.run = (job) => {
     outcome: g.state === 'victory' ? 'clear' : g.state === 'gameover' ? 'death' : wallOut ? 'wall_timeout' : 'timeout',
     survival: t, kills: g.kills, damage: m.damage, dps: t > 0 ? m.damage / t : 0, dps60: (m.dmg60 ?? m.damage) / Math.max(1, Math.min(60, t)), bossDamage: m.bossDamage,
     bossSpawnAt: m.bossSpawnAt, bossKillAt: m.bossKillAt, bossHpLeft: boss ? Math.max(0, boss.hp) / boss.maxHp : (m.bossKillAt !== null ? 0 : null),
-    taken: m.taken, healing: m.healing, hpLeft: Math.max(0, p.hp), cooldowns: tests.map(s => slotCooldown(s)), cardCds: tests.map(s => s.cards.map(id => CARDS[id].cd ?? '+0').join('|')),
-    casts: tests.reduce((n, s) => n + (s.runs || 0), 0), firstDamage: m.firstDamage, peak: m.peak, level: p.level, simMs: Date.now() - t0,
+    taken: m.taken, healing: m.healing, hpLeft: Math.max(0, p.hp), cooldowns: tests.map(s => slotCooldown(s)), slotRuns: tests.map(s => s.runs || 0), cardCds: tests.map(s => s.cards.map(id => CARDS[id].cd ?? '+0').join('|')),
+    casts: tests.reduce((n, s) => n + (s.runs || 0), 0), chainRuns, chainDepth,
+    chainSlots: tests.filter(s => slotAnalysis(s).chainRest).length, firstDamage: m.firstDamage, peak: m.peak, level: p.level, simMs: Date.now() - t0,
   };
-};
+}
 `)(quiet, new Proxy({}, { get: () => 0 }), api, Object.create(Math));
 
 const rl = readline.createInterface({ input: process.stdin });
@@ -177,7 +201,7 @@ COLUMNS = [
     'damage_taken', 'healing', 'hp_left',
     'slot_cooldown', 'card_count', 'slot_count', 'combo', 'combo_ids',
     'artifacts', 'targets', 'actions', 'card_cooldowns',
-    'casts', 'casts_per_min', 'first_damage_sec', 'peak_enemies', 'level', 'sim_ms',
+    'casts', 'casts_per_min', 'slot_runs', 'chain_slots', 'chain_runs', 'chain_depth', 'first_damage_sec', 'peak_enemies', 'level', 'sim_ms',
 ]
 SECTIONS = ('artifact', 'target', 'action')
 CYCLE = ('target', 'action', 'artifact')   # 플레이어 슬롯 순환: 대상 → 행동 → 연쇄 → 대상 …
@@ -297,6 +321,7 @@ def to_row(ctx, combo, seed, res, mode='random', generation='', individual='') -
         'artifacts': names('artifact'), 'targets': names('target'), 'actions': names('action'),
         'card_cooldowns': ';'.join(res['cardCds']),
         'casts': res['casts'], 'casts_per_min': r(res['casts'] / survival * 60 if survival > 0 else 0, 1),
+        'slot_runs': '/'.join(map(str, res['slotRuns'])), 'chain_slots': res['chainSlots'], 'chain_runs': res['chainRuns'], 'chain_depth': res['chainDepth'],
         'first_damage_sec': r(res['firstDamage'], 1), 'peak_enemies': res['peak'],
         'level': res['level'], 'sim_ms': res['simMs'],
     }
@@ -397,7 +422,13 @@ class Ctx:
                 except queue.Empty:
                     return
                 try:
-                    res = self.workers[index].call(**job['req'])
+                    try:
+                        res = self.workers[index].call(**job['req'])
+                    except RuntimeError:
+                        # 오래 쓴 워커의 간헐적 V8 메모리 부족(Zone OOM)은 새 워커에서 다시 돌리면 대개 끝난다
+                        self.workers[index].close()
+                        self.workers[index] = Worker(self.workers[index].script)
+                        res = self.workers[index].call(**job['req'])
                 except Exception as err:
                     # 워커가 죽은 조합은 기록하고 워커를 새로 띄워 계속 진행한다
                     msg = f"{dt.datetime.now():%H:%M:%S} {';'.join('|'.join(sl) for sl in job['req']['slots'])} seed={job['req']['seed']}: {err}"

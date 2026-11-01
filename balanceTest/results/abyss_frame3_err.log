@@ -1,0 +1,386 @@
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|bolt;self|turret|artifactThorns|shots|fear|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|turret|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|on_complete;self|explode|artifactThorns|eventOwner|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|turret|on_hit|enemies;prey|explode|artifactRing|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects|orb;all|burn|on_complete;self|explode|artifactChalice|shots|fear|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactBell|eventSubject|armor|on_complete|allies|haste;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn;self|explode|artifactThorns|shots|laser|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;shots|snipe|artifactHourglass|enemies;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots|shield: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] objects|turret|artifactSeal;randomPoint|mine|artifactHorn|behind|orb;enemies|magnet|artifactFeather|all|mine;on_complete|shots|frost|artifactHourglass|behind;pickups|burn|artifactHorn|objects: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|on_hit|behind|explode|artifactFeather|self;prey|drain|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|frost|on_complete|enemies|archer|artifactHorn;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|lastHit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell|randomPoint;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|behind|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;ahead|scatter|artifactHourglass|enemies;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots|snipe: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|lance|artifactHorn|objects|frost;all|burn|artifactThorns;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell|pickups;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|gems;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;shots|explode|artifactThorns|eventOwner|fear|artifactHorn|self: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|nearestEnemy;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self|shield;all|burn|artifactBell;self|explode|artifactThorns|shots|fear|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|on_complete;self|explode|artifactThorns|zones|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|on_complete|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] pickups|mine|artifactFeather|behind|explode;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactHourglass|enemies;self|explode|artifactThorns|shots|fear|artifactHorn|fallen: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|shots|scatter;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots|root: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] allies|drain|artifactRing|zones|scatter;zones|snipe|on_complete|fallen|explode;enemies|scatter|artifactHorn|pickups|boomerang|artifactChalice|eventSubject;nearestEnemy|burn|artifactChalice;all|scatter|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|objects;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell|randomPoint;self|explode|artifactThorns|shots|fear|artifactHorn|eventOwner: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|nearestEnemy;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;all|ward|artifactHourglass|eventSubject|chain|artifactBell|fallen|lance;all|burn;self|explode|artifactThorns|shots|fear|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;enemies|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;objects|bolt|artifactChalice|eventOwner|mine;fallen|slash;all|burn;self|explode|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;shots|blades|on_complete|objects|slash;artifactThorns|prey|boomerang|artifactFeather|objects|dash|artifactRing;ahead|homing|artifactThorns|eventOwner|mine|artifactFeather|woundedEnemies|spread;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactThorns;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects|haste;objects|explode|artifactHorn|fallen|turret|artifactFeather|enemies;self|shield|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactFeather|all;nearestEnemy|homing|artifactThorns|eventOwner|mine|artifactFeather|woundedEnemies;shots|magnet|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|drain|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|frost|on_complete|enemies|archer|artifactHorn;all|burn|artifactHorn;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots|root: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|shots|scatter|on_hit;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|snipe|artifactChalice|zones;objects|bolt|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects;zones|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell|randomPoint;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|root|on_complete|enemies|frost|artifactHorn|self|archer;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|gems|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|snipe|artifactChalice|zones;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;eventOwner|burn;objects|meteor|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] shots|blades|artifactRing|enemies|drain|artifactThorns|lastHit;artifactRing|zones|poison|artifactHorn|all|explode|on_complete;on_complete|enemies|boomerang|artifactHorn|fallen|amplify;nearestEnemy|fear|artifactThorns|all|amplify|artifactBell|shots;lastHit|drain: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactRing|fallen|shield|artifactSeal;artifactFeather|fallen|burn|artifactThorns|enemies;artifactThorns|shots|chain|artifactRing|objects|mark|on_complete|nearestEnemy|slash;nearestEnemy|root|artifactFeather|enemies|turret;artifactHourglass|nearestEnemy|lance|artifactChalice|eventSubject|magnet|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactRing|shots|root|on_hit|objects;artifactFeather|self|slash|artifactChalice|zones;ahead|scatter|artifactRing|gems|turret;gems|orb|on_complete;on_complete|fallen|boomerang|artifactChalice|nearestEnemy|shield: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] gems|magnet|artifactThorns|woundedEnemies|shockwave|on_complete|eventOwner;eventOwner|orb|artifactHourglass|self|bolt|on_complete|enemies;artifactHourglass|prey|laser|artifactSeal;gems|turret|artifactHourglass|fallen;on_complete|self|armor|artifactFeather|randomPoint|frost|artifactHourglass: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] pickups|split|artifactRing;self|armor;on_complete|eventSubject|spread|artifactThorns|ahead|blades|artifactFeather|eventOwner;objects|bolt;artifactRing|behind|scatter|on_hit|ahead: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] objects|orb|artifactHourglass|all|pull;ahead|homing;on_complete|ahead|lance|on_hit|nearestEnemy|mine;artifactRing|eventOwner|boomerang|on_complete|allies|orb|artifactBell|all;eventOwner|shield|artifactFeather: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] fallen|mark|artifactChalice;artifactChalice|behind|lance;lastHit|laser|artifactBell|woundedEnemies|explode|artifactChalice|enemies;ahead|poison|artifactRing|nearestEnemy|bolt;on_complete|gems|fear|artifactFeather|lastHit|decoy|artifactThorns|enemies|poison: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|mine|on_hit|enemies;lastHit|archer|artifactHorn|self|boomerang|on_complete;on_complete|allies|armor|artifactFeather|lastHit|magnet|artifactChalice|objects;artifactHourglass|eventSubject|magnet|artifactHorn|eventOwner|boomerang;artifactRing|prey|root|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|pull|on_complete|enemies|summon|on_hit|ahead|mark|artifactFeather;artifactFeather|self|bolt|artifactHourglass|ahead;ahead|swap|artifactHourglass|eventSubject|magnet;nearestEnemy|blades|artifactThorns;objects|armor: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactFeather|zones|ward|artifactRing|objects;artifactChalice|pickups|bolt;artifactChalice|woundedEnemies|swap|artifactHourglass|enemies|slash;enemies|orb|artifactRing|randomPoint|scatter|artifactThorns;enemies|burn|artifactRing|prey|orb|on_complete|shots|frost: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] zones|explode|artifactSeal;artifactChalice|fallen|laser|artifactThorns;fallen|frost|on_complete|shots|fear;artifactBell|enemies|scatter|artifactChalice|gems|absorb|artifactHorn;nearestEnemy|meteor|artifactSeal: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|shockwave|artifactChalice|self|orb|artifactHorn|nearestEnemy;artifactHorn|lastHit|burn;artifactBell|all|dash|artifactHourglass|ahead|homing|artifactChalice|woundedEnemies;artifactThorns|all|boomerang;eventSubject|boomerang|artifactHourglass|all|scatter|on_hit|nearestEnemy: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] randomPoint|root|artifactHourglass|objects|pull|artifactFeather|nearestEnemy;zones|burn;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|slash|artifactBell;allies|poison|artifactHourglass|all|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|fallen|shield|artifactHorn;eventSubject|fear|on_complete|self|snipe|artifactRing;enemies|explode|artifactHorn|self|dash|artifactChalice|objects|homing;ahead|mark|on_complete;artifactHorn|lastHit|scatter|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] zones|poison|artifactHorn|woundedEnemies|split|artifactThorns|all|rage|artifactRing;artifactRing|enemies|shield|artifactFeather|nearestEnemy|spread|artifactBell|zones|decoy;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;ahead|explode|artifactRing|shots|vortex;lastHit|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] zones|poison|artifactHorn|woundedEnemies;artifactBell|self|haste|artifactChalice|eventOwner|mine;all|haste|artifactThorns|eventSubject;ahead|explode|artifactRing|enemies;lastHit|lance|on_hit|ahead|slash|artifactBell: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;eventSubject|boomerang|artifactHourglass|enemies|pull: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|fallen|shield|artifactThorns|lastHit;allies|orb|artifactThorns|ahead|burn;enemies|explode|artifactHorn|self|dash|artifactChalice|objects|homing;artifactFeather|enemies|turret|artifactHorn|eventOwner|poison;artifactHorn|lastHit|scatter|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|magnet|on_complete|enemies|frost|artifactHorn;enemies|lance|on_hit|self|decoy|artifactHorn|allies;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] randomPoint|root|artifactHourglass|objects|pull|artifactFeather|nearestEnemy;shots|burn;self|burn;artifactBell|all|boomerang;artifactBell|enemies|bolt|on_hit|eventOwner|rage|artifactThorns: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine;ahead|turret;artifactChalice|nearestEnemy|rage;artifactHourglass|zones|lance|artifactChalice|self|explode;zones|poison|on_hit|behind|bolt|artifactRing: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] shots|mine|artifactHorn|behind;behind|bolt|artifactFeather|allies|armor|artifactChalice;artifactHourglass|allies|scatter|artifactChalice|woundedEnemies;artifactThorns|prey|shockwave|on_complete|behind|heal|artifactBell|enemies|explode;artifactHourglass|objects|focus|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] enemies|scatter|on_complete|lastHit|summon|artifactChalice|self;lastHit|focus|on_complete|all|bolt|artifactHourglass;self|boomerang|artifactThorns|eventSubject|dash|on_hit|prey|scatter;ahead|laser|artifactHorn;lastHit|heal|artifactSeal: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactHorn|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|on_hit;nearestEnemy|archer|on_complete|lastHit|swap|artifactChalice|randomPoint;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactBell: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|objects|shockwave|artifactRing|zones;prey|explode|artifactHourglass|allies|poison|artifactFeather|ahead;nearestEnemy|archer|on_complete|enemies|scatter|on_hit|pickups;artifactFeather|woundedEnemies|haste|artifactSeal;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots|snipe: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;artifactChalice|fallen|laser;fallen|frost|on_complete|shots|fear;artifactBell|enemies|scatter|artifactChalice|gems|absorb|artifactHorn;self|explode|artifactSeal: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|frost|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|artifactHorn|enemies|frost|on_complete|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|shield|artifactHorn|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;nearestEnemy|slash|artifactBell|all;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;artifactHorn|lastHit|burn;artifactBell|all|dash|artifactHourglass|enemies|orb|artifactChalice;artifactThorns|all|boomerang;eventSubject|boomerang|artifactHourglass|all|scatter|on_hit|nearestEnemy: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactHorn|enemies|orb|artifactChalice|nearestEnemy|chain;artifactRing|prey|pull|artifactHourglass|nearestEnemy|poison|on_complete|behind|shield;ahead|spread|artifactThorns|gems|scatter|artifactRing;objects|bolt|artifactThorns|zones|blink|artifactRing|randomPoint;zones|archer|artifactFeather: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|shockwave;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;artifactSeal|self|drain;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;enemies|haste|artifactRing|zones;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|bolt|artifactHourglass|zones|pull|artifactChalice|allies;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|laser|artifactChalice;all|burn|artifactBell;on_complete|objects|frost|artifactHourglass|behind|shockwave|artifactHorn|eventSubject|heal: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] on_complete|lastHit|mine;nearestEnemy|shield|artifactFeather|lastHit|orb|on_hit;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;zones|boomerang;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|slash|artifactHourglass|objects|lance;enemies|dash|artifactThorns|ahead|explode|artifactHorn|woundedEnemies|slash|on_complete;on_complete|fallen|homing|on_hit|pickups|decoy|artifactChalice|zones;all|orb|artifactChalice|self|shockwave|on_hit|enemies|chain;artifactHorn|self|burn|artifactThorns|nearestEnemy: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|frost;prey|explode|artifactHourglass|allies|poison|artifactFeather|nearestEnemy|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn|enemies: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|bolt|artifactHourglass|zones|pull|artifactChalice|ahead;enemies|burn|artifactThorns|fallen|slash|artifactHorn|eventOwner;eventSubject|laser;gems|vortex|on_hit|self|mine|artifactThorns|nearestEnemy|scatter;on_complete|objects|frost|artifactHourglass|behind|shockwave|artifactHorn|eventSubject|scatter: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] on_complete|nearestEnemy|bolt|artifactRing|fallen|spread|artifactHorn|objects;nearestEnemy|shield|artifactFeather|lastHit|orb|on_hit;pickups|shield|artifactThorns|gems|scatter|on_hit|eventSubject;all|burn|artifactThorns|nearestEnemy|mine|artifactFeather|ahead;eventOwner|explode|artifactThorns|self|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|enemies|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|armor|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] shots|lance|on_hit|objects;eventOwner|bolt|artifactFeather|gems|swap|artifactThorns|enemies;behind|frost|on_hit|pickups|ward;self|slash|artifactChalice|enemies|amplify|artifactHorn|nearestEnemy;eventSubject|pull|artifactHourglass: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn;self|explode|artifactThorns|shots|fear: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|absorb|artifactHorn|lastHit|blades|artifactHourglass|shots;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;zones|dash|on_complete|fallen|haste|artifactFeather|eventSubject|boomerang|artifactThorns: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|lance;artifactFeather|all|scatter|artifactHorn;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactSeal;self|explode|artifactThorns|shots|fear|artifactHorn|enemies: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell|nearestEnemy;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] zones|mine|artifactRing|nearestEnemy|dash;gems|spread|artifactRing|enemies|pull|on_complete|eventSubject|shockwave|artifactThorns;artifactSeal|eventOwner|scatter;shots|slash|on_hit|eventOwner;ahead|explode|artifactChalice: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] enemies|shockwave|artifactThorns;enemies|lance|artifactChalice|nearestEnemy|spread|artifactRing;behind|root|on_hit|objects|dash|artifactHourglass;fallen|mine|artifactHourglass|enemies|vortex|artifactRing;nearestEnemy|boomerang|artifactRing|randomPoint|summon: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|bolt|artifactChalice|enemies;allies|root|artifactFeather;artifactHourglass|randomPoint|frost|on_hit|behind|boomerang;ahead|laser|artifactBell|randomPoint|chain|artifactHourglass;eventSubject|homing|artifactRing|eventOwner|spread|artifactChalice|randomPoint: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactThorns|nearestEnemy|root|artifactHorn;ahead|armor|artifactThorns|eventOwner|slash|artifactBell;zones|archer|artifactThorns|woundedEnemies|focus;woundedEnemies|chain;self|homing|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] enemies|pull|artifactSeal;ahead|bolt|artifactHourglass|self|explode|artifactFeather|behind;artifactFeather|prey|archer|artifactHorn|ahead;allies|scatter|artifactThorns|ahead;prey|root|artifactChalice|enemies|shield: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;artifactThorns|eventSubject|root|on_complete;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|woundedEnemies|poison|artifactThorns|enemies|bolt|artifactRing|behind;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactBell|lastHit;all|burn|artifactBell;enemies|blades: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|enemies;prey|explode|artifactRing|allies|poison|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] shots|lance|on_hit|objects;shots|burn;woundedEnemies|homing|on_complete|enemies|frost|artifactThorns;zones|homing|artifactBell;eventOwner|explode|artifactThorns|self|fear|artifactHorn|shots|boomerang: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] on_complete|nearestEnemy|heal|artifactBell|woundedEnemies|shield|artifactChalice;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;eventOwner|explode|artifactThorns|shots|fear|artifactHorn|enemies: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|frost|on_complete|enemies|archer|artifactHorn|self;all|shield|artifactBell|eventSubject;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;enemies|burn|artifactThorns|woundedEnemies|explode|artifactHorn|ahead|slash;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|mark;artifactRing|enemies|split|artifactThorns|allies|haste|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|haste;all|mine|artifactFeather|nearestEnemy;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|poison;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] shots|drain;objects|magnet|artifactHorn|eventOwner;gems|poison|artifactThorns|ahead;behind|scatter|on_hit|woundedEnemies;enemies|ward|artifactSeal: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|shield|artifactChalice;enemies|heal|artifactThorns|woundedEnemies|snipe|on_complete|eventOwner|turret|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;artifactBell|woundedEnemies|haste|on_complete|zones|heal|artifactChalice;eventOwner|explode|artifactThorns|self|fear|artifactHorn|zones|boomerang: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|self;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|amplify|artifactFeather|eventSubject;lastHit|turret|artifactHourglass|allies|swap|artifactFeather|gems|amplify;artifactThorns|eventSubject|lance|artifactBell;all|burn;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] lastHit|armor|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;woundedEnemies|homing|on_complete|enemies|frost|artifactHorn|self|fear;all|burn|artifactBell;eventOwner|explode|artifactHorn|self|fear|artifactThorns|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|woundedEnemies|poison|on_complete|enemies|bolt|artifactRing|behind;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactThorns;nearestEnemy|archer|on_complete|enemies|mark|artifactBell|lastHit;all|burn|artifactBell;enemies|blades: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactRing|allies|poison|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;objects|boomerang|artifactRing|woundedEnemies|explode|artifactHourglass|lastHit|scatter;self|explode|artifactHorn|eventOwner|fear|artifactThorns|shots: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] lastHit|mine|artifactFeather|behind|explode;lastHit|turret|artifactThorns|enemies|shield|on_complete;artifactThorns|objects|lance|artifactBell;gems|dash|artifactFeather;enemies|blades|artifactThorns|shots|haste|artifactHorn|zones: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;artifactThorns|eventSubject|lance|artifactBell;all|frost|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] self|bolt|artifactChalice|enemies;allies|root;artifactHourglass|randomPoint|frost|on_hit|behind|boomerang;ahead|laser|artifactBell|randomPoint|chain|on_hit;eventSubject|homing|artifactRing|eventOwner|spread|artifactChalice|randomPoint: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|self;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactThorns;allies|magnet|artifactThorns|nearestEnemy|spread|artifactBell|pickups;gems|focus|artifactHorn|enemies;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|swap|artifactFeather|gems|amplify;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit|enemies;enemies|frost|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] lastHit|amplify|artifactFeather|eventOwner;prey|explode|artifactHourglass|allies|swap|artifactFeather|gems|amplify;nearestEnemy|shield|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactFeather|eventSubject|swap|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|boomerang|artifactHorn|behind|scatter|artifactThorns|enemies|armor;enemies|mine;woundedEnemies|fear|artifactHorn;allies|mark|artifactChalice;nearestEnemy|root|artifactChalice|objects|blink|artifactHourglass|prey|burn|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] gems|dash|artifactHourglass|self;artifactHorn|prey|bolt;artifactHorn|zones|root|on_complete|gems;prey|dash;fallen|heal|artifactHourglass|objects: Error: 적 SoA 슬롯이 바닥났다
+
+[error] pickups|orb;artifactRing|pickups|dash|artifactFeather|ahead|laser|on_complete;enemies|laser|artifactThorns|lastHit|spread|artifactBell;enemies|spread|artifactRing|ahead;woundedEnemies|magnet|artifactHorn|eventSubject|heal|artifactHourglass|behind|chain: Error: 적 SoA 슬롯이 바닥났다
+
+[error] behind|scatter|artifactFeather|woundedEnemies|bolt|artifactChalice;eventOwner|mine|artifactHorn;enemies|split|artifactThorns|allies;self|shockwave|on_hit|ahead;nearestEnemy|poison: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] gems|orb|on_hit|behind|spread;allies|boomerang|artifactHorn|fallen|poison|artifactHourglass|prey|swap;enemies|archer|artifactHorn;allies|bolt;shots|magnet|on_complete|eventOwner|snipe|artifactThorns|self: Error: 적 SoA 슬롯이 바닥났다
+
+[error] zones|mine|artifactFeather|behind|explode|on_hit|nearestEnemy;prey|explode|artifactHourglass|allies|swap;artifactRing|eventSubject|lance|artifactBell|enemies|decoy;all|burn|artifactBell|shots;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|artifactRing;prey|explode|artifactHourglass|allies|swap|artifactFeather|gems|amplify;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit|enemies;enemies|frost|artifactBell;self|haste|artifactThorns|eventOwner|fear|artifactHorn|shots|magnet: Error: 적 SoA 슬롯이 바닥났다
+
+[error] zones|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies;artifactRing|eventSubject|lance|artifactBell;all|burn|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|orb|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;lastHit|split|artifactThorns;all|slash|artifactBell;eventOwner|explode|artifactThorns|self|fear|artifactHorn|shots|poison: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost;objects|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|shield|artifactFeather|eventSubject|absorb;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|swap|artifactHorn|enemies|frost|on_complete;all|burn;enemies|mine|artifactFeather|eventSubject|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] zones|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit|enemies;all|burn;enemies|mine|artifactFeather|eventSubject|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|amplify|on_hit;prey|explode|artifactHourglass|allies|swap;artifactRing|eventSubject|lance|artifactBell;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine|artifactHorn;prey|poison|artifactHourglass|eventOwner;gems|poison|artifactThorns|ahead;all|slash|artifactBell;all|lance|on_complete|eventSubject|slash: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|amplify|artifactFeather|eventSubject;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|swap|artifactHorn|enemies|frost|on_complete;all|slash|artifactBell|nearestEnemy;eventOwner|explode|artifactThorns|self|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;ahead|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|slash|artifactBell|woundedEnemies;eventOwner|explode|artifactThorns|self|fear|artifactHorn|shots|poison: Error: 적 SoA 슬롯이 바닥났다
+
+[error] lastHit|amplify|artifactFeather;prey|explode|artifactChalice|allies|swap|artifactBell|gems|amplify|on_hit;nearestEnemy|shield|on_complete|enemies|bolt|artifactHorn;gems|focus|artifactHorn|enemies;eventSubject|blades: Error: 적 SoA 슬롯이 바닥났다
+
+[error] lastHit|amplify|artifactFeather;prey|explode|artifactChalice|allies|swap|artifactFeather|gems|amplify|on_hit;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;eventOwner|mine|artifactFeather|eventSubject|swap|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] zones|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit|enemies;all|burn|artifactBell;enemies|mine|artifactFeather|eventSubject|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|mine|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|eventSubject;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit|enemies|frost;all|burn;enemies|mine|artifactFeather|eventSubject|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] lastHit|amplify|artifactThorns;prey|explode|artifactHourglass|allies|swap|artifactFeather|gems|amplify|artifactBell;nearestEnemy|magnet|artifactThorns|self|vortex|on_hit;all|frost|artifactBell;enemies|mine|artifactFeather|eventSubject|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|blink|artifactHorn|enemies|explode;shots|haste|artifactThorns|nearestEnemy;artifactRing|enemies|shield|artifactHorn;gems|focus|artifactHorn|nearestEnemy|heal|artifactFeather|enemies|explode;nearestEnemy|vortex|artifactChalice|woundedEnemies|mine|artifactHorn|behind|root: Error: 적 SoA 슬롯이 바닥났다
+
+[error] zones|shockwave;prey|explode|on_complete|all|focus|on_hit;artifactRing|eventSubject|lance|artifactBell;woundedEnemies|explode|artifactRing|objects|homing|artifactThorns;self|explode|artifactThorns|shots|fear|artifactHorn|woundedEnemies: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|turret|on_hit|pickups|frost;eventOwner|meteor|artifactFeather|lastHit|turret|artifactThorns|pickups|focus;eventOwner|summon|artifactFeather|self|turret|artifactRing|nearestEnemy|dash|artifactHorn;zones|orb|artifactHourglass|objects|turret|artifactRing|shots|mine|on_complete;pickups|bolt|artifactSeal: Error: 적 SoA 슬롯이 바닥났다
+
+[error] lastHit|pull|artifactThorns|enemies;fallen|scatter;self|haste;eventOwner|scatter|on_hit;artifactHorn|self|vortex|artifactHourglass|nearestEnemy|summon: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] prey|lance|on_complete|gems;allies|burn|artifactHourglass|ahead|mark;ahead|frost|on_hit|nearestEnemy|focus;artifactBell|nearestEnemy|burn|artifactHourglass|enemies|frost|artifactHorn;enemies|scatter|artifactHourglass: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|orb|artifactRing|enemies|drain|artifactHorn|nearestEnemy|shield|artifactBell;zones|burn;zones|orb|artifactBell|allies|bolt|artifactHorn;lastHit|frost|artifactFeather|all|mine|on_complete|eventOwner;allies|orb|artifactChalice|woundedEnemies|root|artifactHourglass|enemies|heal|on_complete: Error: 적 SoA 슬롯이 바닥났다
+
+[error] allies|scatter|artifactSeal;on_complete|nearestEnemy|poison|artifactHourglass|shots|orb|artifactThorns|behind;ahead|boomerang|artifactHorn|enemies|bolt|artifactFeather;artifactBell|all|rage|artifactChalice|nearestEnemy|pull|artifactFeather|fallen|homing;nearestEnemy|lance|on_hit|self: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|shield|on_hit;shots|burn|artifactHorn|enemies|meteor;nearestEnemy|swap|artifactThorns|self|shockwave|artifactBell|woundedEnemies;artifactHorn|shots|armor|artifactThorns;artifactHourglass|enemies|mine|artifactFeather|objects|focus|artifactThorns|allies|poison: Error: 적 SoA 슬롯이 바닥났다
+
+[error] randomPoint|blades|artifactFeather|zones|mine;eventOwner|root|artifactRing|enemies|spread;artifactSeal|lastHit|lance;on_complete|ahead|explode|artifactHourglass|fallen|vortex|artifactChalice|lastHit;artifactRing|eventSubject|frost|artifactFeather|zones: Error: 적 SoA 슬롯이 바닥났다
+
+[error] eventSubject|burn|artifactChalice|enemies|drain|on_complete;shots|shield|on_hit|woundedEnemies;on_complete|eventOwner|haste|artifactFeather;eventOwner|poison|on_complete|enemies|split|artifactHorn;objects|poison|artifactFeather: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|bolt|artifactThorns|enemies|shockwave|artifactBell|objects;fallen|slash|artifactThorns|woundedEnemies|frost|artifactFeather|prey;artifactThorns|zones|slash|artifactHorn|all;artifactThorns|pickups|pull|artifactChalice|all|mark|artifactHourglass|behind|chain;artifactThorns|objects|slash|on_hit|allies|boomerang|artifactRing: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|snipe|on_hit|behind|decoy|artifactHourglass|nearestEnemy|rage;artifactSeal|enemies|orb|artifactThorns;artifactThorns|lastHit|decoy|artifactHourglass|prey|frost|on_complete|ahead|boomerang;lastHit|blink;objects|root: Error: 적 SoA 슬롯이 바닥났다
+
+[error] allies|snipe;artifactThorns|lastHit|archer|artifactSeal;artifactThorns|gems|orb|on_hit;artifactFeather|gems|orb|artifactSeal;zones|burn|artifactBell|lastHit|dash|artifactFeather|enemies: Error: 적 SoA 슬롯이 바닥났다
+
+[error] allies|mine|on_hit|randomPoint|decoy|artifactHourglass;prey|bolt|artifactHourglass;self|summon|artifactFeather|lastHit|pull|artifactHorn|pickups|split|artifactBell;gems|split|artifactRing|fallen|root|artifactBell;artifactHorn|gems|shockwave: Error: 적 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|fallen|mine|artifactHourglass|ahead;nearestEnemy|snipe;enemies|decoy|artifactRing|woundedEnemies|drain|artifactChalice|self;artifactHourglass|enemies|archer|artifactHorn|fallen|spread;artifactRing|gems|shield|artifactChalice: Error: 적 SoA 슬롯이 바닥났다
+
+[error] ahead|frost|artifactThorns|woundedEnemies;artifactHourglass|nearestEnemy|spread;artifactRing|allies|lance;zones|ward;self|frost|artifactHorn|fallen: Error: 적 SoA 슬롯이 바닥났다
+
+[error] artifactBell|nearestEnemy|mine;on_complete|enemies|drain;enemies|rage|artifactHourglass;artifactHourglass|zones|burn|artifactThorns|nearestEnemy|dash|artifactFeather;artifactThorns|allies|ward|artifactSeal: Error: 적 SoA 슬롯이 바닥났다
+
+[error] gems|spread|on_hit|woundedEnemies|rage|artifactBell|allies|root;artifactThorns|pickups|bolt|on_hit|lastHit|boomerang|on_complete;pickups|explode;self|spread|artifactHourglass|randomPoint|poison|artifactFeather|prey;objects|mark: Error: 적 SoA 슬롯이 바닥났다
+
+[error] fallen|lance|on_hit;objects|scatter;lastHit|pull|artifactThorns|gems|magnet|artifactHorn;enemies|magnet|artifactRing|randomPoint|lance|artifactChalice|objects;behind|haste|artifactRing|fallen|poison|on_hit|nearestEnemy|heal: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|turret|artifactSeal;artifactHorn|zones|explode;ahead|poison|artifactChalice;objects|meteor;zones|blades|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] randomPoint|mark|artifactRing|woundedEnemies|heal|artifactHourglass|shots|slash|artifactThorns;enemies|bolt|artifactThorns;randomPoint|boomerang;artifactThorns|allies|shockwave|artifactChalice|shots|archer|artifactHorn|enemies|mark;on_complete|eventSubject|summon|artifactHorn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] objects|shockwave|on_hit|allies|explode|artifactChalice;behind|shockwave|artifactHourglass|prey|boomerang|artifactRing|woundedEnemies|meteor|artifactHorn;artifactThorns|nearestEnemy|root|artifactBell|behind;enemies|ward|on_hit|eventOwner|summon;fallen|shockwave|artifactFeather|behind: Error: 적 SoA 슬롯이 바닥났다
+
+[error] self|bolt|on_hit|zones|heal;eventSubject|spread|artifactSeal;allies|fear;eventSubject|root|artifactFeather;enemies|homing|on_hit|shots|burn|artifactFeather|pickups|dash: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] allies|turret|on_hit|woundedEnemies|spread;artifactHorn|nearestEnemy|drain;enemies|magnet|artifactBell;self|homing|artifactFeather|enemies|lance|on_complete;pickups|mine|artifactChalice|objects|rage|artifactRing|lastHit|swap|on_hit: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] eventSubject|haste|artifactBell|lastHit|orb;artifactRing|eventOwner|burn;lastHit|explode|artifactFeather|objects|lance;eventSubject|burn|artifactRing|gems|explode;lastHit|blink|artifactThorns|enemies|snipe|artifactRing: Error: 적 SoA 슬롯이 바닥났다
+
+[error] artifactChalice|ahead|armor|on_complete|objects|shield|artifactThorns|nearestEnemy;all|swap;artifactFeather|allies|turret|artifactRing|lastHit|scatter;nearestEnemy|chain|artifactHourglass|enemies|turret;woundedEnemies|burn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] shots|magnet|artifactFeather;artifactHourglass|lastHit|vortex|artifactThorns|fallen|slash|artifactHorn;self|scatter|artifactFeather|pickups|spread|artifactHorn;ahead|meteor|artifactBell|nearestEnemy|spread|on_hit|zones|orb;eventSubject|burn: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] behind|chain|on_complete|zones|homing|artifactBell;self|rage|artifactHourglass|ahead|archer|artifactHorn|nearestEnemy;nearestEnemy|meteor|on_hit|ahead|mine|artifactHorn|shots;artifactHorn|prey|mine|artifactRing|objects|spread|artifactHourglass|allies;artifactHourglass|all|amplify|artifactRing|ahead|heal|artifactChalice|behind|explode: Error: 적 SoA 슬롯이 바닥났다
+
+[error] enemies|burn|artifactFeather|fallen|shockwave|on_complete|eventSubject|root|on_hit;self|amplify;pickups|spread|artifactSeal;prey|mine|artifactHourglass|allies|snipe|on_hit;artifactBell|randomPoint|slash|artifactHourglass: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|boomerang;enemies|burn;enemies|homing;on_complete|zones|mark|on_hit|nearestEnemy|lance|artifactHorn|enemies;on_complete|woundedEnemies|shield|artifactRing|zones|absorb: Error: 적 SoA 슬롯이 바닥났다
+
+[error] behind|burn|artifactRing|randomPoint|spread|artifactHorn|gems;allies|scatter|artifactChalice|objects|lance|artifactFeather|lastHit|mine;objects|lance|artifactFeather|enemies|dash|on_complete|ahead;on_complete|eventOwner|absorb|artifactRing|self|snipe|artifactFeather;behind|root|artifactChalice: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|slash|on_complete|self|bolt|artifactThorns|eventSubject|lance;artifactFeather|eventOwner|blades|artifactRing;artifactFeather|nearestEnemy|scatter|on_complete|behind|explode|artifactChalice|enemies;prey|ward|artifactChalice|shots|magnet|artifactThorns|ahead|burn;shots|frost|on_complete|objects|armor|artifactRing|eventOwner: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|summon|artifactSeal;ahead|orb|artifactHourglass|nearestEnemy|ward;behind|archer|artifactRing|all|bolt|artifactHorn|self|orb;randomPoint|armor|artifactThorns|nearestEnemy|amplify|on_hit|lastHit|root|on_complete;shots|boomerang|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;eventSubject|burn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] allies|mine|on_hit|randomPoint|decoy|artifactHourglass;eventSubject|spread|artifactHourglass;self|summon|artifactFeather|lastHit|pull|artifactHorn|pickups|split|artifactBell;gems|split|artifactRing|fallen|root|artifactBell;enemies|homing|on_hit|shots|burn|on_complete: Error: 적 SoA 슬롯이 바닥났다
+
+[error] prey|lance|on_complete|gems;allies|burn|artifactHourglass|ahead|mark;ahead|frost|on_hit|nearestEnemy|focus;artifactBell|nearestEnemy|burn|artifactHourglass|enemies|frost|artifactHorn|self;enemies|scatter|artifactHourglass: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|shockwave|on_hit|allies|explode|artifactChalice;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|behind;all|slash|on_hit|eventOwner|summon;fallen|shockwave|artifactFeather|behind: Error: 적 SoA 슬롯이 바닥났다
+
+[error] self|bolt|on_hit|zones|snipe;artifactThorns|lastHit|archer|artifactSeal;allies|fear;artifactFeather|gems|orb|artifactSeal;enemies|homing|on_hit|shots|burn|artifactFeather|pickups|dash: Error: 투사체 SoA 슬롯이 바닥났다
+
+[error] objects|snipe|on_hit|behind|decoy|artifactHourglass|nearestEnemy|rage;artifactSeal|enemies|orb|artifactThorns;artifactRing|allies|decoy|artifactHourglass|prey|frost|on_complete|ahead|boomerang;lastHit|blink;self|frost|artifactHorn|fallen: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|amplify|artifactThorns|woundedEnemies|armor|artifactBell;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;artifactBell|lastHit|snipe|artifactHorn|nearestEnemy|mark|artifactThorns;all|burn|artifactFeather;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|orb|artifactRing|enemies|drain|artifactHorn|nearestEnemy|shield;zones|burn;nearestEnemy|swap|artifactThorns|self|shockwave|artifactBell|woundedEnemies;artifactHorn|shots|armor|artifactThorns;allies|orb|artifactChalice|woundedEnemies|root|artifactHourglass|enemies|heal|on_complete: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|amplify|artifactThorns|woundedEnemies|armor|artifactBell;shots|vortex|artifactRing|self|orb|on_complete|eventSubject|dash|artifactHorn;artifactBell|lastHit|snipe|artifactHorn|nearestEnemy|mark|artifactThorns;gems|boomerang|artifactHorn|enemies|mine;enemies|boomerang|artifactFeather|allies|poison|on_hit|eventSubject: Error: 적 SoA 슬롯이 바닥났다
+
+[error] allies|turret|on_hit|woundedEnemies|spread;behind|heal|artifactHorn;artifactThorns|nearestEnemy|root|artifactBell|behind;enemies|ward|on_hit|eventOwner;pickups|mine|artifactChalice|objects|rage|artifactRing|lastHit|swap|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind;eventSubject|spread|artifactSeal;artifactRing|ahead|vortex|artifactFeather|nearestEnemy|boomerang;all|slash|artifactBell;self|explode|artifactThorns|shots|burn|artifactFeather|pickups|dash: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;eventOwner|meteor|artifactFeather|lastHit|turret|artifactThorns|pickups|focus;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|orb|artifactHourglass|objects|turret|artifactRing|shots|mine|on_complete;pickups|bolt: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|shockwave|on_hit|allies|explode|artifactChalice;behind|shockwave|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;artifactThorns|fallen|homing|artifactHorn|enemies|turret|on_hit;enemies|ward|on_hit|eventOwner|split;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] objects|shockwave|on_hit|allies|explode|artifactChalice;behind|shockwave|artifactHourglass|prey|boomerang|artifactRing|woundedEnemies|meteor|artifactHorn;artifactThorns|nearestEnemy|vortex|artifactBell;enemies|ward|on_hit|eventOwner|summon;fallen|shockwave|artifactFeather|behind: Error: 적 SoA 슬롯이 바닥났다
+
+[error] ahead|frost|artifactThorns|woundedEnemies;artifactHorn|nearestEnemy|drain;artifactRing|all|mine;zones|homing|artifactFeather|enemies|lance;self|frost|artifactHorn|objects|rage|artifactRing|lastHit|swap|on_hit: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify;nearestEnemy|archer|on_complete|enemies|frost|artifactHourglass;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] behind|chain|on_complete|zones|homing;shots|burn|artifactHorn|enemies|meteor;nearestEnemy|meteor|on_hit|ahead|mine|artifactHorn|shots;artifactHorn|prey|mine|artifactRing|objects|spread|artifactHourglass|allies;artifactHourglass|all|amplify|artifactRing|ahead|heal|artifactChalice|behind|explode: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|orb|artifactRing|enemies|drain|artifactHorn|nearestEnemy|shield|artifactBell;zones|burn;zones|orb|artifactBell|allies|bolt|artifactFeather|randomPoint;lastHit|frost|artifactFeather|all|mine|on_complete|eventOwner;allies|orb|artifactChalice|woundedEnemies|root|artifactHourglass|enemies|heal|on_complete: Error: 적 SoA 슬롯이 바닥났다
+
+[error] gems|spread|on_hit|woundedEnemies|rage|artifactBell|allies|blink;artifactThorns|pickups|bolt|on_hit|lastHit|mark;pickups|frost|on_hit|nearestEnemy|focus;self|spread|artifactFeather|woundedEnemies|snipe|artifactThorns|objects;enemies|orb|artifactHourglass: Error: 적 SoA 슬롯이 바닥났다
+
+[error] nearestEnemy|amplify|artifactThorns|woundedEnemies|armor|artifactBell|self;artifactBell|eventOwner|burn;artifactBell|lastHit|snipe|artifactHorn|nearestEnemy|mark|artifactThorns|self;allies|armor|artifactFeather;lastHit|poison|on_complete|shots|drain|artifactThorns|allies|lance: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|explode|artifactFeather|behind|mine;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|slash|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|poison|artifactHourglass|allies|explode|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|objects;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit|enemies;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn;self|explode|artifactThorns|shots|fear|artifactHorn: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|slash;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell;shots|explode|artifactThorns|lastHit|fear: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactBell;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn|self;all|burn|artifactBell|eventOwner;self|explode|artifactThorns|shots|fear: Error: 적 SoA 슬롯이 바닥났다
+
+[error] woundedEnemies|mine|artifactFeather|behind|explode|on_hit;prey|explode|artifactHourglass|allies|poison|artifactFeather|gems|amplify|artifactChalice;nearestEnemy|archer|on_complete|enemies|frost|artifactHorn;all|burn|artifactBell;self|explode|artifactThorns|eventOwner|fear|artifactHorn|shots: Error: 적 SoA 슬롯이 바닥났다

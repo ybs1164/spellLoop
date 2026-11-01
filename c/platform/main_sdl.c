@@ -362,7 +362,7 @@ static void shot_ui(App *app) {
 
 /* ---------- SDL 콜백 ---------- */
 SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
-  SDL_SetAppMetadata("Amagos", "0.4", "com.amagos.game");
+  SDL_SetAppMetadata("What a peaceful Magic World", "0.4", "com.amagos.game");
   SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown");
   SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");   // 터치는 손가락 이벤트로만 받는다
   if (!SDL_Init(SDL_INIT_VIDEO)) { SDL_Log("SDL_Init: %s", SDL_GetError()); return SDL_APP_FAILURE; }
@@ -396,7 +396,7 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
   win_w = EM_ASM_INT({ return window.innerWidth; });
   win_h = EM_ASM_INT({ return window.innerHeight; });
 #endif
-  if (!SDL_CreateWindowAndRenderer("Amagos", win_w, win_h, flags, &app->window, &app->renderer)) {
+  if (!SDL_CreateWindowAndRenderer("오늘도 평화로운 마법 생활", win_w, win_h, flags, &app->window, &app->renderer)) {
     SDL_Log("창 생성: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }

@@ -14,8 +14,8 @@ vm.runInContext(`
   const game = { cardEnv: () => env, projectiles: [], hazards: [], allies: [], objects: [], zones: [], enemies: [], pickups: [] };
   CARDS.tagA = { type: 'target', kind: 'point', resolve: () => [{ kind: 'point', slot: 'A' }] };
   CARDS.tagB = { type: 'target', kind: 'point', resolve: () => [{ kind: 'point', slot: 'B' }] };
-  CARDS.slow = { type: 'action', cd: '+4', accepts: ALL_KINDS, run: (ts, e) => e.bolt(ts[0]) };
-  CARDS.fast = { type: 'action', cd: '+0', accepts: ALL_KINDS, run: (ts, e) => e.bolt(ts[0]) };
+  CARDS.slow = { type: 'action', cd: '+' + (5 - BASE_COOLDOWN), accepts: ALL_KINDS, run: (ts, e) => e.bolt(ts[0]) };
+  CARDS.fast = { type: 'action', cd: '+' + (1 - BASE_COOLDOWN), accepts: ALL_KINDS, run: (ts, e) => e.bolt(ts[0]) };
 `, context);
 const get = (code) => vm.runInContext(code, context);
 assert.equal(get("Object.values(CARDS).some(c => c.type === 'event')"), false, 'event cards are gone');
@@ -37,8 +37,8 @@ const aRuns = get("hits.filter(h => h === 'A').length"), bRuns = get("hits.filte
 assert.ok(Math.abs(bRuns - 101) <= 1, '1s slot runs once per second: ' + bRuns);
 assert.ok(Math.abs(aRuns - 21) <= 1, '5s slot runs once per five seconds: ' + aRuns);
 // 쿨타임 연산은 놓인 순서대로 적용된다.
-assert.ok(Math.abs(get(`slotCooldown({ cards: [cooldownCard('artifactRing', '×0.7'), 'self', cooldownCard('bolt', '-0.2')] })`) - 0.5) < 1e-9, '×0.7 then −0.2');
-assert.ok(Math.abs(get(`slotCooldown({ cards: ['self', cooldownCard('bolt', '-0.2'), cooldownCard('summon', '×3')] })`) - 2.4) < 1e-9, '(1 − 0.2) × 3');
+assert.ok(Math.abs(get(`slotCooldown({ cards: [cooldownCard('artifactRing', '+1'), 'self', cooldownCard('bolt', '×0.5')] }) - (BASE_COOLDOWN + 1) * 0.5`)) < 1e-9, '+1 then ×0.5');
+assert.ok(Math.abs(get(`slotCooldown({ cards: ['self', cooldownCard('summon', '×3'), cooldownCard('bolt', '+1')] }) - (BASE_COOLDOWN * 3 + 1)`)) < 1e-9, 'base × 3 + 1');
 assert.equal(get(`slotCooldown({ cards: ['artifactBoots', 'self', 'inputMove'] })`), 0.016, 'boots set the slot to every frame');
 assert.equal(get(`slotEveryFrame({ cards: ['artifactBoots', 'self', 'inputMove'] })`), true);
 assert.equal(get(`slotCooldown({ cards: ['artifactSeal', 'self', 'bolt', 'bolt'] }) >= FRAME_COOLDOWN`), true, 'never shorter than a frame');

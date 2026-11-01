@@ -15,36 +15,39 @@ const PSOA_FIELDS = ['x', 'y', 'vx', 'vy', 'life', 'lodDt', 'lodSkip', 'dead',
 // seq: 생성 순번 (과밀 회전의 차례. 한 프레임에 생긴 탄이 다음 프레임들에 고르게 나뉜다)
 const PSoA = {
   cap: SHOT_SLOTS,
-  top: 0, free: [], pending: [], tickNo: 0, seqNo: 0,
+  top: 0, free: [], pending: new SlotDelayQueue(), tickNo: 0, seqNo: 0,
+  shells: new DelayedPool(SHOT_SLOT_REUSE_DELAY),   // 사라진 Projectile 객체 (슬롯 틀 종류별, Projectile.create 가 다시 쓴다)
   alloc() {
     if (this.free.length) return this.free.pop();
     if (this.top < this.cap) return this.top++;
-    const old = this.pending.shift();   // 슬롯이 바닥나면 가장 오래 기다린 슬롯을 앞당겨 쓴다
-    if (!old) throw new Error('투사체 SoA 슬롯이 바닥났다');
-    return old[0];
+    // 슬롯이 바닥나면 가장 오래 기다린 슬롯을 앞당겨 쓴다
+    if (!this.pending.size) throw new Error(`투사체 SoA 슬롯이 바닥났다 (top=${this.top} free=${this.free.length} pending=${this.pending.size})`);
+    return this.pending.shift();
   },
-  release(slot) { this.pending.push([slot, this.tickNo]); },
+  release(slot) { this.pending.push(slot, this.tickNo); },
+  /** 슬롯을 모두 비운다. 앞 판의 탄을 아무도 참조하지 않을 때만 (한 프로세스에서 판을 여러 번 도는 도구) */
+  reset() { this.top = 0; this.free.length = 0; this.pending.clear(); this.shells.clear(); },
   /** 프레임마다 한 번: 기다림이 끝난 슬롯을 다시 쓸 수 있게 한다 */
   tick() {
     this.tickNo++;
-    const q = this.pending;
-    let i = 0;
-    while (i < q.length && this.tickNo - q[i][1] >= SHOT_SLOT_REUSE_DELAY) this.free.push(q[i++][0]);
-    if (i) q.splice(0, i);
+    this.pending.drain(this.tickNo - SHOT_SLOT_REUSE_DELAY, this.free);
+    this.shells.tick(this.tickNo);
   },
   /** compact 와 같은 순서로 죽은 탄을 빼고 그 슬롯을 돌려준다 */
   compactShots(arr) {
     let j = 0;
     for (let i = 0; i < arr.length; i++) {
       const o = arr[i];
-      if (!o.dead) arr[j++] = o; else if (o._pi !== undefined) this.release(o._pi);
+      if (!o.dead) arr[j++] = o; else if (o._pi !== undefined) this.retire(o);
     }
     arr.length = j;
   },
+  /** 목록에서 빠진 탄: 슬롯을 돌려주고, 객체는 재사용 대기가 끝난 뒤 같은 틀 종류의 새 탄으로 다시 쓴다 */
+  retire(o) { this.release(o._pi); this.shells.put(shotShellKey(o), o, this.tickNo); },
   /** 목록째 버릴 때 (단계 전환으로 걸러진 탄) */
   releaseDropped(before, after) {
     const kept = new Set(after);
-    for (const o of before) if (!kept.has(o) && o._pi !== undefined) this.release(o._pi);
+    for (const o of before) if (!kept.has(o) && o._pi !== undefined) this.retire(o);
   },
   /** WASM 메모리 뷰로 갈아탄다 (기존 값 복사). view(i): PSOA_FIELDS[i] 의 뷰 */
   bind(view, cap) {

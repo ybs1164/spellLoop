@@ -140,3 +140,53 @@ function mixin(target, source) {
     if (key !== 'constructor') Object.defineProperty(target.prototype, key, Object.getOwnPropertyDescriptor(source.prototype, key));
   }
 }
+
+/**
+ * SoA 슬롯의 재사용 대기열 (넣은 순서 = 기다린 순서). shift 가 O(1) 인 고리 버퍼라 대량 생성·소멸 프레임에서도 대기 슬롯 수와 상관없이 빠르다.
+ * push(slot, tick) 로 넣고, drain(limit, out) 은 tick <= limit 인 앞부분을 out 에 옮긴다.
+ */
+class SlotDelayQueue {
+  constructor() { this.slots = new Int32Array(1024); this.ticks = new Float64Array(1024); this.head = 0; this.size = 0; }
+  push(slot, tick) {
+    if (this.size === this.slots.length) this.grow();
+    const at = (this.head + this.size) & (this.slots.length - 1);
+    this.slots[at] = slot; this.ticks[at] = tick; this.size++;
+  }
+  shift() {
+    const s = this.slots[this.head];
+    this.head = (this.head + 1) & (this.slots.length - 1); this.size--;
+    return s;
+  }
+  drain(limit, out) {
+    const mask = this.slots.length - 1;
+    while (this.size && this.ticks[this.head] <= limit) { out.push(this.slots[this.head]); this.head = (this.head + 1) & mask; this.size--; }
+  }
+  clear() { this.head = 0; this.size = 0; }
+  grow() {
+    const n = this.slots.length, slots = new Int32Array(n * 2), ticks = new Float64Array(n * 2);
+    for (let i = 0; i < this.size; i++) { const k = (this.head + i) & (n - 1); slots[i] = this.slots[k]; ticks[i] = this.ticks[k]; }
+    this.slots = slots; this.ticks = ticks; this.head = 0;
+  }
+}
+
+/**
+ * 사라진 개체 객체의 재사용 풀. 넣은 뒤 delay 틱이 지나야 꺼낼 수 있고(SoA 슬롯 재사용 대기와 같은 이유: 사라진 개체를 가리키는 참조가 잠시 남는다),
+ * 키(적 종류·탄 틀 종류)별로 따로 꺼낸다. tick 은 SoA 저장소의 tick 이 프레임마다 부른다.
+ */
+class DelayedPool {
+  constructor(delay) { this.delay = delay; this.objs = []; this.keys = []; this.ticks = []; this.head = 0; this.free = new Map(); }
+  put(key, obj, tick) { this.objs.push(obj); this.keys.push(key); this.ticks.push(tick); }
+  take(key) { const list = this.free.get(key); return list && list.length ? list.pop() : undefined; }
+  tick(now) {
+    const objs = this.objs, keys = this.keys, ticks = this.ticks;
+    let i = this.head;
+    while (i < objs.length && now - ticks[i] >= this.delay) {
+      let list = this.free.get(keys[i]);
+      if (!list) this.free.set(keys[i], list = []);
+      list.push(objs[i]); objs[i] = undefined; i++;
+    }
+    this.head = i;
+    if (i > 1024 && i * 2 > objs.length) { objs.splice(0, i); keys.splice(0, i); ticks.splice(0, i); this.head = 0; }
+  }
+  clear() { this.objs.length = 0; this.keys.length = 0; this.ticks.length = 0; this.head = 0; this.free.clear(); }
+}

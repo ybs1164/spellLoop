@@ -1,4 +1,0 @@
-_key,0,1,2,3
-entityRange,entityInReach,거리 이내,슬롯 주인과의 거리가 값(숫자·시야·사거리·범위) 이내인 대상에게만 작동한다.,entityInSight|entityInReach|entityInArea
-entityTeam,entitySameTeam,팀 조건,슬롯 주인과 같은 팀 또는 다른 팀인 대상에게만 작동한다.,entitySameTeam|entityOtherTeam
-entityHitTeam,entityHitTeam_opposing,충돌 대상 팀,"충돌 행동은 지정한 팀(다른 팀, 같은 팀, 아군, 적군, 전체)에게만 작동한다.",entityHitTeam_opposing|entityHitTeam_same|entityHitTeam_friendly|entityHitTeam_hostile|entityHitTeam_all

@@ -73,6 +73,34 @@ const scenarios = {
     g._shotBudget = Infinity; g._enemyBudget = Infinity; fill(); g._shotBudget = budget;
     g._benchPre = fill;   // 채우기는 측정 밖에서 (step 시간에 넣지 않는다)
   },
+  // 순간 대량 생성: 적 BURST_BASE(3000, 체력 무한)를 깔아 두고 BURST_EVERY(30) 프레임마다 한 프레임에 탄 BURST_SHOTS(3000)발과
+  // 소환 적 BURST_ENEMIES(400)마리를 만든다. 생성 프레임과 그 뒤 두 프레임(새 개체의 첫 갱신)의 비용을 본다.
+  burst: g => {
+    const E = Number(process_env.BURST_BASE || 3000), S = Number(process_env.BURST_SHOTS || 3000), M = Number(process_env.BURST_ENEMIES || 400);
+    const every = Number(process_env.BURST_EVERY || 30), p = g.player, kinds = ['grunt', 'runner', 'necro', 'pyro', 'brute'];
+    g.player.deck.slots = [['nearestEnemy', 'bolt']].map(cards => ({ limit: 9, cards, cd: 0, cast: null }));
+    for (let i = 0; i < E; i++) g.spawnEnemy(kinds[i % 5]);
+    let frame = 0;
+    const step = g.step.bind(g);
+    g.step = dt => {
+      for (const e of g.enemies) e.hp = e.maxHp = 1e9;
+      if (frame++ % every === 0) {
+        g._burstPending = () => {
+          for (let i = 0; i < S; i++) {
+            const a = rand(0, TAU), sp = rand(150, 400);
+            g.shoot({ x: p.x + rand(-500, 500), y: p.y + rand(-400, 400), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, radius: 5, damage: 1, pierce: 3, life: 1.4, color: '#8be9ff' });
+          }
+          g.configuredSummon({ x: p.x + 300, y: p.y }, { type: 'grunt', n: M });
+        };
+      }
+      step(dt);
+    };
+    // BURST_NOBUDGET=1: 프레임당 생성 예산이 있는 판에서 예산을 끄고 잰다 (비교용)
+    if (process_env.BURST_NOBUDGET && g.drainShotQueue) { const drain = g.drainShotQueue; g.drainShotQueue = function () { this._shotBudget = Infinity; this._enemyBudget = Infinity; return drain.call(this); }; }
+    // 생성은 step 안(예산이 걸린 뒤)에서 한다: 플레이어 갱신 직전
+    const upd = g.player.update.bind(g.player);
+    g.player.update = (...a) => { const f = g._burstPending; g._burstPending = null; f?.(); return upd(...a); };
+  },
   decoy: g => {
     g.player.deck.slots.push({ limit: 9, cards: ['ahead', 'decoy'], cd: 0, cast: null }, { limit: 9, cards: ['nearestEnemy', 'decoy'], cd: 0, cast: null });
     for (let i = 0; i < 200; i++) g.spawnEnemy(['grunt', 'runner', 'necro', 'pyro'][i % 4]);

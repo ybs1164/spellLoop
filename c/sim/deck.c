@@ -16,7 +16,7 @@ const char *slot_rule_message(int card) {
   switch (card) {
     case CARD_ARTIFACT_BOOTS: return "「바람의 장화」는 이동 카드가 포함된 슬롯에만 넣을 수 있습니다";
     case CARD_ARTIFACT_RING: return "「절제의 반지」 슬롯은 행동 카드를 3장 이하로 써야 합니다";
-    case CARD_ARTIFACT_SEAL: return "「외길의 인장」 슬롯은 행동·대상 카드를 1장씩만 써야 합니다";
+    case CARD_ARTIFACT_SEAL: return "「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다";
     default: return "";
   }
 }
@@ -50,6 +50,38 @@ typedef struct { uint16_t cards[MAX_SLOT_CARDS + 1]; int n; bool touched; } Draf
 
 static int kind(int card) { return CARDS[card].type; }
 
+/** slot-sections.js EVENT_NAMES: 발동 순간이 있는 연쇄 카드 */
+static bool event_card(int card) {
+  static const char *const NAMES[] = { "hit", "hurt", "death", "spawn", "complete", "collect", "moved", "detonate" };
+  const char *k = CARDS[card].event_kind;
+  if (CARDS[card].type != CARD_TYPE_ARTIFACT || !k) return false;
+  for (size_t i = 0; i < sizeof NAMES / sizeof *NAMES; i++) if (strcmp(NAMES[i], k) == 0) return true;
+  return false;
+}
+/** slotDeadError: 첫 칸의 타격 시, 앞에 발동 연쇄 카드가 없는 이벤트 상대, 행동이 받지 않는 종류의 대상 바로 뒤 행동 */
+static const char *dead_error(const Draft *d, char *buf, size_t n) {
+  const Card *first = &CARDS[d->cards[0]];
+  if (first->type == CARD_TYPE_ARTIFACT && first->event_kind && strcmp(first->event_kind, "hit") == 0) {
+    snprintf(buf, n, "%s은(는) 앞 행동이 있어야 작동하므로 첫 칸에 놓을 수 없습니다", first->name);
+    return buf;
+  }
+  // 행동 뒤의 연쇄 카드는 그 행동의 이벤트를 넘기고, 첫 구간의 연쇄 카드는 발동 순간이 있어야 이벤트를 준다
+  bool acted = false, event = false;
+  for (int i = 0; i < d->n; i++) {
+    const Card *c = &CARDS[d->cards[i]];
+    if (c->type == CARD_TYPE_ACTION) acted = true;
+    else if (c->type == CARD_TYPE_ARTIFACT && (acted || event_card(d->cards[i]))) event = true;
+    if (d->cards[i] == CARD_EVENT_SUBJECT && !event) { snprintf(buf, n, "%s은(는) 앞에 발동 연쇄 카드가 있어야 작동하므로 이 칸에 놓을 수 없습니다", c->name); return buf; }
+    if (!i || c->type != CARD_TYPE_ACTION) continue;
+    const Card *t = &CARDS[d->cards[i - 1]];
+    if (t->type == CARD_TYPE_TARGET && t->kind >= 0 && c->accepts && !(c->accepts & (1u << t->kind))) {
+      snprintf(buf, n, "%s은(는) %s을(를) 대상으로 삼을 수 없습니다", c->name, t->name);
+      return buf;
+    }
+  }
+  return NULL;
+}
+
 static const char *cycle_error(const Draft *d, char *buf, size_t n) {
   if (!d->n) return NULL;
   int first = kind(d->cards[0]);
@@ -58,6 +90,8 @@ static const char *cycle_error(const Draft *d, char *buf, size_t n) {
     if (kind(d->cards[i]) != want) { snprintf(buf, n, "%d번째 칸에는 %s 카드만 놓을 수 있습니다", i + 1, TYPE_LABEL[want]); return buf; }
   }
   if (d->n > MAX_SLOT_CARDS) { snprintf(buf, n, "슬롯에는 카드를 %d장까지만 놓을 수 있습니다", MAX_SLOT_CARDS); return buf; }
+  const char *dead = dead_error(d, buf, n);
+  if (dead) return dead;
   int bad = slot_rule_error(d->cards, d->n);
   return bad >= 0 ? slot_rule_message(bad) : NULL;
 }

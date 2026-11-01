@@ -368,7 +368,7 @@ static float skill_list(const World *w, float x, float y, float width) {
 static float title_body(const World *w, float x, float y, float cw) {
   (void)w;
   float top = y, h1 = SW <= 520 ? 34 : 44, l1 = SDL_roundf(h1 * 1.05f * 10) / 10;
-  static const char *const LOGO[] = { "SPELL", "LOOP" };
+  static const char *const LOGO[] = { "오늘도 평화로운", "마법 생활" };
   gfx_letter_spacing(4);
   for (int i = 0; i < 2; i++) {
     float lw = tw(FONT_BOLD, h1, LOGO[i]), lx = x + SDL_roundf((cw - lw) / 2);
@@ -379,6 +379,14 @@ static float title_body(const World *w, float x, float y, float cw) {
   }
   gfx_letter_spacing(0);
   y = SDL_roundf(y);
+  // 영문 이름 (.title-en)
+  static const char EN[] = "What a peaceful Magic World";
+  float l15 = lh(FONT_REGULAR, 15);
+  y += 8;
+  gfx_letter_spacing(1);
+  text(FONT_REGULAR, 15, x + SDL_roundf((cw - tw(FONT_REGULAR, 15, EN)) / 2), y, l15, col(C_MUTED), EN);
+  gfx_letter_spacing(0);
+  y += l15;
   float l16 = lh(FONT_REGULAR, 16);
   y += 10;
   Seg sub = { FONT_REGULAR, 16, col(C_MUTED), "카드를 쌓아 나만의 주문을 조립하라" };

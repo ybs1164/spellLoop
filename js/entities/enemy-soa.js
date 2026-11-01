@@ -16,7 +16,8 @@ const ESOA_FIELDS = ['x', 'y', 'r', 'kx', 'ky', 'ang', 'wobble', 'rootT', 'fearT
 const BUFFY_DIRECT_STATES = 1, BUFFY_DIRECT_BURN = 2, BUFFY_MARK = 4, BUFFY_CARD_BUFFS = 8;
 const ESoA = {
   cap: ENEMY_SLOTS,
-  top: 0, free: [], pending: [], tickNo: 0,
+  top: 0, free: [], pending: new SlotDelayQueue(), tickNo: 0,
+  shells: new DelayedPool(SLOT_REUSE_DELAY),   // 사라진 Enemy 객체 (종류별, Enemy.create 가 다시 쓴다)
   listVer: 0, burnGain: 0,   // 적 목록의 앞부분(순서)이 바뀔 때마다 올린다 (WasmCore.syncOrd)
   alloc() {
     const s = this.take();
@@ -26,18 +27,18 @@ const ESoA = {
   take() {
     if (this.free.length) return this.free.pop();
     if (this.top < this.cap) return this.top++;
-    const old = this.pending.shift();   // 슬롯이 바닥나면 가장 오래 기다린 슬롯을 앞당겨 쓴다
-    if (!old) throw new Error('적 SoA 슬롯이 바닥났다');
-    return old[0];
+    // 슬롯이 바닥나면 가장 오래 기다린 슬롯을 앞당겨 쓴다
+    if (!this.pending.size) throw new Error(`적 SoA 슬롯이 바닥났다 (top=${this.top} free=${this.free.length} pending=${this.pending.size})`);
+    return this.pending.shift();
   },
-  release(slot) { this.pending.push([slot, this.tickNo]); },
+  release(slot) { this.pending.push(slot, this.tickNo); },
+  /** 슬롯을 모두 비운다. 앞 판의 적을 아무도 참조하지 않을 때만 (한 프로세스에서 판을 여러 번 도는 도구) */
+  reset() { this.top = 0; this.free.length = 0; this.pending.clear(); this.shells.clear(); this.listVer++; },
   /** 프레임마다 한 번: 기다림이 끝난 슬롯을 다시 쓸 수 있게 한다 */
   tick() {
     this.tickNo++;
-    const q = this.pending;
-    let i = 0;
-    while (i < q.length && this.tickNo - q[i][1] >= SLOT_REUSE_DELAY) this.free.push(q[i++][0]);
-    if (i) q.splice(0, i);
+    this.pending.drain(this.tickNo - SLOT_REUSE_DELAY, this.free);
+    this.shells.tick(this.tickNo);
   },
   /** 목록에서 빠진 죽은 적을 정리하며 compact 한다 (compact 와 같은 순서) */
   compactEnemies(arr) {
@@ -49,11 +50,13 @@ const ESoA = {
     }
     for (let i = j; i < arr.length; i++) {
       const e = arr[i];
-      if (!e.dead) arr[j++] = e; else if (e._si !== undefined && !e._pooled) this.release(e._si);
+      if (!e.dead) arr[j++] = e; else if (e._si !== undefined && !e._pooled) this.retire(e);
     }
     if (j !== arr.length) { arr.length = j; this.listVer++; }
   },
-  releaseAll(arr) { for (const e of arr) if (e._si !== undefined && !e._pooled) this.release(e._si); this.listVer++; },
+  /** 목록에서 빠진 적: 슬롯을 돌려주고, 객체는 재사용 대기가 끝난 뒤 같은 종류의 새 적으로 다시 쓴다 */
+  retire(e) { this.release(e._si); this.shells.put(e.type, e, this.tickNo); },
+  releaseAll(arr) { for (const e of arr) if (e._si !== undefined && !e._pooled) this.retire(e); this.listVer++; },
   /** WASM 메모리 뷰로 갈아탄다 (기존 값 복사). view(i): ESOA_FIELDS[i] 의 뷰 */
   bind(view, cap) {
     ESOA_FIELDS.forEach((f, i) => {

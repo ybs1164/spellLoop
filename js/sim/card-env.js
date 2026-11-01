@@ -26,6 +26,8 @@ const TARGET_LIST_WRAP = [
   e => ({ kind: 'enemy', e }), o => ({ kind: 'object', o }), a => ({ kind: 'ally', a }), z => ({ kind: 'zone', z }),
   s => ({ kind: 'shot', s }), s => ({ kind: 'shot', s }), g => ({ kind: g.kind === 'gem' ? 'gem' : 'pickup', g }),
 ];
+// 같은 순서의 Game 목록 이름 (프레임마다 목록 배열을 새로 만들지 않고 이름으로 읽는다)
+const TARGET_LIST_KEYS = ['enemies', 'objects', 'allies', 'zones', 'projectiles', 'hazards', 'pickups'];
 
 const CARD_EFFECTS = [
   'directAction',
@@ -83,6 +85,7 @@ class GameCardEnv {
       /** features 의 기본 특성을 비트로 (대상이 특성을 따로 지정했으면 -1) */
       featureMask: (t) => { const o = obj(t); return o.targetFeatures ? -1 : featureBits(o); },
       allTargets: (keep) => g.allTargets(keep),
+      allTargetsInto: (keep, out) => g.allTargetsInto(keep, out),
 
       /* ---- 대상 카드 ---- */
       enemiesInSight: (r) => g.nearestEnemies(p.x, p.y, Infinity, r).map(e => e),
@@ -155,12 +158,22 @@ class GameCardEnv {
 
   /** keep 이 주어지면 그 판정을 통과한 개체만 담는다 (순서는 같다). */
   allTargets(keep) {
+    const out = [];
+    this.allTargetsInto(keep, out);
+    return out;
+  }
+
+  /**
+   * allTargets 와 같은 대상을 out 의 앞에서부터 덮어 쓰고 개수를 돌려준다 (out 의 길이는 줄이지 않는다).
+   * 호출한 쪽이 바로 쓰고 버리는 작업 배열을 다시 쓸 때: 길이를 0 으로 줄이면 V8 이 저장 공간을 놓아 매번 다시 할당한다.
+   */
+  allTargetsInto(keep, out) {
     // 대상 래퍼는 읽기 전용이므로 개체마다 한 번 만들어 재사용한다.
     const wraps = this._targetWraps ||= new WeakMap();
-    const out = !keep || keep(this.player) ? [{ kind: 'self' }] : [];
-    const lists = [this.enemies, this.objects, this.allies, this.zones, this.projectiles, this.hazards, this.pickups];
-    for (let i = 0; i < lists.length; i++) {
-      const list = lists[i];
+    let n = 0;
+    if (!keep || keep(this.player)) out[n++] = { kind: 'self' };
+    for (let i = 0; i < TARGET_LIST_KEYS.length; i++) {
+      const list = this[TARGET_LIST_KEYS[i]];
       if (!list) continue;
       // 적 목록이 길고 거리 조건이 있으면 C 가 먼 적을 먼저 거른다 (남은 후보만 아래 원래 판정을 거친다. 순서는 목록 순서 그대로).
       const c = i === 0 && keep?.cull && list.length >= CULL_MIN && WasmCore.on() && list.length <= WasmCore.cap ? this.cullEnemies(list, keep.cull) : -1;
@@ -168,19 +181,19 @@ class GameCardEnv {
         for (let k = 0; k < c; k++) {
           const o = list[WasmCore.cand[k]];
           if (o.dead || !keep(o)) continue;
-          out.push(o);   // 적은 래퍼 없이 객체 자신이 대상이다
+          out[n++] = o;   // 적은 래퍼 없이 객체 자신이 대상이다
         }
         continue;
       }
       for (const o of list) {
         if (o.dead || keep && !keep(o)) continue;
-        if (i === 0) { out.push(o); continue; }
+        if (i === 0) { out[n++] = o; continue; }
         let w = wraps.get(o);
         if (!w) wraps.set(o, w = TARGET_LIST_WRAP[i](o));
-        out.push(w);
+        out[n++] = w;
       }
     }
-    return out;
+    return n;
   }
 
   /** 적 목록의 슬롯 번호(WasmCore.syncOrd)로 범위 후보 수를 돌려준다. 슬롯 없는 개체가 섞여 있으면 -1 (호출한 쪽이 일반 경로로 간다). */
@@ -192,8 +205,10 @@ class GameCardEnv {
   actionValue(id, field, owner = this.actionActor || this.player) {
     const card = this.actionCard && cardBaseIdOfCard(this.actionCard) === id ? this.actionCard : CARDS[id];
     const reference = card.effect?.statRatios?.[field] ?? card.statRatios?.[field];
-    return reference ? entityStats(owner)[reference.stat] * reference.ratio
+    const value = reference ? entityStats(owner)[reference.stat] * reference.ratio
       : card.effect?.[field] ?? card.fixedValues?.[field] ?? (field === 'speed' ? card.projectileSpeed || 0 : 0);
+    // 슬롯 효과량 배율(외길의 인장)은 탄속에는 걸지 않는다
+    return field === 'speed' || !this.actionPower ? value : value * this.actionPower;
   }
 
   actionDamage(id, field = 'damage') {
@@ -231,6 +246,33 @@ class GameCardEnv {
     }
     const facing = actor.facing || this.player.facing;
     return Math.atan2(facing.y, facing.x);
+  }
+
+  /** aimAt 과 같지만, 대상의 최근 속도로 탄(속도 speed, 수명 life)이 만날 곳을 미리 겨눈다 */
+  leadAimAt(t, from, speed, life) {
+    const base = this.aimAt(t, from), o = this.targetObj(t);
+    if (!o || o === (from || this.actionActor || this.player) || !(speed > 0)) return base;
+    // 속도는 대상을 겨눌 때마다 남기는 위치 표본에서 얻는다 (쏘는 개체끼리 공유, 1초 넘게 묵으면 버린다)
+    const samples = this._leadSamples ||= new WeakMap(), now = this.time, s = samples.get(o);
+    let vx = 0, vy = 0;
+    if (s && now - s.t <= 1) {
+      if (now - s.t >= 0.05) { s.vx = (o.x - s.x) / (now - s.t); s.vy = (o.y - s.y) / (now - s.t); s.x = o.x; s.y = o.y; s.t = now; }
+      vx = s.vx; vy = s.vy;
+    } else samples.set(o, { x: o.x, y: o.y, t: now, vx: 0, vy: 0 });
+    if (!vx && !vy) return base;
+    // |D + V·τ| = speed·τ 의 가장 이른 양의 해 τ 로 만날 곳을 구한다. 해가 없거나 수명보다 늦으면 그냥 대상을 겨눈다.
+    const p = from || this.actionOrigin || this.actionActor || this.player, dx = o.x - p.x, dy = o.y - p.y;
+    const a = vx * vx + vy * vy - speed * speed, b = 2 * (dx * vx + dy * vy), c = dx * dx + dy * dy;
+    let tau;
+    if (Math.abs(a) < 1e-6) tau = b < 0 ? -c / b : NaN;
+    else {
+      const disc = b * b - 4 * a * c;
+      if (disc < 0) return base;
+      const r = Math.sqrt(disc), t1 = (-b - r) / (2 * a), t2 = (-b + r) / (2 * a);
+      tau = Math.min(t1 > 0 ? t1 : Infinity, t2 > 0 ? t2 : Infinity);
+    }
+    if (!(tau > 0) || tau > (life ?? Infinity)) return base;
+    return Math.atan2(dy + vy * tau, dx + vx * tau);
   }
 
   chaseTarget(unit) {

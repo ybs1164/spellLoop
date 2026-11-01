@@ -26,13 +26,18 @@ function slotMayHaveDecoy(o) {
 const NAP_STAT_BIT = { attackPower: 1, moveSpeed: 2, maxHp: 4, knockback: 8, pierce: 16, keepDistance: 16 };   // 16: SoA 가 아니라 Enemy 접근자(pierceLimit·keepDistance)가 값이 바뀔 때 점검을 끈다
 
 const FIXED_VERIFY = typeof process !== 'undefined' && !!process.env?.NAP_VERIFY;   // 시험용: 버전이 놓친 분석 변경이 있으면 예외
+// 시험용: 재사용 껍데기(탄·적)가 다시 쓰는 객체에 알려지지 않은 필드가 남아 있으면 예외 (Projectile.reuse, reuseSlotGroup)
+const POOL_VERIFY = typeof process !== 'undefined' && !!process.env?.POOL_VERIFY;
 
 const NO_AFTER_MOVEMENT = Object.freeze([]);
 // 표본(captureFixed)의 읽기 전용 배열: 최근에 만든 같은 내용의 배열이 있으면 그것을 쓴다 (같은 틀의 개체가 같은 배열을 따로 쥐지 않게)
 const INTERNED_ARRAYS = new Map();
 // 갱신 한 번 동안만 쓰는 객체의 풀 (EntitySlots.update·tickPooled)
-const TICK_CTX_POOL = [], SHARED_CTX_POOL = [], RUNS_POOL = [];
-function internArray(arr) {
+const TICK_CTX_POOL = [], SHARED_CTX_POOL = [], RUNS_POOL = [], RUN_CTX_POOL = [], RAN_SCRATCH = [];
+// EntitySlots.update 는 문맥을 읽기만 한다 (주인 클래스가 문맥 없이 부를 때)
+const NO_GROUP_CONTEXT = Object.freeze({});
+/** copy: arr 이 빌린 작업 배열이면 새로 넣을 때 복사본을 넣는다 */
+function internArray(arr, copy = false) {
   const n = arr.length;
   let bucket = INTERNED_ARRAYS.get(n);
   if (!bucket) INTERNED_ARRAYS.set(n, bucket = []);
@@ -42,6 +47,7 @@ function internArray(arr) {
     return c;
   }
   if (bucket.length >= 16) bucket.shift();
+  if (copy) arr = arr.slice();
   bucket.push(arr);
   return arr;
 }   // tickOwner 의 기본값 (호출마다 빈 배열을 만들지 않는다)
@@ -53,8 +59,8 @@ class EntitySlot {
     this.kind = kind;
     if (template) {
       this._cards = template.cards; this._defaults = template.defaults; this._analysis = template.analysis;
-      if (template.cards.some(isDecoyCard)) trackDecoySlot(this, template.cards);
-    } else {
+      if (template.decoy ??= template.cards.some(isDecoyCard)) trackDecoySlot(this, template.cards);
+    } else if (cards !== null) {
       this.cards = cards;
       this.defaults = cards.slice();
     }
@@ -176,7 +182,13 @@ class EntitySlot {
     const enabled = context.sharedEnabled || new Set(), effects = context.sharedEffects || new Map();
     const plan = context.deferTick ? fixedSlotPlan(this) : null;
     if (plan) runFixedSlot(this, plan, this.owner, game, dt, enabled, effects, context);
-    else runEventSlot(this, this.owner, game, dt, { enabled, effects });
+    else {
+      // runEventSlot 은 문맥을 보관하지 않으므로 호출 동안만 빌린다
+      const run = RUN_CTX_POOL.pop() || { enabled: null, effects: null };
+      run.enabled = enabled; run.effects = effects;
+      runEventSlot(this, this.owner, game, dt, run);
+      run.enabled = null; run.effects = null; RUN_CTX_POOL.push(run);
+    }
     this.enabled = enabled; this.effects = effects;
     if (!context.deferTick) this.tickOwner(dt, game, { ...context, lifetimeTicked: true }, enabled);
   }
@@ -203,8 +215,12 @@ class EntitySlots extends EntitySlot {
   set defaults(cards) { this._defaults = cards; }
   /** combined: 같은 틀의 개체끼리 함께 쓰는 { cards, defaults } (내용은 아래에서 만드는 것과 같다. 카드 배열은 제자리에서 바뀌지 않는다) */
   constructor(owner, kind, slots, combined) {
-    super(owner, kind, slots.flatMap(slot => slot.cards));
-    if (combined) { this._cards = combined.cards; this._defaults = combined.defaults; }
+    // 틀에서 함께 쓰는 합친 배열이 있으면 이어 붙인 배열을 만들었다 버리지 않는다 (유인 카드 추적은 같은 배열로 한 번만)
+    super(owner, kind, combined ? null : slots.flatMap(slot => slot.cards));
+    if (combined) {
+      this._cards = combined.cards; this._defaults = combined.defaults;
+      if (combined.decoy ??= combined.cards.some(isDecoyCard)) trackDecoySlot(this, combined.cards);
+    }
     this.slots = slots;
   }
   changed() {
@@ -285,7 +301,7 @@ class EntitySlots extends EntitySlot {
     }
     return true;
   }
-  update(dt, game, context = {}) {
+  update(dt, game, context = NO_GROUP_CONTEXT) {
     const wasSoa = this._soa;
     if (wasSoa) this.pullNap();
     if (this.owner.dead) return;
@@ -355,7 +371,10 @@ class EntitySlots extends EntitySlot {
     this.enabled = enabled; this.effects = effects;
     if (capture) {
       capture.enabled = enabled; capture.effects = effects; capture.version = this.version;
-      capture.ran = internArray(slots.map((slot, i) => (slot.runs || 0) !== runsBefore[i]));
+      const ran = RAN_SCRATCH;
+      ran.length = count;
+      for (let i = 0; i < count; i++) ran[i] = (slots[i].runs || 0) !== runsBefore[i];
+      capture.ran = internArray(ran, true);
       runsBefore.length = 0; RUNS_POOL.push(runsBefore);
     }
     this._fast = capture;
@@ -492,4 +511,50 @@ class EntitySlots extends EntitySlot {
     ctx.chase = undefined;
     TICK_CTX_POOL.push(ctx);
   }
+}
+
+// 재사용 껍데기(Projectile.create·Enemy 풀)가 지난 생애의 슬롯 묶음을 그대로 쓸 때 허용하는 필드. 이 밖의 필드가 붙은 묶음(연계·유인 등)은 새로 만든다.
+// 카드·분석·대상·효과 값 캐시는 카드 배열·주인·참조 스탯으로 검증되므로 남기고, 생애 상태(쿨타임·실행 횟수·휴면 장부·사망)는 생성 직후 값으로 되돌린다.
+const REUSABLE_SLOT_KEYS = new Set(['owner', 'kind', '_cards', '_mayDecoy', '_defaults', 'cd', 'enabled', 'effects', 'effectCache', 'version', '_analysis', '_fixedTargets', 'runs',
+  '_rcId', '_rcEntry', '_planValue', '_targetMemo', '_resolvedCache', '_hasMemo', 'eventState', 'deathDone', '_evCards', '_evMask', '_target']);
+const REUSABLE_GROUP_KEYS = new Set(['owner', 'kind', '_cards', '_mayDecoy', '_defaults', 'cd', 'enabled', 'effects', 'effectCache', 'version', 'slots', '_evVer', '_evList', '_evAll',
+  '_stable', '_captureStructural', '_captureSkip', '_tables', '_target', '_ownerTargets', '_fast', '_sleep', '_sleepLeft', '_sleepDt', '_sleepFrames', '_sleepRate', 'deathDone', '_soa',
+  '_template', '_hasMemo', 'eventState', '_evCards', '_evMask']);
+function onlyKnownKeys(o, known) {
+  for (const k in o) if (!known.has(k)) throw new Error(`재사용 슬롯에 목록 밖 필드: ${k}`);
+  return true;
+}
+// 생애 중에 붙어 슬롯을 다시 쓸 수 없게 하는 필드 (연계 슬롯·연쇄·유인 범위). 평소에는 이것만 보고, POOL_VERIFY=1 이면 모든 필드가 위 목록 안인지 확인한다 (밖이면 예외).
+function slotReusable(s) {
+  return s.linked === undefined && s.linkActor === undefined && s.linkExpires === undefined && s.chainKey === undefined && (!POOL_VERIFY || onlyKnownKeys(s, REUSABLE_SLOT_KEYS));
+}
+/**
+ * 재사용 껍데기의 슬롯 묶음(group)을 새 생애에 붙인다. 틀(template: 슬롯별 { cards, defaults })과 카드 배열이 그대로이고 알려진 필드만 가진 묶음이어야 한다.
+ * 붙이면 표본(_fast)과 켜진 메커니즘 표가 남아 있어, 참조 스탯·행동 가능 여부가 지난 생애와 같으면 첫 프레임부터 고정 슬롯 경로(fixedMatches)를 탄다.
+ * 그 경로가 만드는 표는 느린 경로와 같다(매 프레임 쓰는 같은 검증). 쿨타임 슬롯이 있는 표본은 잠드는 시점이 새 개체와 같도록 _stable 을 한 칸 뒤에서 시작한다.
+ */
+function reuseSlotGroup(owner, group, template, combined) {
+  if (group._template !== template || group.owner !== owner || group._cards !== combined.cards || group._defaults !== combined.defaults || group._mayDecoy) return false;
+  const slots = group.slots;
+  if (!slots || slots.length !== template.length || group._decoyRange !== undefined || (POOL_VERIFY && !onlyKnownKeys(group, REUSABLE_GROUP_KEYS))) return false;
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i], t = template[i];
+    if (s.owner !== owner || s._cards !== t.cards || s._defaults !== t.defaults || s._mayDecoy || !slotReusable(s)) return false;
+  }
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i];
+    s.cd = 0; s.enabled = null; s.effects = null;
+    if (s.runs !== undefined) s.runs = undefined;
+    if (s.eventState !== undefined) s.eventState = undefined;
+    if (s.deathDone !== undefined) s.deathDone = undefined;
+  }
+  group.cd = 0;
+  if (group.eventState !== undefined) group.eventState = undefined;
+  if (group.deathDone !== undefined) group.deathDone = undefined;
+  group._soa = false; group._sleep = 0; group._sleepLeft = 0; group._sleepDt = 0; group._sleepFrames = 0;
+  group._captureStructural = false; group._captureSkip = 0;
+  group._stable = group._fast?.cool ? -1 : 0;
+  owner.slots = slots;
+  owner.slot = group;
+  return true;
 }

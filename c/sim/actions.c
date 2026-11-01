@@ -455,12 +455,24 @@ static void move_target(Ctx *c, int o, float distance, uint32_t color) {
   fx_beam(w, x, y, w->x[o], w->y[o], color, 4, 0.2f);
 }
 static void a_blink(Ctx *c, const Target *ts, int n) {
-  for (int k = 0; k < n; k++) { int o = target_index(c->w, &ts[k]); if (o >= 0) move_target(c, o, action_value(c, CARD_BLINK, "distance", o), 0xC49BFFFFu); }
+  World *w = c->w;
+  for (int k = 0; k < n; k++) {
+    int o = target_index(w, &ts[k]);
+    if (o < 0) continue;
+    move_target(c, o, action_value(c, CARD_BLINK, "distance", o), 0xC49BFFFFu);
+    if (o == player_i(w)) w->invuln[o] = maxf(w->invuln[o], 0.3f);
+  }
 }
+/* 돌진: 적이 아닌 개체는 지나간 경로의 적에게 피해를 주고, 플레이어는 잠깐 무적이 된다 */
 static void a_dash(Ctx *c, const Target *ts, int n) {
+  World *w = c->w;
   if (n < 1) return;
-  int o = target_index(c->w, &ts[0]);
-  if (o >= 0) move_target(c, o, action_value(c, CARD_DASH, "distance", o), 0x5BE37AFFu);
+  int o = target_index(w, &ts[0]);
+  if (o < 0) return;
+  float x = w->x[o], y = w->y[o];
+  move_target(c, o, action_value(c, CARD_DASH, "distance", o), 0x5BE37AFFu);
+  if (w->kind[o] != TK_ENEMY) hit_line(w, x, y, w->x[o], w->y[o], 20, action_damage(c, CARD_DASH, "damage"), action_value(c, CARD_DASH, "knockback", c->actor), c->actor);
+  if (o == player_i(w)) w->invuln[o] = maxf(w->invuln[o], 0.2f);
 }
 static void a_pull(Ctx *c, const Target *ts, int n) {
   World *w = c->w;

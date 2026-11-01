@@ -47,20 +47,25 @@ class GameActionsAttack {
     const actor = this.actionActor || this.player, settings = entityActionConfig(actor, 'bolt', this.actionCard);
     if (settings) {
       if (settings.blockFear && hasTargetState(actor, 'fear')) return;
-      const base = this.aimAt(t, actor);
+      const base = settings.lead ? this.leadAimAt(t, actor, settings.speed, settings.life) : this.aimAt(t, actor);
       const damage = entityStats(actor)[settings.damageStat || 'attackPower'] * settings.damageRatio * (settings.playerPower ? this.player.stats.might * this.player.cardMul : 1);
       const n = settings.n ?? 1, ring = settings.ring === 'auto' ? n > 1 : settings.ring;
+      if (!settings.hazard) {
+        // 여러 발은 일제 사격으로 한 번에 만든다 (shoot 을 n 번 부른 것과 같다)
+        const vxs = this._volleyX ||= [], vys = this._volleyY ||= [];
+        for (let i = 0; i < n; i++) { const a = base + (ring ? i / n * TAU : (i - (n - 1) / 2) * 0.2); vxs[i] = Math.cos(a) * settings.speed; vys[i] = Math.sin(a) * settings.speed; }
+        this.shootVolley({ x: actor.x, y: actor.y + (settings.offsetY ?? 0), vx: 0, vy: 0,
+          radius: settings.radius, damage, knockback: settings.knockback, pierce: settings.pierce,
+          life: settings.life, shape: settings.shape, color: settings.color || '#8be9ff' }, vxs, vys, n);
+        return;
+      }
       for (let i = 0; i < n; i++) {
         const a = base + (ring ? i / n * TAU : (i - (n - 1) / 2) * 0.2);
-        if (settings.hazard) {
-          if (this.hazards.length >= MAX_HAZARDS) break;
-          const h = { kind: settings.projectileKind, source: actor, team: entityTeam(actor), x: actor.x, y: actor.y,
-            vx: Math.cos(a) * settings.speed, vy: Math.sin(a) * settings.speed,
-            r: settings.radius, damage, life: settings.life, max: settings.life, color: actor.color, dead: false };
-          entitySlot(h, 'shot'); this.hazards.push(h);
-        } else this.shoot({ x: actor.x, y: actor.y + (settings.offsetY ?? 0), vx: Math.cos(a) * settings.speed, vy: Math.sin(a) * settings.speed,
-          radius: settings.radius, damage, knockback: settings.knockback, pierce: settings.pierce,
-          life: settings.life, shape: settings.shape, color: settings.color || '#8be9ff' });
+        if (this.hazards.length >= MAX_HAZARDS) break;
+        const h = { kind: settings.projectileKind, source: actor, team: entityTeam(actor), x: actor.x, y: actor.y,
+          vx: Math.cos(a) * settings.speed, vy: Math.sin(a) * settings.speed,
+          r: settings.radius, damage, life: settings.life, max: settings.life, color: actor.color, dead: false };
+        entitySlot(h, 'shot'); this.hazards.push(h);
       }
       return;
     }
@@ -101,11 +106,10 @@ class GameActionsAttack {
 
   /* ---------------- 1차: 능력치 → 행동 ---------------- */
   scatter(t) {
-    const p = this.player, a0 = this.aimAt(t);
-    for (let i = 0; i < 5; i++) {
-      const a = a0 + (i - 2) * 0.17;
-      this.shoot({ vx: Math.cos(a) * this.actionValue('scatter', 'speed'), vy: Math.sin(a) * this.actionValue('scatter', 'speed'), radius: 4 * p.stats.area, damage: this.actionDamage('scatter'), knockback: this.actionValue('scatter', 'knockback'), life: 0.9, color: '#8be9ff' });
-    }
+    const p = this.player, a0 = this.aimAt(t), speed = this.actionValue('scatter', 'speed');
+    const vxs = this._volleyX ||= [], vys = this._volleyY ||= [];
+    for (let i = 0; i < 5; i++) { const a = a0 + (i - 2) * 0.17; vxs[i] = Math.cos(a) * speed; vys[i] = Math.sin(a) * speed; }
+    this.shootVolley({ vx: 0, vy: 0, radius: 4 * p.stats.area, damage: this.actionDamage('scatter'), knockback: this.actionValue('scatter', 'knockback'), life: 0.9, color: '#8be9ff' }, vxs, vys, 5);
   }
 
   lance(t) {
@@ -190,7 +194,6 @@ class GameActionsAttack {
     if (o.dead) return;
     const cap = SPLIT_CAPS[t.kind];
     if (cap && this[cap[0]].length >= cap[1]) return;
-    if (t.kind === 'enemy' && this._enemyBudget <= 0) return;
     const a = Math.random() * TAU, off = (o.radius || 12) + 18;
     const at = { x: o.x + Math.cos(a) * off, y: o.y + Math.sin(a) * off };
     let c = null;
@@ -209,10 +212,10 @@ class GameActionsAttack {
       case 'enemy':
         if (o.boss) return;
         o.hp /= 2;
+        // 프레임당 생성 안전장치(ENEMY_SPAWN_BUDGET)를 넘으면 복제를 다음 프레임으로 미룬다 (버리지 않는다)
+        if (this._enemyBudget <= 0) { this.queueEnemy({ split: o, x: at.x, y: at.y, a }); return; }
         this._enemyBudget--;
-        c = this.spawnEnemy(o.type, at);
-        c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
-        c.kx = Math.cos(a) * 240; c.ky = Math.sin(a) * 240;
+        c = this.splitEnemy(o, at, a);
         break;
       case 'gem':
       case 'pickup':
@@ -222,20 +225,32 @@ class GameActionsAttack {
         break;
       default: return;
     }
+    this.finishSplit(t.kind, o, c);
+  }
+
+  /** 분열한 적의 복제 (체력은 원본과 나눈 값, 경험치 없음) */
+  splitEnemy(o, at, a) {
+    const c = this.spawnEnemy(o.type, { x: at.x, y: at.y });
+    c.maxHp = o.maxHp; c.hp = o.hp; c.xp = 0;
+    c.kx = Math.cos(a) * 240; c.ky = Math.sin(a) * 240;
+    return c;
+  }
+
+  /** 분열 마무리: 복제 표시, 슬롯·스탯 계승, 연출 */
+  finishSplit(kind, o, c) {
     if (c) c.splitBorn = true;
-    if (c && t.kind !== 'shot') {
-      const kind = { self: 'ally', ally: 'ally', object: 'object', zone: 'zone', enemy: 'enemy', gem: 'pickup', pickup: 'pickup' }[t.kind];
-      inheritEntitySlots(o, c, kind);
+    if (c && kind !== 'shot') {
+      inheritEntitySlots(o, c, { self: 'ally', ally: 'ally', object: 'object', zone: 'zone', enemy: 'enemy', gem: 'pickup', pickup: 'pickup' }[kind]);
       const originalStats = entityStats(o), copiedStats = entityStats(c);
       for (const stat of ['attackPower', 'moveSpeed', 'knockback', 'knockbackResistance', 'statusResistance', 'range', 'maxHp', 'lifetime']) {
-        if (t.kind === 'self' && stat === 'lifetime') continue;
+        if (kind === 'self' && stat === 'lifetime') continue;
         copiedStats[stat] = originalStats[stat];
       }
       c.team = o.team;
       if (o.follow !== undefined) c.follow = o.follow;
       if (Number.isFinite(o.life)) c.life = o.life;
       if (Number.isFinite(o.hp)) c.hp = o.hp;
-      if (t.kind === 'enemy') {
+      if (kind === 'enemy') {
         for (const slot of c.slots) {
           slot.cards = slot.cards.map(id => {
             const card = CARDS[id];

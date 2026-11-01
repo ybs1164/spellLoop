@@ -102,6 +102,7 @@ canvas { display: block; image-rendering: pixelated; }
   box-shadow: 0 0 0 3px var(--ink), inset 0 3px 0 rgba(255, 255, 255, .05), 10px 10px 0 3px rgba(0, 0, 0, .45);
 }
 .panel h1 { font-size: 44px; letter-spacing: 4px; line-height: 1.05; color: var(--accent); text-shadow: 4px 4px 0 #0b3b52; }
+.panel .title-en { margin-top: 8px; font-size: 15px; letter-spacing: 1px; color: var(--muted); }
 .panel h2 { font-size: 28px; margin-bottom: 4px; text-shadow: 3px 3px 0 #000; }
 .panel .sub { color: var(--muted); margin-top: 10px; }
 

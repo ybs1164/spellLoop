@@ -160,7 +160,7 @@ int slot_rule_error(const uint16_t *cards, int n) {
     switch (cards[i]) {
       case CARD_ARTIFACT_BOOTS: if (!move) return cards[i]; break;
       case CARD_ARTIFACT_RING: if (actions > 3) return cards[i]; break;
-      case CARD_ARTIFACT_SEAL: if (actions > 1 || targets > 1) return cards[i]; break;
+      case CARD_ARTIFACT_SEAL: if (actions > 2 || targets > 2) return cards[i]; break;
       default: break;
     }
   }
@@ -189,10 +189,6 @@ static bool card_condition(int card) { return CARDS[card].type == CARD_TYPE_ARTI
 static int card_hit_rule(int card) {
   switch (card) {
     case CARD_ENTITY_HIT_TEAM_OPPOSING: return RULE_OPPOSING;
-    case CARD_ENTITY_HIT_TEAM_SAME: return RULE_SAME;
-    case CARD_ENTITY_HIT_TEAM_FRIENDLY: return RULE_FRIENDLY;
-    case CARD_ENTITY_HIT_TEAM_HOSTILE: return RULE_HOSTILE;
-    case CARD_ENTITY_HIT_TEAM_ALL: return RULE_ALL;
     default: return RULE_NONE;
   }
 }

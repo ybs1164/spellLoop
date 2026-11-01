@@ -8,8 +8,10 @@ class GameHazards {
       damageRatio: s.damage * (s.scaledDamage ? 1 : this.stage.dmgMul) / (entityStats(e).attackPower || 1),
       radius: 7, life: 3.5, hazard: true } };
     this.actionActor = e;
+    const shots = this.hazards.length, bolts = this.projectiles.length;
     try { this.bolt({ kind: 'point', x: target.x, y: target.y }); }
     finally { this.actionActor = previousActor; this.actionCard = previousCard; }
+    forwardShotHits(this, e, [...this.hazards.slice(shots), ...this.projectiles.slice(bolts)]);
   }
 
   updateHazards(dt) {

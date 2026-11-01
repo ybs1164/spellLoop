@@ -54,13 +54,13 @@ const CARDS = {
   },
   randomPoint: {
     type: 'target', kind: 'point', name: '무작위 지점', weight: 1,
-    desc: '주변 무작위 지점 (80~260).',
-    resolve: (env) => [env.randomPoint(80, 260)],
+    desc: '주변 무작위 지점 3곳 (80~260).',
+    resolve: (env) => [env.randomPoint(80, 260), env.randomPoint(80, 260), env.randomPoint(80, 260)],
   },
   fallen: {
     type: 'target', kind: 'point', name: '쓰러진 자리', weight: 2,
-    desc: '최근 1.5초 안에 적이 쓰러진 자리를 모두 고른다.',
-    resolve: (env) => env.fallenPoints(1.5),
+    desc: '최근 3초 안에 적이 쓰러진 자리를 모두 고른다.',
+    resolve: (env) => env.fallenPoints(3),
   },
   objects: {
     type: 'target', kind: 'object', name: '설치물', weight: 3,
@@ -84,8 +84,8 @@ const CARDS = {
   },
   gems: {
     type: 'target', kind: 'gem', name: '보석', weight: 1,
-    desc: '시야 안의 모든 보석을 고른다.',
-    resolve: (env) => env.gems(600),
+    desc: '넓은 시야(900) 안의 모든 보석을 고른다.',
+    resolve: (env) => env.gems(900),
   },
   prey: {
     type: 'target', kind: 'enemy', name: '사냥감', weight: 1,
@@ -112,13 +112,8 @@ const CARDS = {
   },
   woundedEnemies: {
     type: 'target', kind: 'enemy', name: '마무리 대상', weight: 2,
-    desc: '시야 안에서 체력이 30% 이하인 적을 모두 고른다.',
-    resolve: env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.3),
-  },
-  pickups: {
-    type: 'target', kind: 'pickup', name: '아이템', weight: 1,
-    desc: '시야 안의 하트·자석·보물 상자를 모두 고른다.',
-    resolve: env => env.pickups(600),
+    desc: '시야 안에서 체력이 50% 이하인 적을 모두 고른다.',
+    resolve: env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.5),
   },
 
   /* ================= 행동 카드: 기본 ================= */
@@ -208,7 +203,7 @@ const CARDS = {
     desc: '선택한 대상을 플레이어 쪽으로 최대 160 끌어당긴다.', run: (ts, env) => ts.forEach(t => env.pull(env.at(t), t, env.frameDt)),
   },
   magnet: {
-    type: 'action', group: 1, name: '자력', weight: 2, accepts: ALL_KINDS,
+    type: 'action', group: 1, name: '자력', weight: 0, accepts: ALL_KINDS,
     desc: '보석·설치물이 플레이어에게 계속 끌려온다. 설치물은 곁에서 멈춘다.', run: each('magnet'),
   },
 
@@ -319,12 +314,12 @@ const CARDS = {
     run: (ts, env) => ts.forEach((t) => env.snipe(t)),
   },
   split: {
-    type: 'action', group: 6, name: '분열', weight: 1, accepts: ['self', 'enemy', 'object', 'ally', 'zone', 'shot'],
+    type: 'action', group: 6, name: '분열', weight: 1, accepts: ['self', 'object', 'ally', 'zone', 'shot'],
     desc: '대상을 복제하거나 둘로 나눈다. 분열로 생긴 개체는 분열을 쓸 수 없다.',
     run: (ts, env) => ts.forEach((t) => env.split(t)),
   },
   absorb: {
-    type: 'action', group: 6, name: '흡수', weight: 1, accepts: ['object', 'ally', 'zone', 'shot', 'gem'],
+    type: 'action', group: 6, name: '흡수', weight: 0, accepts: ['object', 'ally', 'zone', 'shot', 'gem'],
     keys: ['placed'], desc: '대상을 회수하거나 아이템을 얻는다.',
     run: (ts, env) => ts.forEach((t) => env.absorb(env.at(t), t)),
   },
@@ -348,7 +343,7 @@ const ACTION_RULES = {
   pull: { requires: ['position'], exclude: ['self', 'point'] },
   heal: { requires: ['health'] }, shield: { requires: ['health'] },
   armor: { requires: ['health'] },
-  amplify: { requires: ['area'] },
+  amplify: { requires: ['area'], exclude: ['self'] },
   haste: { requires: ['position'], supports: (t, o) => t.kind === 'self' || t.kind === 'ally' || 'speed' in o || 'vx' in o },
   rage: { requires: ['position'], exclude: ['point'], supports: (t, o) => t.kind === 'self' || t.kind === 'gem' || (t.kind === 'ally' ? o.def?.damage > 0 : t.kind === 'object' ? ['orb', 'mine', 'turret', 'barrel'].includes(o.kind) : t.kind === 'zone' ? ['poison', 'blades', 'meteor', 'slime', 'abyss'].includes(o.kind) : o.damage > 0 || o.def?.shoot?.damage > 0) },
   focus: { requires: ['position'], exclude: ['point'], supports: (t, o) => t.kind === 'self' || (t.kind === 'ally' ? o.def?.damage > 0 : t.kind === 'object' ? ['orb', 'turret'].includes(o.kind) : t.kind === 'zone' ? ['poison', 'slime', 'abyss'].includes(o.kind) : t.kind === 'enemy' && (o.def?.shoot?.damage > 0 || !!o.def?.summon)) },
@@ -356,7 +351,7 @@ const ACTION_RULES = {
   blink: { requires: ['position'], exclude: ['point'] },
   dash: { requires: ['position'], exclude: ['point'] },
   absorb: { requires: ['position'], exclude: ['self', 'point', 'enemy'] },
-  split: { requires: ['position'], exclude: ['point'] },
+  split: { requires: ['position'], exclude: ['point', 'enemy'] },
   swap: { requires: ['position'], exclude: ['self'] },
 };
 const DIRECT_ACTIONS = ['snipe'];

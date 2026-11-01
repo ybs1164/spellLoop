@@ -18,7 +18,7 @@ get(`
   };
   const game = { cardEnv: () => env, projectiles: [], hazards: [], allies: [], objects: [], zones: [], enemies: [], pickups: [] };
   CARDS.group = { type: 'target', kind: 'enemy', resolve: () => targets };
-  CARDS.record = { type: 'action', accepts: ALL_KINDS, run: ts => hits.push(...ts) };
+  CARDS.record = { type: 'action', cd: '+1', accepts: ALL_KINDS, run: ts => hits.push(...ts) };
   const run = cards => {
     hits.length = 0; deck.slots = [{ cards, cd: 0, cast: null }];
     deck.update(0.01, game, {});

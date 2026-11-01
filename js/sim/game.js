@@ -37,6 +37,7 @@ class Game {
     if (this.driver) return this.driver.start(this, route);   // 시뮬레이션을 워커가 도는 실험 모드 (js/worker/sim-bridge.js)
     this.events.clear();
     this.player = new Player(0, 0);
+    if (this.enemies) ESoA.releaseAll(this.enemies);   // 앞 판의 적 슬롯을 돌려준다
     this.enemies = [];
     if (this.projectiles) for (const o of this.projectiles) if (o._pi !== undefined) PSoA.release(o._pi);   // 앞 판의 탄 슬롯을 돌려준다
     this.projectiles = [];
@@ -53,6 +54,7 @@ class Game {
     this.kills = 0;
     this.spawnAcc = 0;
     this._shotQueue = []; this._shotQueueHead = 0;
+    this._enemyQueue = []; this._enemyQueueHead = 0;
     this.route = route;      // 단계별 STAGES 번호
     this.enterStage(0, false);
     this.pendingLevelUps = 0;
@@ -82,6 +84,7 @@ class Game {
     if (step > 0) {
       ESoA.releaseAll(this.enemies);
       this.enemies = [];
+      this._enemyQueue.length = 0; this._enemyQueueHead = 0;   // 앞 단계에서 미뤄 둔 소환·분열 적도 정리한다
       this.hazards = [];
       const before = this.projectiles;
       this.projectiles = before.filter(p => entityTeam(p) !== 'hostile');
@@ -255,13 +258,15 @@ class Game {
     this.time += dt;
     this._decoyStamp = (this._decoyStamp | 0) + 1;
     this._eventBudget = SLOT_EVENT_BUDGET;
+    this._chainCap = Math.max(1, Math.round(CHAIN_RUN_RATE * dt)); this._chainRuns?.clear();
     // 과밀한 프레임은 작업 예산을 더 줄인다 (평소 장면의 결과는 그대로 두고, 1만 개체 같은 과부하에서만 프레임을 지킨다)
     const crowdedFrame = this._crowded = this.enemies.length > ENEMY_UPDATE_BUDGET || this.projectiles.length > SHOT_UPDATE_BUDGET;
     this._cardBudget = this._cardBudgetStart = crowdedFrame ? CARD_EVENT_BUDGET_CROWD : CARD_EVENT_BUDGET;
     this._hitBudget = crowdedFrame ? SHOT_HIT_BUDGET_CROWD : SHOT_HIT_BUDGET;
-    this._shotBudget = this.projectiles.length > SHOT_UPDATE_BUDGET ? SHOT_SPAWN_BUDGET_CROWD : SHOT_SPAWN_BUDGET;
+    this._shotBudget = SHOT_SPAWN_BUDGET;
     this._enemyBudget = ENEMY_SPAWN_BUDGET;
     this.drainShotQueue();
+    this.drainEnemyQueue();
     const p = this.player;
 
     this.updateSpawns(dt);

@@ -32,11 +32,15 @@ class GameActionsMove {
   /* ---------------- 5차: 이동·아군·메타 ---------------- */
   blink(o, t) {
     this.moveTarget(o, this.actionValue('blink', 'distance', o), '#c49bff');
+    if (o === this.player) o.invuln = Math.max(o.invuln, 0.3);
   }
 
+  // 돌진: 적이 아닌 개체는 지나간 경로의 적에게 피해를 주고, 플레이어는 잠깐 무적이 된다.
   dash(t) {
-    const o = this.targetObj(t);
+    const o = this.targetObj(t), x = o.x, y = o.y;
     this.moveTarget(o, this.actionValue('dash', 'distance', o), '#5be37a');
+    if (!(o instanceof Enemy)) this.hitLine(x, y, o.x, o.y, 20, this.actionDamage('dash'), this.actionValue('dash', 'knockback'));
+    if (o === this.player) o.invuln = Math.max(o.invuln, 0.2);
   }
 
   moveTarget(o, distance, color) {

@@ -3,7 +3,7 @@
 `node tools/extract-rules.cjs` 가 `tools/check-*.cjs` 의 단언에서 만든다. 서술형 규칙은 [MECHANICS.md](MECHANICS.md), 데이터는 `data/*.csv`.
 C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` 이 원래 검사다. 메시지가 없는 단언은 식을 싣는다.
 
-단언 838개 (메시지 있음 310개), 파일 31개.
+단언 847개 (메시지 있음 322개), 파일 32개.
 
 | 파일 | 항목 |
 | --- | --- |
@@ -11,9 +11,9 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-basic-state-inheritance.cjs](../tools/check-basic-state-inheritance.cjs) | 33 |
 | [check-batches.cjs](../tools/check-batches.cjs) | 4 |
 | [check-card-distance-ui.cjs](../tools/check-card-distance-ui.cjs) | 13 |
-| [check-chain-cards.cjs](../tools/check-chain-cards.cjs) | 13 |
+| [check-chain-cards.cjs](../tools/check-chain-cards.cjs) | 23 |
 | [check-common-action-modes.cjs](../tools/check-common-action-modes.cjs) | 19 |
-| [check-common-mechanics.cjs](../tools/check-common-mechanics.cjs) | 45 |
+| [check-common-mechanics.cjs](../tools/check-common-mechanics.cjs) | 43 |
 | [check-controls.cjs](../tools/check-controls.cjs) | 8 |
 | [check-debuffs.cjs](../tools/check-debuffs.cjs) | 6 |
 | [check-drain.cjs](../tools/check-drain.cjs) | 7 |
@@ -22,13 +22,14 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-entity-gimmicks.cjs](../tools/check-entity-gimmicks.cjs) | 32 |
 | [check-entity-slots.cjs](../tools/check-entity-slots.cjs) | 144 |
 | [check-entity-state-values.cjs](../tools/check-entity-state-values.cjs) | 51 |
-| [check-event-slots.cjs](../tools/check-event-slots.cjs) | 43 |
+| [check-event-slots.cjs](../tools/check-event-slots.cjs) | 45 |
 | [check-event-ui.cjs](../tools/check-event-ui.cjs) | 9 |
-| [check-explicit-actions.cjs](../tools/check-explicit-actions.cjs) | 52 |
+| [check-explicit-actions.cjs](../tools/check-explicit-actions.cjs) | 51 |
 | [check-gimmick-bosses.cjs](../tools/check-gimmick-bosses.cjs) | 31 |
-| [check-mechanic-migrations.cjs](../tools/check-mechanic-migrations.cjs) | 66 |
+| [check-mechanic-migrations.cjs](../tools/check-mechanic-migrations.cjs) | 65 |
 | [check-mine-sequence.cjs](../tools/check-mine-sequence.cjs) | 8 |
 | [check-play-logs.cjs](../tools/check-play-logs.cjs) | 19 |
+| [check-pool.cjs](../tools/check-pool.cjs) | 4 |
 | [check-slot-sections.cjs](../tools/check-slot-sections.cjs) | 50 |
 | [check-slots.cjs](../tools/check-slots.cjs) | 24 |
 | [check-snap-pack.cjs](../tools/check-snap-pack.cjs) | 1 |
@@ -37,7 +38,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-stat-ratios.cjs](../tools/check-stat-ratios.cjs) | 12 |
 | [check-stat-readers.cjs](../tools/check-stat-readers.cjs) | 3 |
 | [check-targets.cjs](../tools/check-targets.cjs) | 60 |
-| [check-teams.cjs](../tools/check-teams.cjs) | 35 |
+| [check-teams.cjs](../tools/check-teams.cjs) | 32 |
 
 ## action-target-positions
 
@@ -86,7 +87,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 
 - `get('hits.length'), 3` — [check-batches.cjs:23](../tools/check-batches.cjs#L23)
 - all targets fire in the same frame — [check-batches.cjs:24](../tools/check-batches.cjs#L24)
-- one execution starts the base 1s slot cooldown once for all targets — [check-batches.cjs:25](../tools/check-batches.cjs#L25)
+- one execution starts the slot cooldown once for all targets — [check-batches.cjs:25](../tools/check-batches.cjs#L25)
 - dead targets are skipped — [check-batches.cjs:27](../tools/check-batches.cjs#L27)
 
 ## card-distance-ui
@@ -120,6 +121,16 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - on_hit never fires for a heal — [check-chain-cards.cjs:54](../tools/check-chain-cards.cjs#L54)
 - `slotAnalysis(slot).chainRest, null` — [check-chain-cards.cjs:59](../tools/check-chain-cards.cjs#L59)
 - `legacy.slots.some(s => s.cards.includes('explode'))` — [check-chain-cards.cjs:61](../tools/check-chain-cards.cjs#L61)
+- a chain stack stops at the frame cap — [check-chain-cards.cjs:66](../tools/check-chain-cards.cjs#L66)
+- another stack has its own cap — [check-chain-cards.cjs:67](../tools/check-chain-cards.cjs#L67)
+- another caster has its own cap — [check-chain-cards.cjs:68](../tools/check-chain-cards.cjs#L68)
+- `game._chainCap, Math.round(CHAIN_RUN_RATE * 0.05)` — [check-chain-cards.cjs:69](../tools/check-chain-cards.cjs#L69)
+- the cap refills every frame — [check-chain-cards.cjs:69](../tools/check-chain-cards.cjs#L69)
+- on_hit needs a previous action — [check-chain-cards.cjs:72](../tools/check-chain-cards.cjs#L72)
+- on_complete listens to the owner — [check-chain-cards.cjs:73](../tools/check-chain-cards.cjs#L73)
+- swap cannot target the player — [check-chain-cards.cjs:74](../tools/check-chain-cards.cjs#L74)
+- blink cannot target a point — [check-chain-cards.cjs:75](../tools/check-chain-cards.cjs#L75)
+- `slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'chain']), null` — [check-chain-cards.cjs:76](../tools/check-chain-cards.cjs#L76)
 
 ## common-action-modes
 
@@ -181,15 +192,13 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - death ignores frozen state/cooldown and runs once — [check-common-mechanics.cjs:81](../tools/check-common-mechanics.cjs#L81)
 - dead targets are excluded — [check-common-mechanics.cjs:85](../tools/check-common-mechanics.cjs#L85)
 - `teamVictim.hp, teamHp` — [check-common-mechanics.cjs:90](../tools/check-common-mechanics.cjs#L90)
-- `teamVictim.hp < teamHp` — [check-common-mechanics.cjs:92](../tools/check-common-mechanics.cjs#L92)
-- area damage honors opposing team without excluding its origin — [check-common-mechanics.cjs:96](../tools/check-common-mechanics.cjs#L96)
-- `teamVictim.hp < aoeHp` — [check-common-mechanics.cjs:98](../tools/check-common-mechanics.cjs#L98)
-- projectiles retain the selected team rule — [check-common-mechanics.cjs:101](../tools/check-common-mechanics.cjs#L101)
-- `game.targetObj(ts[0]), p` — [check-common-mechanics.cjs:104](../tools/check-common-mechanics.cjs#L104)
-- `p.dead, true` — [check-common-mechanics.cjs:104](../tools/check-common-mechanics.cjs#L104)
-- `playerDeath, 1` — [check-common-mechanics.cjs:110](../tools/check-common-mechanics.cjs#L110)
-- `ordinary, 0` — [check-common-mechanics.cjs:110](../tools/check-common-mechanics.cjs#L110)
-- `ended, 1` — [check-common-mechanics.cjs:110](../tools/check-common-mechanics.cjs#L110)
+- area damage honors opposing team without excluding its origin — [check-common-mechanics.cjs:94](../tools/check-common-mechanics.cjs#L94)
+- projectiles retain the selected team rule — [check-common-mechanics.cjs:97](../tools/check-common-mechanics.cjs#L97)
+- `game.targetObj(ts[0]), p` — [check-common-mechanics.cjs:100](../tools/check-common-mechanics.cjs#L100)
+- `p.dead, true` — [check-common-mechanics.cjs:100](../tools/check-common-mechanics.cjs#L100)
+- `playerDeath, 1` — [check-common-mechanics.cjs:106](../tools/check-common-mechanics.cjs#L106)
+- `ordinary, 0` — [check-common-mechanics.cjs:106](../tools/check-common-mechanics.cjs#L106)
+- `ended, 1` — [check-common-mechanics.cjs:106](../tools/check-common-mechanics.cjs#L106)
 
 ## controls
 
@@ -493,7 +502,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 ## event-slots
 
 - ready slot runs at once — [check-event-slots.cjs:22](../tools/check-event-slots.cjs#L22)
-- a run starts the 1s cooldown — [check-event-slots.cjs:23](../tools/check-event-slots.cjs#L23)
+- a run starts the slot cooldown — [check-event-slots.cjs:23](../tools/check-event-slots.cjs#L23)
 - cooling slot waits — [check-event-slots.cjs:25](../tools/check-event-slots.cjs#L25)
 - runs again after one second — [check-event-slots.cjs:27](../tools/check-event-slots.cjs#L27)
 - editing never resets the cooldown — [check-event-slots.cjs:28](../tools/check-event-slots.cjs#L28)
@@ -531,10 +540,12 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - =0.016 runs every frame — [check-event-slots.cjs:124](../tools/check-event-slots.cjs#L124)
 - hit event subject is the struck target — [check-event-slots.cjs:131](../tools/check-event-slots.cjs#L131)
 - enemy hit event subject is the struck player — [check-event-slots.cjs:134](../tools/check-event-slots.cjs#L134)
-- `UI.html.includes('data-section="artifact"')` — [check-event-slots.cjs:139](../tools/check-event-slots.cjs#L139)
-- `UI.html.includes('쿨타임')` — [check-event-slots.cjs:140](../tools/check-event-slots.cjs#L140)
-- boots show the frame cooldown — [check-event-slots.cjs:141](../tools/check-event-slots.cjs#L141)
-- no cost is shown — [check-event-slots.cjs:142](../tools/check-event-slots.cjs#L142)
+- a projectile fired by an entity that listens for hits forwards its hits — [check-event-slots.cjs:137](../tools/check-event-slots.cjs#L137)
+- entity projectile hit reaches the entity on_hit slot — [check-event-slots.cjs:139](../tools/check-event-slots.cjs#L139)
+- `UI.html.includes('data-section="artifact"')` — [check-event-slots.cjs:144](../tools/check-event-slots.cjs#L144)
+- `UI.html.includes('쿨타임')` — [check-event-slots.cjs:145](../tools/check-event-slots.cjs#L145)
+- boots show the frame cooldown — [check-event-slots.cjs:146](../tools/check-event-slots.cjs#L146)
+- no cost is shown — [check-event-slots.cjs:147](../tools/check-event-slots.cjs#L147)
 
 ## event-ui
 
@@ -591,17 +602,16 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - explosion always uses the common card — [check-explicit-actions.cjs:95](../tools/check-explicit-actions.cjs#L95)
 - projectile hit damage reads attackPower — [check-explicit-actions.cjs:101](../tools/check-explicit-actions.cjs#L101)
 - transferring an action preserves the projectile team — [check-explicit-actions.cjs:107](../tools/check-explicit-actions.cjs#L107)
-- the team condition can explicitly enable same-team damage — [check-explicit-actions.cjs:110](../tools/check-explicit-actions.cjs#L110)
-- zero player damage never becomes the minimum damage of one — [check-explicit-actions.cjs:117](../tools/check-explicit-actions.cjs#L117)
-- absorb uses the pickup reward stat — [check-explicit-actions.cjs:121](../tools/check-explicit-actions.cjs#L121)
-- death reward reads the experience state — [check-explicit-actions.cjs:124](../tools/check-explicit-actions.cjs#L124)
-- `game.enemies.length, 13` — [check-explicit-actions.cjs:128](../tools/check-explicit-actions.cjs#L128)
-- `game.enemies.slice(1).every(e => e.type === 'grunt')` — [check-explicit-actions.cjs:129](../tools/check-explicit-actions.cjs#L129)
-- `attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea')` — [check-explicit-actions.cjs:131](../tools/check-explicit-actions.cjs#L131)
-- `entityActionConfig(attached, 'snipe').elem, 'poison'` — [check-explicit-actions.cjs:132](../tools/check-explicit-actions.cjs#L132)
-- `entityActionConfig(attached, 'snipe').playerPower, true` — [check-explicit-actions.cjs:133](../tools/check-explicit-actions.cjs#L133)
-- `!/자신의.*따라|설정에 따라/.test(CARDS[id].desc)` — [check-explicit-actions.cjs:137](../tools/check-explicit-actions.cjs#L137)
-- `iconIndex(id) >= 0 && !('cost' in CARDS[id]) && cooldownOpText(CARDS[id])` — [check-explicit-actions.cjs:138](../tools/check-explicit-actions.cjs#L138)
+- zero player damage never becomes the minimum damage of one — [check-explicit-actions.cjs:114](../tools/check-explicit-actions.cjs#L114)
+- absorb uses the pickup reward stat — [check-explicit-actions.cjs:118](../tools/check-explicit-actions.cjs#L118)
+- death reward reads the experience state — [check-explicit-actions.cjs:121](../tools/check-explicit-actions.cjs#L121)
+- `game.enemies.length, 13` — [check-explicit-actions.cjs:125](../tools/check-explicit-actions.cjs#L125)
+- `game.enemies.slice(1).every(e => e.type === 'grunt')` — [check-explicit-actions.cjs:126](../tools/check-explicit-actions.cjs#L126)
+- `attached.slot.cards.some(cardId => cardBaseId(cardId) === 'entityArea')` — [check-explicit-actions.cjs:128](../tools/check-explicit-actions.cjs#L128)
+- `entityActionConfig(attached, 'snipe').elem, 'poison'` — [check-explicit-actions.cjs:129](../tools/check-explicit-actions.cjs#L129)
+- `entityActionConfig(attached, 'snipe').playerPower, true` — [check-explicit-actions.cjs:130](../tools/check-explicit-actions.cjs#L130)
+- `!/자신의.*따라|설정에 따라/.test(CARDS[id].desc)` — [check-explicit-actions.cjs:134](../tools/check-explicit-actions.cjs#L134)
+- `iconIndex(id) >= 0 && !('cost' in CARDS[id]) && cooldownOpText(CARDS[id])` — [check-explicit-actions.cjs:135](../tools/check-explicit-actions.cjs#L135)
 
 ## gimmick-bosses
 
@@ -682,7 +692,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - `repelVictim.x, 50` — [check-mechanic-migrations.cjs:104](../tools/check-mechanic-migrations.cjs#L104)
 - followed ward does not push its host — [check-mechanic-migrations.cjs:106](../tools/check-mechanic-migrations.cjs#L106)
 - followed ward outlives its host — [check-mechanic-migrations.cjs:107](../tools/check-mechanic-migrations.cjs#L107)
-- experience gems are attracted from 20x the item distance — [check-mechanic-migrations.cjs:109](../tools/check-mechanic-migrations.cjs#L109)
+- experience gems are attracted from 10x the item distance — [check-mechanic-migrations.cjs:109](../tools/check-mechanic-migrations.cjs#L109)
 - outside reach the gem stays — [check-mechanic-migrations.cjs:111](../tools/check-mechanic-migrations.cjs#L111)
 - inside reach the gem accelerates toward the player — [check-mechanic-migrations.cjs:113](../tools/check-mechanic-migrations.cjs#L113)
 - gem speed is capped at its 1100 move speed — [check-mechanic-migrations.cjs:115](../tools/check-mechanic-migrations.cjs#L115)
@@ -701,10 +711,9 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - removing orbit stops rotation — [check-mechanic-migrations.cjs:140](../tools/check-mechanic-migrations.cjs#L140)
 - each blade owns its repeat timer — [check-mechanic-migrations.cjs:144](../tools/check-mechanic-migrations.cjs#L144)
 - `bladeVictim.hp, overlapHp - 24` — [check-mechanic-migrations.cjs:145](../tools/check-mechanic-migrations.cjs#L145)
-- blade collision honors team cards — [check-mechanic-migrations.cjs:147](../tools/check-mechanic-migrations.cjs#L147)
-- `bladeVictim.hp, expiryHp` — [check-mechanic-migrations.cjs:150](../tools/check-mechanic-migrations.cjs#L150)
-- `expiredBlades.dead` — [check-mechanic-migrations.cjs:150](../tools/check-mechanic-migrations.cjs#L150)
-- expired allies do not fire — [check-mechanic-migrations.cjs:153](../tools/check-mechanic-migrations.cjs#L153)
+- `bladeVictim.hp, expiryHp` — [check-mechanic-migrations.cjs:148](../tools/check-mechanic-migrations.cjs#L148)
+- `expiredBlades.dead` — [check-mechanic-migrations.cjs:148](../tools/check-mechanic-migrations.cjs#L148)
+- expired allies do not fire — [check-mechanic-migrations.cjs:151](../tools/check-mechanic-migrations.cjs#L151)
 
 ## mine-sequence
 
@@ -738,6 +747,13 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - storage failure must not affect gameplay — [check-play-logs.cjs:123](../tools/check-play-logs.cjs#L123)
 - storage failure retains memory for export — [check-play-logs.cjs:124](../tools/check-play-logs.cjs#L124)
 - Storage denied — [check-play-logs.cjs](../tools/check-play-logs.cjs)
+
+## pool
+
+- new projectile has fields outside PROJECTILE_INIT_KEYS — [check-pool.cjs:22](../tools/check-pool.cjs#L22)
+- PROJECTILE_INIT_KEYS lists fields a new projectile does not have — [check-pool.cjs:23](../tools/check-pool.cjs#L23)
+- projectile shells were reused (' + shotReuse + ') — [check-pool.cjs:36](../tools/check-pool.cjs#L36)
+- enemy shells were reused (' + enemyReuse + ') — [check-pool.cjs:37](../tools/check-pool.cjs#L37)
 
 ## slot-sections
 
@@ -804,8 +820,8 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - both slots start together — [check-slots.cjs:34](../tools/check-slots.cjs#L34)
 - `Math.abs(bRuns - 101) <= 1` — [check-slots.cjs:37](../tools/check-slots.cjs#L37)
 - `Math.abs(aRuns - 21) <= 1` — [check-slots.cjs:38](../tools/check-slots.cjs#L38)
-- ×0.7 then −0.2 — [check-slots.cjs:40](../tools/check-slots.cjs#L40)
-- (1 − 0.2) × 3 — [check-slots.cjs:41](../tools/check-slots.cjs#L41)
+- +1 then ×0.5 — [check-slots.cjs:40](../tools/check-slots.cjs#L40)
+- base × 3 + 1 — [check-slots.cjs:41](../tools/check-slots.cjs#L41)
 - boots set the slot to every frame — [check-slots.cjs:42](../tools/check-slots.cjs#L42)
 - `get('slotEveryFrame({ cards: ['artifactBoots', 'self', 'inputMove'] })'), true` — [check-slots.cjs:43](../tools/check-slots.cjs#L43)
 - never shorter than a frame — [check-slots.cjs:44](../tools/check-slots.cjs#L44)
@@ -957,19 +973,16 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - `entityCanHit(playerShot, neutral, opposing), true` — [check-teams.cjs:38](../tools/check-teams.cjs#L38)
 - `entityCanHit(playerShot, ally, { hitTeamRule: rule }), friendly` — [check-teams.cjs:40](../tools/check-teams.cjs#L40)
 - `entityCanHit(playerShot, enemy, { hitTeamRule: rule }), hostile` — [check-teams.cjs:41](../tools/check-teams.cjs#L41)
-- `iconIndex('entityHitTeam_' + rule) >= 0` — [check-teams.cjs:42](../tools/check-teams.cjs#L42)
-- `game.splitShot(playerShot).team, 'friendly'` — [check-teams.cjs:44](../tools/check-teams.cjs#L44)
-- `enemyCopy.team, 'hostile'` — [check-teams.cjs:47](../tools/check-teams.cjs#L47)
-- `enemyCopy.hitSet, enemyShot.hitSet` — [check-teams.cjs:47](../tools/check-teams.cjs#L47)
-- actual shooter team overrides the hazard representation — [check-teams.cjs:50](../tools/check-teams.cjs#L50)
-- actual shooter team overrides the Projectile class — [check-teams.cjs:51](../tools/check-teams.cjs#L51)
-- `game.spawnProjectile({ source: ally, vx: 0, vy: 0, life: 5 }).team, 'friendly'` — [check-teams.cjs:52](../tools/check-teams.cjs#L52)
-- `game.spawnProjectile({ source: turret, vx: 0, vy: 0, life: 5 }).team, 'friendly'` — [check-teams.cjs:53](../tools/check-teams.cjs#L53)
-- `shot.dead, false` — [check-teams.cjs:60](../tools/check-teams.cjs#L60)
-- `shot.pierce, 0` — [check-teams.cjs:60](../tools/check-teams.cjs#L60)
-- team condition does not reset pierce each frame — [check-teams.cjs:64](../tools/check-teams.cjs#L64)
-- `another.hp, another.maxHp - 5` — [check-teams.cjs:65](../tools/check-teams.cjs#L65)
-- `contact.slot.effect('entityHit').hitTeamRule, 'same'` — [check-teams.cjs:68](../tools/check-teams.cjs#L68)
-- `entityCanHit(contact, ally, contact.slot.effect('entityHit')), false` — [check-teams.cjs:69](../tools/check-teams.cjs#L69)
-- `contact.slot.effect('entityHit').hitTeamRule, 'all'` — [check-teams.cjs:71](../tools/check-teams.cjs#L71)
-- team options reset at a new target — [check-teams.cjs:73](../tools/check-teams.cjs#L73)
+- `game.splitShot(playerShot).team, 'friendly'` — [check-teams.cjs:43](../tools/check-teams.cjs#L43)
+- `enemyCopy.team, 'hostile'` — [check-teams.cjs:46](../tools/check-teams.cjs#L46)
+- `enemyCopy.hitSet, enemyShot.hitSet` — [check-teams.cjs:46](../tools/check-teams.cjs#L46)
+- actual shooter team overrides the hazard representation — [check-teams.cjs:49](../tools/check-teams.cjs#L49)
+- actual shooter team overrides the Projectile class — [check-teams.cjs:50](../tools/check-teams.cjs#L50)
+- `game.spawnProjectile({ source: ally, vx: 0, vy: 0, life: 5 }).team, 'friendly'` — [check-teams.cjs:51](../tools/check-teams.cjs#L51)
+- `game.spawnProjectile({ source: turret, vx: 0, vy: 0, life: 5 }).team, 'friendly'` — [check-teams.cjs:52](../tools/check-teams.cjs#L52)
+- `shot.dead, false` — [check-teams.cjs:59](../tools/check-teams.cjs#L59)
+- `shot.pierce, 0` — [check-teams.cjs:59](../tools/check-teams.cjs#L59)
+- team condition does not reset pierce each frame — [check-teams.cjs:63](../tools/check-teams.cjs#L63)
+- `another.hp, another.maxHp - 5` — [check-teams.cjs:64](../tools/check-teams.cjs#L64)
+- `contact.slot.effect('entityHit').hitTeamRule, 'opposing'` — [check-teams.cjs:67](../tools/check-teams.cjs#L67)
+- team options reset at a new target — [check-teams.cjs:69](../tools/check-teams.cjs#L69)

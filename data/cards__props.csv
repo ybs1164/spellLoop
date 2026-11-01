@@ -81,8 +81,11 @@ drain,statRatios.heal.stat,str,maxHp
 drain,statRatios.heal.ratio,num,0.04
 blink,statRatios.distance.stat,str,moveSpeed
 blink,statRatios.distance.ratio,num,0.9411764705882353
+dash,fixedValues.knockback,num,80
 dash,statRatios.distance.stat,str,moveSpeed
 dash,statRatios.distance.ratio,num,1
+dash,statRatios.damage.stat,str,attackPower
+dash,statRatios.damage.ratio,num,1.5
 archer,statRatios.summonHp.stat,str,maxHp
 archer,statRatios.summonHp.ratio,num,0.5
 archer,statRatios.summonAttack.stat,str,attackPower

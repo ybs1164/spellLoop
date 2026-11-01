@@ -58,7 +58,8 @@ Object.assign(UI, {
     this.showHud(false);
     this.open(`
       <div class="panel">
-        <h1>SPELL<br>LOOP</h1>
+        <h1>오늘도 평화로운<br>마법 생활</h1>
+        <p class="title-en">What a peaceful Magic World</p>
         <p class="sub">카드를 쌓아 나만의 주문을 조립하라</p>
         <div class="title-cards">
           ${['nearestEnemy', 'bolt', 'self', 'heal'].map((id) => this.miniHtml(id)).join('')}
