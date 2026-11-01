@@ -38,7 +38,7 @@ Object.assign(UI, {
       <h3 class="codex-h">행동 카드 <span class="muted">· ${ofType(ids, 'action').length}장</span></h3>
       ${actions}
       <h3 class="codex-h">연쇄 카드 <span class="muted">· ${ofType(ids, 'artifact').length}장</span></h3>
-      <p class="sub">슬롯 안의 조건에 제약을 거는 카드입니다. 제약을 지키는 대신 슬롯 쿨타임을 바꿉니다.</p>
+      <p class="sub">슬롯의 행동 카드 뒤에 놓습니다. 앞 행동의 결과(적중·완료)를 이어받아 뒤의 대상·행동을 실행하거나, 슬롯에 구성 제약·작동 조건을 겁니다.</p>
       ${grid(ofType(ids, 'artifact'))}
       <h3 class="codex-h">개체 변형 카드 <span class="muted">· ${variants.length}장</span></h3>
       <p class="sub">개체 도감의 슬롯에만 있는, 개체별 수치가 적용된 카드입니다.</p>

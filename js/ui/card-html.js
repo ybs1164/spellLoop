@@ -100,19 +100,19 @@ Object.assign(UI, {
     const id = c.actionId || c.mechanic || Object.keys(CARDS).find(id => CARDS[id] === c);
     const descriptions = {
       bolt: '마력탄을 발사한다.', slash: '반경 70을 즉시 베어 피해를 준다.',
-      explode: '반경 100을 폭발시켜 피해를 주고 밀어낸다.', frost: '반경 70에 피해를 주고 0.9초간 얼린다. 중첩 시 시간을 합산한다.',
+      explode: '반경 100을 폭발시켜 피해를 주고 밀어낸다.', frost: '반경 70에 피해를 주고 0.9초간 얼린다.',
       poison: '4초간 독 피해를 주는 장판을 만든다.', shockwave: '충격파로 주변에 피해를 주고 밀어낸다.',
       scatter: '마탄 5발을 부채꼴로 발사한다.', lance: '관통하는 창을 발사한다.', boomerang: '돌아오는 관통 부메랑을 던진다.', homing: '적을 추적하는 유도탄을 발사한다.',
       laser: '직선으로 레이저를 발사한다.', chain: '최대 8체에 연쇄 번개 피해를 준다.', meteor: '0.8초 뒤 반경 100에 유성을 떨어뜨린다.',
-      blades: '5초간 칼날을 공전시켜 0.2초마다 피해를 준다.', burn: '반경 55에 3초간 화상을 입힌다. 중첩별 피해를 합산한다.',
+      blades: '5초간 칼날을 공전시켜 0.2초마다 피해를 준다.', burn: '반경 55에 3초간 화상을 입힌다.',
       drain: '대상에게 피해를 주고 체력을 흡수한다.', snipe: '대상을 저격한다.', heal: '대상의 체력을 회복한다.', shield: '6초간 피해를 흡수하는 보호막을 부여한다.', armor: '6초간 매 타격의 피해를 줄인다.',
       blink: '바라보는 방향으로 대상을 순간이동시킨다.', dash: '바라보는 방향으로 대상을 돌진시킨다.', pull: '선택한 대상을 시전자 쪽으로 끌어당긴다.', vortex: '1.5초간 주변 적을 끌어당긴다.', ward: '3초간 주변 적을 밀어낸다.',
       summon: '기사 1체를 10초간 소환한다.', archer: '대상 위치에 궁수를 소환한다.', orb: '대상 위치에 구체를 설치한다.', mine: '대상 위치에 지뢰를 설치한다.', turret: '대상 위치에 포탑을 설치한다.', decoy: '대상 위치에 미끼를 설치한다.',
       haste: '4초간 이동 속도를 높인다.', rage: '5초간 공격력을 높인다.', focus: '5초간 슬롯 게이지 감소 속도를 높인다.', amplify: '6초간 범위를 넓힌다.',
-      entityMove: '선택한 대상 쪽으로 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.', entityKeep: '추적 대상과 거리를 유지하며 옆으로 돈다.',
+      entityMove: '선택한 대상 쪽(자신이면 바라보는 방향)으로 이동한다.', entityKeep: '추적 대상과 거리를 유지하며 옆으로 돈다.',
       entityDecoy: '범위 안의 적이 이 개체를 쫓도록 유인한다.',
-      entityHit: '타격 조건에 맞는 충돌 대상에게 피해와 넉백을 적용한다. 같은 대상은 한 번만 타격한다.',
-      entityResistance: '빙결 시간을 줄이며 공포에 저항한다.', entityAffinity: '특정 원소 피해에 취약해진다.', entityGuard: '정면 타격을 막는다. 독·방향 없는 피해·빙결 중에는 막지 못한다.',
+      entityHit: '충돌한 대상에게 피해와 넉백을 준다.',
+      entityResistance: '빙결 시간을 줄이며 공포에 저항한다.', entityAffinity: '특정 원소 피해에 취약해진다.', entityGuard: '정면 타격을 막는다 (빙결 중 제외).',
     };
     if (!this.cardStatsText(c)) return c.desc;
     return descriptions[id] || c.desc;

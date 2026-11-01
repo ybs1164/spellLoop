@@ -84,22 +84,22 @@ entityInArea,artifact,,범위 이내,0,슬롯 주인과 거리가 범위 상태 
 entityEnemyInReach,artifact,,사거리 내 적 진입 시,0,사거리 내 적 진입 순간에만 작동한다.,,,,,,,,,,,fNearEnemy,,,enter,true,cards/entityEnemyInReach/test,,,,,,,,,,,
 entitySameTeam,artifact,,같은 팀,0,슬롯 주인과 같은 팀인 대상만 고른다.,,,,,,,,,,,allies,,,state,true,cards/entitySameTeam/test,,,,,,,,cards/entitySameTeam/near,,,
 entityOtherTeam,artifact,,다른 팀,0,슬롯 주인과 다른 팀인 대상만 고른다.,,,,,,,,,,,enemies,,,state,true,cards/entityOtherTeam/test,,,,,,,,cards/entityOtherTeam/near,,,
-on_hit,artifact,,타격 시,2,앞 행동이 적중시킨 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 타격된 대상을 고를 수 있다.,,+0.2,,,,,,,,,bolt,,,hit,false,,,,,,,,,,,,
+on_hit,artifact,,타격 시,2,앞 행동이 적중하면 이어서 작동한다. 이벤트 상대: 맞은 대상.,,+0.2,,,,,,,,,bolt,,,hit,false,,,,,,,,,,,,
 on_hurt,artifact,,피격 시,0,슬롯 주인의 피격 순간에만 작동한다.,,,,,,,,,,,fHurt,,,hurt,true,,,,,,,,,,,,
 on_death,artifact,,사망 시,0,슬롯 주인의 사망 순간에만 작동한다.,,,,,,,,,,,fExpiring,,,death,true,,,,,,,,,,,,
 on_spawn,artifact,,생성 시,0,슬롯 주인의 생성 순간에만 작동한다.,,,,,,,,,,,summon,,,spawn,true,,,,,,,,,,,,
-on_complete,artifact,,행동 완료 시,2,앞 행동이 끝난 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 행동을 받은 대상을 고를 수 있다.,,+0.2,,,,,,,,,focus,,,complete,false,,,,,,,,,,,,
+on_complete,artifact,,행동 완료 시,2,앞 행동이 끝나면 이어서 작동한다. 이벤트 상대: 행동을 받은 대상.,,+0.2,,,,,,,,,focus,,,complete,false,,,,,,,,,,,,
 on_collect,artifact,,획득 시,0,슬롯 주인의 획득 순간에만 작동한다.,,,,,,,,,,,absorb,,,collect,true,,,,,,,,,,,,
 on_moved,artifact,,이동 완료 시,0,슬롯 주인의 이동 완료 순간에만 작동한다.,,,,,,,,,,,dash,,,moved,true,,,,,,,,,,,,
 on_detonate,artifact,,기폭 시,0,슬롯 주인의 기폭 순간에만 작동한다.,,,,,,,,,,,focus,,,detonate,true,,,,,,,,,,,,
 artifactBoots,artifact,,바람의 장화,0,이동 카드가 포함된 슬롯에만 넣을 수 있다.,,=0.016,,,,,,,,,haste,,,,,,,,,,,,,,cards/artifactBoots/rule,,
 artifactRing,artifact,,절제의 반지,2,행동 카드를 3장 이하로 쓴 슬롯에만 넣을 수 있다.,,+0.6,,,,,,,,,focus,,,,,,,,,,,,,,cards/artifactRing/rule,,
-artifactSeal,artifact,,외길의 인장,2,행동 카드와 대상 카드가 각각 2장 이하인 슬롯(연쇄 한 번까지)에만 넣을 수 있다. 이 슬롯 행동의 효과량 +50%.,,+0,,,,,,,,,nearest,,,,,,,,,,,,,,cards/artifactSeal/rule,1.5,
+artifactSeal,artifact,,외길의 인장,2,행동·대상 카드가 각각 2장 이하인 슬롯 전용. 행동 효과량 +50%.,,+0,,,,,,,,,nearest,,,,,,,,,,,,,,cards/artifactSeal/rule,1.5,
 artifactFeather,artifact,,질주의 깃털,2,슬롯 주인이 이동하는 동안에만 작동한다.,,+0.3,,,,,,,,,dash,,,,,,,,,,,,,,,,cards/artifactFeather/when
 artifactHourglass,artifact,,고요의 모래시계,2,슬롯 주인이 멈춰 있는 동안에만 작동한다.,,+0.3,,,,,,,,,prolong,,,,,,,,,,,,,,,,cards/artifactHourglass/when
 artifactChalice,artifact,,피의 성배,2,슬롯 주인의 체력이 절반 이하일 때만 작동한다.,,+0.8,,,,,,,,,heal,,,,,,,,,,,,,,,,cards/artifactChalice/when
 artifactHorn,artifact,,포위의 뿔피리,2,슬롯 주인 주변 180 안에 적이 3마리 이상일 때만 작동한다.,,+0.15,,,,,,,,,pack,,,,,,,,,,,,,,,,cards/artifactHorn/when
 artifactThorns,artifact,,가시 갑옷,2,슬롯 주인이 피격되는 순간에만 작동한다.,,+0.6,,,,,,,,,fHurt,,,hurt,,,,,,,,,,,,,
 artifactBell,artifact,,공명의 종,1,슬롯 주인의 다른 슬롯이 작동하는 순간에만 작동한다.,,+0.25,,,,,,,,,shockwave,,,complete,,,,,,,,,,,,,
-eventSubject,target,all,이벤트 상대,2,"이벤트 상대를 고른다: 타격·처치 시 타격된 대상, 피격 시 공격자, 그 외는 이벤트가 일어난 개체. 사라진 상대는 마지막 위치를 사용한다.",cards/eventSubject/resolve,,,,,,,,,,lastHit,,,,,,,,,,,,,,,,
+eventSubject,target,all,이벤트 상대,2,"이벤트 상대를 고른다 (타격 시 맞은 대상, 피격 시 공격자).",cards/eventSubject/resolve,,,,,,,,,,lastHit,,,,,,,,,,,,,,,,
 eventOwner,target,all,행동 주체,2,이벤트를 일으킨 행동 주체를 고른다.,cards/eventOwner/resolve,,,,,,,,,,self,,,,,,,,,,,,,,,,

@@ -20,8 +20,8 @@ for (const [id, name] of Object.entries(LEGACY_EVENT_NAMES)) {
 
 // 앞 행동의 결과를 이어받는 기본 연쇄 카드는 플레이어도 쓴다 (나머지 발동 카드는 개체 전용).
 // 쿨타임 연산: 연쇄를 쌓을수록 본 슬롯이 느려진다 (연쇄 슬롯 자체는 쿨타임 없이 이벤트마다 작동).
-Object.assign(CARDS.on_hit, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 적중시킨 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 타격된 대상을 고를 수 있다.' });
-Object.assign(CARDS.on_complete, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 끝난 순간에 이어서 작동한다. 뒤의 대상 카드는 「이벤트 상대」로 행동을 받은 대상을 고를 수 있다.' });
+Object.assign(CARDS.on_hit, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 적중하면 이어서 작동한다. 이벤트 상대: 맞은 대상.' });
+Object.assign(CARDS.on_complete, { weight: 2, entityOnly: false, cd: '+0.2', desc: '앞 행동이 끝나면 이어서 작동한다. 이벤트 상대: 행동을 받은 대상.' });
 
 /*
  * 플레이어 연쇄 카드: 슬롯 안의 변수에 제약을 거는 대신 쿨타임을 줄인다. 제약이 카드의 본문 설명이다.
@@ -45,7 +45,7 @@ Object.assign(CARDS, {
     desc: '행동 카드를 3장 이하로 쓴 슬롯에만 넣을 수 있다.',
     rule: cards => countType(cards, 'action') <= 3 ? null : '「절제의 반지」 슬롯은 행동 카드를 3장 이하로 써야 합니다' },
   artifactSeal: { type: 'artifact', name: '외길의 인장', weight: 2, icon: 'nearest', cd: '+0', actionPower: 1.5,
-    desc: '행동 카드와 대상 카드가 각각 2장 이하인 슬롯(연쇄 한 번까지)에만 넣을 수 있다. 이 슬롯 행동의 효과량 +50%.',
+    desc: '행동·대상 카드가 각각 2장 이하인 슬롯 전용. 행동 효과량 +50%.',
     rule: cards => countType(cards, 'action') <= 2 && countType(cards, 'target') <= 2 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다' },
   artifactFeather: { type: 'artifact', name: '질주의 깃털', weight: 2, icon: 'dash', cd: '+0.3',
     desc: '슬롯 주인이 이동하는 동안에만 작동한다.', when: env => ownerMoving(env) },
@@ -71,7 +71,7 @@ function slotRuleError(cards) {
   return null;
 }
 CARDS.eventSubject = { type: 'target', kind: 'all', name: '이벤트 상대', weight: 2, icon: 'lastHit',
-  desc: '이벤트 상대를 고른다: 타격·처치 시 타격된 대상, 피격 시 공격자, 그 외는 이벤트가 일어난 개체. 사라진 상대는 마지막 위치를 사용한다.',
+  desc: '이벤트 상대를 고른다 (타격 시 맞은 대상, 피격 시 공격자).',
   resolve: env => env.slotEvent ? [slotEventTarget(env.game, env.slotEvent)] : [] };
 CARDS.eventOwner = { type: 'target', kind: 'all', name: '행동 주체', weight: 2, icon: 'self',
   desc: '이벤트를 일으킨 행동 주체를 고른다.', resolve: env => [slotTarget(env.game, env.actionExecutor || env.owner)] };

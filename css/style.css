@@ -196,7 +196,7 @@ kbd {
 }
 .reward-head { font-weight: 700; justify-content: space-between; }
 .reward-head:hover, .reward-pick:hover { background: rgba(255, 255, 255, .08); }
-.reward-pick { border-top: 2px dashed #2a3246; font-size: 12px; }
+.reward-pick { border-top: 2px dashed #2a3246; font-size: 12px; box-shadow: inset 5px 0 0 var(--c, var(--line)); padding-left: 13px; }
 .reward-pick .txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .reward-pick small { color: var(--muted); line-height: 1.35; }
 .reward-cd { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: var(--muted); }
