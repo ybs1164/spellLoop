@@ -68,7 +68,7 @@ Object.assign(UI, {
           <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / 방향키 이동</span>
           <span><kbd>E</kbd> 카드 편집</span>
           <span><kbd>Esc</kbd> 일시정지</span>
-          <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 레벨업 선택</span>
+          <span><kbd>R</kbd> 보상 카드 선택</span>
         </div>
         <p class="sub" style="margin-bottom:18px">3단계를 돌파하세요. 단계마다 테마 스테이지가 무작위로 정해지고, 보스를 쓰러뜨리면 다음 단계로 넘어갑니다.</p>
         <button class="btn primary" data-act="start">${this.iconHtml('uiPlay', 16)}시작하기 <kbd>Enter</kbd></button>

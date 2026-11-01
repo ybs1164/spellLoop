@@ -399,7 +399,7 @@ static float title_body(const World *w, float x, float y, float cw) {
   y += 26 + 22;
   // 조작 키
   typedef struct { const char *keys[4]; const char *label; } KeyHint;
-  static const KeyHint KEYS[] = { { { "W", "A", "S", "D" }, " / 방향키 이동" }, { { "E" }, " 카드 편집" }, { { "Esc" }, " 일시정지" }, { { "1", "2", "3" }, " 레벨업 선택" } };
+  static const KeyHint KEYS[] = { { { "W", "A", "S", "D" }, " / 방향키 이동" }, { { "E" }, " 카드 편집" }, { { "Esc" }, " 일시정지" }, { { "R" }, " 보상 카드 선택" } };
   float widths[4], total = 0;
   for (int i = 0; i < 4; i++) {
     widths[i] = tw(FONT_REGULAR, 14, KEYS[i].label);
