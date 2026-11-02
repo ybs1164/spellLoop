@@ -1,126 +1,77 @@
 'use strict';
 
-// No SDK, login or gameplay dependency. Rows are typed arrays per table (see supabase/play-logs.sql);
-// durable batches are retried by stable UUID and deduplicated server-side by (run, seq).
+// No SDK, login or gameplay dependency. Each run is one summary row (see supabase/play-logs.sql),
+// kept in IndexedDB under its run UUID and upserted at stage entries and run end; retries overwrite server-side.
 globalThis.PlayLog = (() => {
   const config = globalThis.PLAY_LOG_CONFIG || {};
   const enabled = !!(config.url && config.key);
   const build = config.build || 'unknown';
-  const uuid = () => crypto.randomUUID();
-  let db, game, run, sequence = 0, pending = [], busy = false;
-  let persisting = null, lastSnapshot = -1;
-  let ids = new WeakMap(), nextId = 0, known = new Map(), spareKnown = new Map();
-  const SNAPSHOT_LISTS = ['enemies', 'allies', 'objects', 'zones', 'projectiles', 'hazards', 'pickups'];
-  const repeatedCards = new Map();
-  const status = { enabled, persisted: 0, uploaded: 0, error: null };
+  const MAX_KEYS = 120;
+  let db, game, run = null, busy = false;
+  const status = { enabled, saved: 0, uploaded: 0, error: null };
   const fail = error => { status.error = String(error?.message || error); console.warn('[PlayLog]', status.error); };
   const num = (v, d = 2) => Number.isFinite(v) ? Math.round(v * 10 ** d) / 10 ** d : null;
-  const int = v => v == null || !['number', 'boolean'].includes(typeof v) || !Number.isFinite(+v) ? null : Math.trunc(+v);
-  const text = (v, n = 200) => v == null ? null : String(v).slice(0, n);
-  const json = v => text(JSON.stringify(v));
-  const prim = list => list.filter(v => ['string', 'number', 'boolean'].includes(typeof v))
-    .map(v => typeof v === 'number' ? num(v, 3) : v).join(',') || null;
-  const pairs = o => o ? Object.entries(o).filter(([, v]) => v != null && v !== false)
-    .map(([k, v]) => typeof v === 'number' ? `${k}=${num(v)}` : k).join(',') || null : null;
+  const int = v => Number.isFinite(v) ? Math.trunc(v) : null;
+  const kindOf = o => o && typeof o === 'object' ? String(o.type || o.kind || o.constructor?.name || 'unknown').slice(0, 60) : 'none';
+  // 이전 판의 원본 행동 기록 저장소는 더 이상 쓰지 않는다(브라우저 용량 정리).
+  try { indexedDB.deleteDatabase('spell-loop-play-log'); } catch {}
   const ready = new Promise(resolve => {
     try {
-      const request = indexedDB.open('spell-loop-play-log', 1);
-      request.onupgradeneeded = () => request.result.createObjectStore('batches', { keyPath: 'id' });
+      const request = indexedDB.open('amagos-run-log', 1);
+      request.onupgradeneeded = () => request.result.createObjectStore('runs', { keyPath: 'run' });
       request.onsuccess = () => { db = request.result; resolve(true); };
       request.onerror = () => { fail(request.error); resolve(false); };
     } catch (error) { fail(error); resolve(false); }
   });
   const transaction = (mode, action) => new Promise((resolve, reject) => {
-    const tx = db.transaction('batches', mode);
-    const request = action(tx.objectStore('batches'));
+    const tx = db.transaction('runs', mode);
+    const request = action(tx.objectStore('runs'));
     tx.oncomplete = () => resolve(request?.result);
     tx.onerror = tx.onabort = () => reject(tx.error || new Error('Log storage transaction failed'));
   });
-  function ref(o) {
-    if (!o || typeof o !== 'object') return null;
-    if (!ids.has(o)) ids.set(o, ++nextId);
-    return ids.get(o);
+  // 키 수를 묶어 둔 합계표 (판 하나의 요약 크기가 덱 크기 이상으로 늘지 않게)
+  function add(map, key, value) {
+    if (!(value > 0)) return;
+    if (!map.has(key) && map.size >= MAX_KEYS) key = 'other';
+    map.set(key, (map.get(key) || 0) + value);
   }
-  // Row layouts: [run, seq, t, ...fields]; run/end rows have no seq.
-  function row(table, fields) {
-    if (!run) return;
-    pending.push({ table, row: [run, ++sequence, num(game?.time || 0, 3), ...fields] });
-    if (pending.length >= 128) void persist();
+  const deckText = deck => (deck?.slots || []).map(s => `${cooldownText(slotCooldown(s))}:${s.cards.join('+')}`).join('|');
+  function summary() {
+    const p = game.player, pairs = (map, d) => [[...map.keys()], [...map.values()].map(v => num(v, d))];
+    const [card_id, card_n] = pairs(run.cards, 0), [dmg_src, dmg_val] = pairs(run.dealt, 1), [hurt_src, hurt_val] = pairs(run.hurt, 1);
+    return { run: run.id, build, started: run.started, result: run.result, duration: num(game.time || 0, 1),
+      kills: int(game.kills), stage: int(game.stageStep), route: (game.route || []).map(int), stage_t: run.stageT,
+      level: int(p?.level), hp: num(p?.hp, 1), deck: deckText(p?.deck), inventory: p?.deck?.inventory?.join(',') ?? null,
+      picks: run.picks, card_id, card_n, dmg_src, dmg_val, hurt_src, hurt_val, edits: run.edits, w: int(game.w), h: int(game.h) };
   }
-  const event = (type, a = null, b = null, txt = null) => row('event', [type, int(a), int(b), text(txt)]);
-  function entityFields(o) {
-    const stats = entityStats(o);
-    const slots = (o.deck ? o.deck.slots : o.slots || []).map(s => `${cooldownText(slotCooldown(s))}:${s.cards.join('+')}`).join('|');
-    return [ref(o), text(o.type || o.kind || o.constructor?.name, 40), text(o.team, 40), int(o.level),
-      ENTITY_STAT_NAMES.map(key => num(stats[key])), slots, pairs(o.buffs), pairs(o.directStates),
-      o.deck?.inventory?.join(',') ?? null];
-  }
-  const position = o => row('pos', [ref(o), num(o.x, 1), num(o.y, 1), num(o.hp, 1), num(o.shield, 1), num(o.life, 1), !!o.dead]);
-  // Definition rows are written at spawn and again only when the definition changes.
-  function observe(o, signature, withPosition = true) {
-    if (withPosition) position(o);
-    const fields = entityFields(o), next = JSON.stringify(fields);
-    if (next !== signature) row('entity', [signature === undefined ? 'S' : 'C', ...fields]);
-    return next;
-  }
-  function spawn(o) {
-    const signature = observe(o, undefined);
-    known.set(ref(o), signature);
-    return signature;
-  }
-  function persist() {
-    drainCards();
-    // Serialize writes; failed batches remain in memory, never silently discarded.
-    if (persisting) return persisting;
-    persisting = (async () => {
-      if (!pending.length || !await ready) return;
-      const pack = entries => {
-        const rows = {};
-        for (const e of entries) (rows[e.table] ||= []).push(e.row);
-        return rows;
-      };
-      while (pending.length) {
-        let count = Math.min(128, pending.length);
-        const batch = { id: uuid(), build, rows: pack(pending.slice(0, count)) };
-        // Leave room for PostgreSQL jsonb's canonical whitespace in its size check.
-        while (new TextEncoder().encode(JSON.stringify(batch)).length > 350000) {
-          if (count === 1) throw new Error('A log row exceeds the 350 KB upload limit; export pending logs');
-          count = Math.ceil(count / 2);
-          batch.rows = pack(pending.slice(0, count));
-        }
-        await transaction('readwrite', store => store.put(batch));
-        pending.splice(0, count);
-        status.persisted += count;
-      }
-    })().catch(fail).finally(() => { persisting = null; });
-    return persisting;
-  }
-  function drainCards() {
-    for (const card of repeatedCards.values()) pending.push({ table: 'card', row: card });
-    repeatedCards.clear();
+  // 저장은 판마다 한 레코드를 덮어쓴다. 최신 요약은 메모리에도 남겨 저장소가 없어도 내보낼 수 있다.
+  let latest = null, saving = Promise.resolve();
+  function save() {
+    if (!run || !game?.player) return saving;
+    const record = latest = summary();
+    status.saved++;
+    saving = saving.then(async () => { if (await ready) await transaction('readwrite', store => store.put(record)); }).catch(fail);
+    return saving;
   }
   async function flush() {
     if (busy) return;
     busy = true;
     try {
-      await persist();
+      await saving;
       if (!enabled || !db) return;
-      for (let i = 0; i < 20; i++) {
-        const batches = await transaction('readonly', store => store.getAll(undefined, 1));
-        if (!batches.length) break;
-        const batch = batches[0];
-        // Pre-schema (jsonb events) batches cannot be ingested any more.
-        if (!batch.rows) { await transaction('readwrite', store => store.delete(batch.id)); continue; }
+      for (const record of await transaction('readonly', store => store.getAll())) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 15000);
         try {
-          const response = await fetch(`${config.url.replace(/\/$/, '')}/rest/v1/rpc/ingest_play_log`, {
+          const response = await fetch(`${config.url.replace(/\/$/, '')}/rest/v1/rpc/ingest_run_summary`, {
             method: 'POST', headers: { apikey: config.key, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ batch }), signal: controller.signal,
+            body: JSON.stringify({ s: record }), signal: controller.signal, keepalive: true,
           });
           if (!response.ok) throw new Error(`Supabase HTTP ${response.status}`);
-          await transaction('readwrite', store => store.delete(batch.id));
-          status.uploaded += Object.values(batch.rows).reduce((n, rows) => n + rows.length, 0);
+          // 전송 중 같은 판이 다시 저장됐으면 그 최신본은 남겨 둔다.
+          const current = await transaction('readonly', store => store.get(record.run));
+          if (current && JSON.stringify(current) === JSON.stringify(record)) await transaction('readwrite', store => store.delete(record.run));
+          status.uploaded++;
           status.error = null;
         } finally { clearTimeout(timer); }
       }
@@ -137,102 +88,63 @@ globalThis.PlayLog = (() => {
       return result;
     };
   }
-  function snapshot(force = false) {
-    if (!game.player || !run) return;
-    // 표 두 벌을 번갈아 쓴다 (프레임마다 새 Map·개체 배열을 만들지 않는다)
-    const current = spareKnown;
-    current.clear();
-    const full = force || game.time - lastSnapshot >= 1;
-    const visit = o => {
-      const id = ref(o);
-      if (!known.has(id)) current.set(id, spawn(o));
-      else current.set(id, full ? observe(o, known.get(id)) : known.get(id));
-    };
-    visit(game.player);
-    for (const name of SNAPSHOT_LISTS) for (const o of game[name]) visit(o);
-    for (const id of known.keys()) if (!current.has(id)) event('entity_removed', id);
-    spareKnown = known;
-    known = current;
-    if (full) lastSnapshot = game.time;
-  }
-  function finish(result, kills) {
+  function finish(result) {
     if (!run) return;
-    pending.push({ table: 'end', row: [run, Date.now(), result, int(kills), num(game?.time || 0, 3)] });
+    run.result = result;
+    save();
+    run = null;
+    void flush();
   }
   function attach(g) {
     game = g;
-    wrap(g, 'start', () => {
-      if (run) { finish('abandoned:restart'); }
-      run = uuid(); sequence = 0; ids = new WeakMap(); nextId = 0; known.clear(); lastSnapshot = -1;
-      pending.push({ table: 'run', row: [run, Date.now(), build, int(g.w), int(g.h)] });
-    }, () => { event('run_ready', null, null, g.route); snapshot(true); });
-    wrap(g, 'update', null, () => snapshot());
-    for (const name of ['spawnEnemy', 'spawnProjectile', 'summonAlly', 'place', 'addZone']) {
-      wrap(g, name, null, (args, result) => {
-        if (!run || !result || known.has(ref(result))) return;
-        spawn(result);
-      });
-    }
-    for (const name of ['enterStage', 'pause', 'resume', 'openEditor', 'closeEditor', 'openInspector', 'closeInspector', 'onLevelUp', 'openLevelUp']) {
-      wrap(g, name, null, args => { event(name, g.stageIdx, null, prim([g.state, ...args])); snapshot(true); });
-    }
-    wrap(g, 'endRun', null, args => { snapshot(true); finish(args[0] ? 'victory' : 'defeat', g.kills); run = null; void flush(); });
-    wrap(g, 'toTitle', () => { finish('abandoned:title', g.kills); run = null; void flush(); });
-    for (const name of ['damageEnemy', 'hurtEnemy', 'healEnemy', 'restoreEnemy', 'damageTarget', 'healTarget', 'addDebuff', 'killEnemy', 'consumeTarget']) {
-      wrap(g, name, args => {
-        const o = name === 'damageTarget' ? g.targetObj(args[0]) : args[0];
-        return { o, hp: o?.hp, shield: o?.shield };
-      }, (args, result, before) => {
-        const value = typeof args[1] === 'number' ? num(args[1], 3) : null;
-        row('damage', [name, ref(before.o), ref(g.actionActor || g.player), value, num(before.hp, 1), num(before.o?.hp, 1),
-          num(before.shield, 1), num(before.o?.shield, 1), !!before.o?.dead, args.length > 2 || value == null ? text(prim(args.slice(1)), 100) : null]);
-      });
-    }
-    for (const name of ['takeDamage', 'heal', 'gainXp', 'applyBuff']) {
-      wrap(Player.prototype, name, function () { return { hp: this.hp, shield: this.shield }; }, function (args, result, before) {
-        row('player', [name, text(prim(args), 100), num(before.hp, 1), num(before.shield, 1), num(this.hp, 1), num(this.shield, 1), int(this.level), num(this.xp, 1)]);
-      });
-    }
-    wrap(Pickup.prototype, 'collect', function () { event('pickup_collect', ref(this), null, this.kind); });
-    const rebuilt = () => {
-      const player = g.player, id = ref(player);
-      if (run && player && known.has(id)) known.set(id, observe(player, known.get(id), false));
-    };
-    for (const name of ['act', 'applyMove', 'pickLevelUp']) {
-      wrap(UI, name, args => event(`ui_${name}`, null, null, safe(() => json(args))), rebuilt);
-    }
-    wrap(UI, 'showLevelUp', args => event('reward_choices', args[3], null, safe(() => json(args[1]))));
-    for (const name of ['addCard', 'move', 'moveSlot']) {
-      wrap(SkillDeck.prototype, name, null, function (args, result) { event(`deck_${name}`, null, result, safe(() => json(args))); rebuilt(); });
-    }
-    const keys = new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyE','Tab','Escape','Digit1','Digit2','Digit3','Digit4','Digit5']);
-    for (const type of ['keydown', 'keyup']) window.addEventListener(type, e => {
-      if (keys.has(e.code) && !e.repeat) event('input', type === 'keydown', null, e.code);
+    wrap(g, 'start', () => finish('abandoned:restart'), () => {
+      run = { id: crypto.randomUUID(), started: Date.now(), result: null, stageT: [num(g.time || 0, 1)], picks: [],
+        cards: new Map(), dealt: new Map(), hurt: new Map(), edits: 0, nextSave: 30 };
+      save();
     });
-    window.addEventListener('blur', () => event('input_reset'));
-    window.addEventListener('pagehide', () => { event('pagehide'); void persist(); });
-    document.addEventListener('visibilitychange', () => { event('visibility', document.hidden); void flush(); });
+    wrap(g, 'enterStage', null, args => {
+      if (!run || !(args[0] > 0)) return;
+      run.stageT.push(num(g.time, 1));
+      save(); void flush();
+    });
+    // 30초(게임 시간)마다 로컬에만 저장한다. 업로드는 스테이지 진입·판 종료·페이지 이탈 때만.
+    wrap(g, 'update', null, () => { if (run && g.time >= run.nextSave) { run.nextSave = g.time + 30; save(); } });
+    wrap(g, 'endRun', null, args => finish(args[0] ? 'victory' : 'defeat'));
+    wrap(g, 'toTitle', () => finish('abandoned:title'));
+    wrap(g, 'claimReward', args => {
+      const [entry, i] = args, id = entry?.choices?.[i];
+      if (run && id) run.picks.push(`${num(g.time, 1)}|${entry.kind}|${entry.choices.join(',')}|${id}`.slice(0, 300));
+    });
+    // 적에게 준 피해: 같은 대상에 대한 중첩 호출(damageEnemy → hurtEnemy 등)은 바깥 호출에서 한 번만 센다.
+    const active = new Set();
+    const source = () => g.actionCard ? String(cardBaseIdOfCard(g.actionCard) || 'card').slice(0, 60) : kindOf(g._collisionSource || g.actionActor);
+    for (const name of ['damageEnemy', 'hurtEnemy', 'damageTarget', 'killEnemy', 'consumeTarget']) {
+      const original = g[name];
+      if (typeof original !== 'function') continue;
+      g[name] = function (...args) {
+        const o = run ? safe(() => name === 'damageTarget' ? g.targetObj(args[0]) : args[0]) : null;
+        if (!o || typeof o !== 'object' || active.has(o)) return original.apply(this, args);
+        const hp = o.hp, shield = o.shield || 0;
+        active.add(o);
+        try { return original.apply(this, args); }
+        finally {
+          active.delete(o);
+          safe(() => run && add(run.dealt, source(), Math.max(0, hp - o.hp) + Math.max(0, shield - (o.shield || 0))));
+        }
+      };
+    }
+    wrap(Player.prototype, 'takeDamage', function () { return { hp: this.hp, shield: this.shield || 0 }; }, function (args, result, before) {
+      if (run) add(run.hurt, kindOf(g._collisionSource || g.actionActor), Math.max(0, before.hp - this.hp) + Math.max(0, before.shield - (this.shield || 0)));
+    });
+    for (const name of ['addCard', 'move', 'moveSlot']) wrap(SkillDeck.prototype, name, null, () => { if (run) run.edits++; });
+    window.addEventListener('pagehide', () => { save(); void flush(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { save(); void flush(); } });
     window.addEventListener('online', () => void flush());
-    setInterval(() => void flush(), 3000);
+    // 이전 방문에서 못 올린 요약(크래시·오프라인)을 올린다.
     void flush();
   }
-  return { attach, status, flush, persist, record: event,
-    card(id, targets, env, slot) {
-      if (!run) return;
-      safe(() => {
-        const slotText = slot?.cards?.join('+') ?? null, actor = ref(env.owner || game?.player);
-        const targetText = targets.map(t => t.kind === 'point' ? `point:${num(t.x, 1)}:${num(t.y, 1)}` : `${t.kind}:${ref(env.at(t))}`).join(';');
-        const key = run + '|' + id + '|' + actor + '|' + slotText + '|' + targetText, seq = ++sequence, time = num(game?.time || 0, 3);
-        let entry = repeatedCards.get(key);
-        if (!entry) {
-          entry = [run, seq, time, text(id, 60), actor, text(slotText), text(targetText), [], []];
-          repeatedCards.set(key, entry);
-        }
-        // Every execution is retained; repeated movement/passive actions share their payload.
-        entry[7].push(seq); entry[8].push(time);
-        if (entry[7].length >= 120 || repeatedCards.size >= 512) void persist();
-      });
-    },
-    async exportPending() { await persist(); return JSON.stringify({ batches: db ? await transaction('readonly', s => s.getAll()) : [], memory: pending }); },
+  return { attach, status, flush, save,
+    card(id) { if (run) safe(() => add(run.cards, String(id).slice(0, 60), 1)); },
+    async exportPending() { await saving; return JSON.stringify({ runs: db ? await transaction('readonly', s => s.getAll()) : [], memory: latest }); },
   };
 })();

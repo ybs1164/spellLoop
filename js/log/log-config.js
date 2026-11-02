@@ -3,5 +3,5 @@
 globalThis.PLAY_LOG_CONFIG = {
   url: 'https://vwgyzfvrlwmdzbmmajnn.supabase.co',
   key: 'sb_publishable_VUKPZiqqT6X1aHGKhR1AVQ_722StqCJ',
-  build: 'amagos-1',
+  build: 'amagos-2',
 };

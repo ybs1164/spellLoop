@@ -6,61 +6,64 @@ Supabase(PostgreSQL)를 선택했다. 별도 서버·SDK 없이 기존 정적 �
 
 1. [Supabase](https://supabase.com/dashboard)에서 프로젝트를 만든다.
 2. SQL Editor에 [`supabase/play-logs.sql`](../supabase/play-logs.sql) 전체를 붙여 실행한다. **기존 로그 테이블과 데이터가 모두 삭제**된다.
-3. 프로젝트의 Connect/API 설정에서 Project URL과 **publishable key**를 복사하여 [`js/log-config.js`](../js/log-config.js)의 `url`, `key`에 입력한다. 기존 `anon` 키도 사용 가능하다. **secret / service_role 키는 입력하지 않는다.**
+3. 프로젝트의 Connect/API 설정에서 Project URL과 **publishable key**를 복사하여 [`js/log/log-config.js`](../js/log/log-config.js)의 `url`, `key`에 입력한다. 기존 `anon` 키도 사용 가능하다. **secret / service_role 키는 입력하지 않는다.**
 4. 변경 파일을 기존 GitHub Pages 배포 방식으로 배포한다. `build`는 릴리스마다 바꾸면 버전별 분석에 도움이 된다.
-5. 게임을 10초 이상 플레이하고 SQL Editor에서 `select * from public.play_run order by received_at desc limit 20;`로 수신을 확인한다.
-6. Database 용량을 주기적으로 확인하고 보관 기간을 정한다. 전체 행동 기록이므로 장시간 플레이에서는 용량이 빠르게 증가할 수 있다. Free 플랜의 DB 한도는 500 MB이며 실제 사용량에 따라 보관 기간/유료 플랜을 결정한다.
+5. 게임을 한 판 끝내거나 스테이지를 넘긴 뒤 SQL Editor에서 `select * from public.play_run order by received_at desc limit 20;`로 수신을 확인한다.
+6. 보관(90일)과 수집 중단(300 MB)은 SQL에 포함되어 있다. 기준을 바꾸려면 `play-logs.sql`의 해당 값을 고친다.
 
-SQL 실행·키 입력·클라우드 수신 검증은 사용자 계정에서 수행해야 한다. 이 저장소에는 실제 프로젝트 주소나 키가 없으며 DB가 만들어진 상태가 아니다.
 
-## 저장 구조 (jsonb 미저장)
+## 저장 구조 (판당 1행 요약)
 
-수신 함수 `ingest_play_log`만 jsonb 를 임시 입력으로 받고, 저장은 타입 있는 테이블로 분해한다. `play-logs.sql`은 기존 스키마·데이터를 삭제하고 재생성한다(스키마를 바꿀 때마다 같은 파일을 다시 실행).
+원본 행동 기록(위치·개체·피해 1회마다 1행)은 무료 플랜 500 MB를 채워 DB가 읽기 전용이 됐기 때문에 폐기했다. 지금은 판 하나를 `play_run` 한 행(약 0.6~2 KB)으로 저장하며 500 MB에 약 20만 판이 들어간다. `play-logs.sql`은 기존 스키마·데이터를 삭제하고 재생성한다.
 
-| 테이블 | 내용 |
+| 열 | 내용 |
 | --- | --- |
-| `play_run` | 판 1행: 빌드, 시작/종료 시각, 결과(victory/defeat/abandoned:*), 킬, 게임 시간. 종료 기록이 없으면 `result` NULL |
-| `play_event` | 단발 이벤트(`type`, `a`, `b`, `txt`): 입력(a=1 down, txt=키), 일시정지·스테이지·에디터(a=스테이지, txt=상태,인자), UI 행동·덱 변경(txt=인자 JSON, b=결과), 보상 후보, `entity_removed`(a=개체), `pickup_collect`(a=개체) |
-| `play_entity` | 개체 정의. 생성 시(`S`) 전체, 이후 스탯·슬롯·버프·상태가 바뀔 때만(`C`) 기록. `play_entity_v`에서 스탯을 이름 컬럼으로 조회 |
-| `play_pos` | 게임 시간 1초마다 개체별 x, y, hp, shield, life, dead |
-| `play_damage` | 피해·회복·디버프·처치 호출과 실제 HP/보호막 변화(`hp0→hp1`) |
-| `play_player` | 플레이어 피해·회복·경험치·버프 |
-| `play_card` | 카드 실행. 같은 주체·카드·대상·슬롯의 반복 실행은 1행에 묶고 `exec_seq`/`exec_t`에 모두 보존. 1회=1행 조회는 `play_card_exec_v` |
+| `run`, `build`, `started_at`, `received_at`, `updated_at` | 판 UUID(키), 빌드, 시작 시각, 첫/마지막 수신 시각 |
+| `result`, `duration`, `kills` | victory / defeat / abandoned:restart / abandoned:title(NULL=진행 중 또는 종료 기록 없음), 게임 시간(초), 킬 |
+| `stage`, `route`, `stage_t` | 도달 단계, 단계별 스테이지 번호, 단계 진입 게임 시간 |
+| `level`, `hp`, `deck`, `inventory` | 마지막 기록 시점 레벨·HP, 덱(`쿨타임:카드+카드\|…`), 인벤토리 |
+| `picks` | 보상 선택 `게임시간\|종류\|후보,후보,후보\|선택` |
+| `card_id`/`card_n` | 카드별 실행 횟수 (뷰 `play_card_v`) |
+| `dmg_src`/`dmg_val` | 적에게 준 피해(HP+보호막 감소) 출처별 합. 출처는 실행 중 카드의 기본 행동, 없으면 충돌한 개체 종류 (뷰 `play_damage_v`) |
+| `hurt_src`/`hurt_val` | 플레이어가 받은 피해 출처(개체 종류)별 합 |
+| `edits` | 덱 편집 횟수 |
 
-- 모든 행은 `(run_id, seq)`가 키이며 `seq`는 판 안에서 전역 순서, `t`는 게임 시간(초). 실제 시각은 `play_run`에만 있다.
-- 스냅샷에서 매번 반복되던 스탯 21개·슬롯·인벤토리는 변경 시에만 저장한다. 개체의 현재 정의는 해당 개체의 마지막 `play_entity` 행이다.
-- 피해 관련 상위/하위 호출도 별도 행이므로 피해 합산에는 대상별 `hp0 - hp1`(`play_damage`) 한 종류의 op만 사용한다.
-- 이전 형식과의 차이: 프레임 번호·행별 실제 시각·슬롯의 남은 쿨타임은 저장하지 않는다. `play_entity.slots`는 `슬롯 쿨타임(초):카드+카드|…` 형식이다. 플레이어/덱 이벤트마다 붙던 플레이어 전체 스냅샷도 변경 시에만 기록한다.
-- 자유 입력 텍스트·이메일·사용자 계정·기기 식별자는 수집하지 않는다.
+- 합계표는 키 120개까지, 넘치면 `other`로 묶는다. 자유 입력 텍스트·이메일·계정·기기 식별자는 수집하지 않는다.
+- 입력·위치·개체 정의·피해 1회 단위 기록이 필요하면 로컬 시뮬레이터(`tools/`, `balanceTest/`)로 재현한다. 서버로는 보내지 않는다.
 
-## 장애·보안·확인
+## 전송·용량 보호
 
-- 최대 128 행씩 IndexedDB에 보관하고 3초 간격/탭 전환/온라인 복귀 시 업로드한다. 같은 `(run_id, seq)`는 서버에서 무시하므로 응답 유실 후 재전송해도 중복 저장되지 않는다. 실패 시 다음 주기에 재시도한다.
-- 공개 키에는 전용 INSERT 함수 실행 권한만 부여하고 테이블 읽기·수정·삭제는 막았다. 익명 수집 특성상 위조 로그/스팸 방지나 사용자 인증을 제공하지 않는다. 공개 서비스에서 남용이 생기면 인증/서버 속도 제한이 필요하다. 클라이언트 로그를 점수 인증 자료로 사용하지 않는다.
-- 개발자 도구에서 `PlayLog.status`로 설정 여부·현재 페이지의 저장/업로드 건수·최근 오류를 확인하고, `await PlayLog.flush()`로 즉시 전송할 수 있다.
-- 대기 중인 로그 백업: `copy(await PlayLog.exportPending())` (Chrome/Edge 개발자 도구). 업로드 완료된 데이터는 DB에만 남는다.
-- 종료 직전 아직 IndexedDB에 쓰지 못한 이벤트, 브라우저 강제 종료, 저장 공간 부족, 브라우저 데이터 삭제에는 완전 무손실을 보장하지 않는다. 저장 실패 시 메모리에 유지하고 콘솔/`status.error`에 오류를 표시한다. 로그 저장 실패가 게임 실행을 중단하지 않도록 분리했다.
-- `run_end` 없이 끝난 판은 종료/크래시 가능성이 있다. `pagehide`만으로 패배 처리하지 않는다.
+- 요약은 IndexedDB(`amagos-run-log`)에 판 UUID로 1개만 덮어써 둔다. 로컬 저장은 판 시작·30초(게임 시간)마다·스테이지 진입·판 종료·탭 숨김/이탈 시, **업로드는 스테이지 진입·판 종료·탭 숨김/이탈·온라인 복귀·페이지 로드 시**에만 한다(주기 업로드 없음).
+- 서버 `ingest_run_summary`는 같은 run을 덮어쓴다(재전송·체크포인트 안전). 이미 끝난 판(`result` 있음)과 더 짧은 게임 시간의 요약은 무시한다.
+- 요청 16 KB 초과, 배열 128개 초과는 거부한다. **DB가 300 MB를 넘으면 오류 없이 버린다**(클라이언트 재시도 폭주 방지).
+- `pg_cron` 작업 `play-run-retention`이 매일 04:00 UTC에 90일 지난 판을 지운다.
+- 옛 RPC(`ingest_play_log`)를 삭제했으므로, 플레이어 브라우저에 남은 옛 원본 로그는 서버에 올라오지 않는다. 클라이언트는 옛 IndexedDB(`spell-loop-play-log`)를 지운다.
+- 공개 키에는 수신 함수 실행 권한만 있다. 익명 수집이라 위조/스팸 방지는 없으며, 클라이언트 로그를 점수 인증에 쓰지 않는다.
+- 개발자 도구: `PlayLog.status`(저장/업로드 횟수·오류), `await PlayLog.flush()`(즉시 전송), `copy(await PlayLog.exportPending())`(미전송 요약 백업).
+- 판 도중 크래시 시 마지막 30초 이내 변화는 잃을 수 있다. 다음 방문 때 `result` NULL 로 올라간다.
+
+## 용량 초과(읽기 전용) 복구
+
+SQL Editor에서 실행한다. `truncate`는 디스크를 즉시 반환한다.
+
+```sql
+set session characteristics as transaction read write;
+truncate public.play_run;
+select pg_size_pretty(pg_database_size(current_database()));
+-- 그래도 읽기 전용이면: alter database postgres set default_transaction_read_only = off;
+```
 
 ## 조회 예시
 
 ```sql
--- 카드 실행 횟수
-select card, count(*) from public.play_card_exec_v group by 1 order by 2 desc;
-
--- 판별 결과
 select build, result, count(*), avg(duration) from public.play_run group by 1, 2;
-
--- 테이블별 용량
-select relname, pg_size_pretty(pg_total_relation_size(oid)) from pg_class
-where relname like 'play\_%' and relkind = 'r' order by pg_total_relation_size(oid) desc;
-
--- 예: 7일 보관을 선택했을 때 관리자가 직접 실행(하위 행은 cascade)
--- delete from public.play_run where received_at < now() - interval '7 days';
+select card, sum(n) from public.play_card_v group by 1 order by 2 desc;
+select src, sum(val) from public.play_damage_v where build = 'amagos-2' group by 1 order by 2 desc;
+select pg_size_pretty(pg_database_size(current_database()));
 ```
 
 참고: [API 보안](https://supabase.com/docs/guides/api/securing-your-api), [DB 용량](https://supabase.com/docs/guides/platform/database-size).
 
 ## 개발 검증
 
-`node tools/check-play-logs.cjs`는 Playwright가 설치된 환경에서 실행한다(Windows에서는 설치된 Edge 사용). 실패 응답·동일 UUID 재전송·새로고침 복구·키 미설정·저장소 접근 거부·로그 유무의 게임 결과 동일성을 로컬 모의 API로 확인한다. 실제 Supabase SQL 실행과 권한 검증을 대체하지 않는다. 기존 `check-controls`, `check-entity-slots`, `check-explicit-actions` 검사는 변경 전 HEAD에서도 실패함을 확인했으며 이 작업에서 게임 규칙을 변경하지 않았다.
+`node tools/check-play-logs.cjs`는 Playwright가 설치된 환경에서 실행한다(Windows에서는 설치된 Edge 사용). 요약 집계(카드·피해·보상·덱 편집)·요약 크기·실패 응답 후 같은 run 재전송·새로고침 복구·키 미설정·저장소 접근 거부·로그 유무의 게임 결과 동일성을 로컬 모의 API로 확인한다. 실제 Supabase SQL 실행과 권한 검증을 대체하지 않는다.

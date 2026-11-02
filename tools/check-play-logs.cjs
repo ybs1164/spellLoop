@@ -28,14 +28,14 @@ const root = path.resolve(__dirname, '..');
     await context.addInitScript(() => { window.requestAnimationFrame = () => 0; });
     let accept = false;
     const requests = [], accepted = new Map(), errors = [];
-    await context.route('**/js/log-config.js', route => route.fulfill({
+    await context.route('**/js/log/log-config.js', route => route.fulfill({
       contentType: 'text/javascript', body: `globalThis.PLAY_LOG_CONFIG={url:'${origin}',key:'test-public-key',build:'test'};`,
     }));
-    await context.route('**/rest/v1/rpc/ingest_play_log', async route => {
-      const { batch } = route.request().postDataJSON();
-      requests.push(batch);
-      // Simulate a committed write whose response is lost: retries must reuse its ID.
-      accepted.set(batch.id, batch);
+    await context.route('**/rest/v1/rpc/ingest_run_summary', async route => {
+      const { s } = route.request().postDataJSON();
+      requests.push(s);
+      // Simulate a committed write whose response is lost: retries resend the same run.
+      accepted.set(s.run, s);
       await route.fulfill({ status: accept ? 204 : 503, body: '' });
     });
     const page = await context.newPage();
@@ -55,6 +55,9 @@ const root = path.resolve(__dirname, '..');
       game.dropGem(0, 0, 1);
       game.pickups[0].collect(game);
       game.player.deck.addCard('bolt');
+      const entry = { kind: 'test', choices: rollRewards(game.player, 3) };
+      (game.rewards ??= []).push(entry);
+      game.claimReward(entry, 0);
       game.openEditor(); game.closeEditor();
       const began = performance.now();
       for (let i = 0; i < 180; i++) game.update(1 / 60);
@@ -66,38 +69,33 @@ const root = path.resolve(__dirname, '..');
     };
     const logged = await page.evaluate(exercise);
     console.log('Gameplay exercised');
-    await page.evaluate(() => PlayLog.persist());
-    console.log('Storage status:', await page.evaluate(() => PlayLog.status));
     await page.waitForFunction(() => PlayLog.status.error?.includes('503'), null, { polling: 100 });
+    console.log('Storage status:', await page.evaluate(() => PlayLog.status));
     const pending = JSON.parse(await page.evaluate(() => PlayLog.exportPending()));
-    const rows = table => pending.batches.flatMap(b => b.rows[table] || []);
-    const types = new Set(rows('event').map(r => r[3]));
-    for (const type of ['run_ready', 'openEditor', 'closeEditor', 'deck_addCard']) assert.ok(types.has(type), `missing ${type}`);
-    for (const table of ['run', 'end', 'entity', 'pos', 'card', 'damage', 'player']) assert.ok(rows(table).length, `missing ${table} rows`);
-    assert.ok(rows('damage').some(r => r[3] === 'damageEnemy'), 'missing damageEnemy');
-    assert.ok(rows('player').some(r => r[3] === 'takeDamage'), 'missing takeDamage');
-    assert.ok(types.has('pickup_collect'), 'missing pickup_collect');
-    assert.ok(rows('card').some(r => r[7].length > 1), 'repeated card executions are compacted');
-    assert.ok(rows('card').every(r => r[7].length === r[8].length));
-    assert.ok(rows('entity').filter(r => r[3] === 'S').every(r => r[8].length === 21 && r[9] !== undefined));
-    const events = pending.batches.flatMap(b => Object.values(b.rows).flat());
-    assert.ok(pending.batches.length > 0, 'failed uploads stay durable');
-    const retryId = requests[0].id;
+    assert.equal(pending.runs.length, 1, 'one durable summary per run');
+    const summary = pending.runs[0];
+    const total = values => values.reduce((n, v) => n + v, 0);
+    assert.equal(summary.result, 'victory');
+    assert.equal(summary.card_id.length, summary.card_n.length);
+    assert.ok(total(summary.card_n) > 0, 'card executions are counted');
+    assert.ok(total(summary.dmg_val) > 0, 'damage dealt is summed');
+    assert.ok(total(summary.hurt_val) > 0, 'damage taken is summed');
+    assert.ok(summary.edits > 0, 'deck edits are counted');
+    assert.equal(summary.picks.length, 1, 'reward picks are kept');
+    assert.ok(summary.deck.includes(':'), 'final deck is kept');
+    const bytes = Buffer.byteLength(JSON.stringify({ s: summary }));
+    assert.ok(bytes < 16384, 'summary fits the server limit');
+    const retryRun = summary.run;
     await page.reload();
     accept = true;
     await page.evaluate(() => PlayLog.flush());
     await page.waitForFunction(() => PlayLog.status.uploaded > 0, null, { polling: 100 });
-    // One flush has a fairness budget; drain the remainder explicitly.
-    for (let i = 0; i < 20; i++) {
-      await page.evaluate(() => PlayLog.flush());
-      if (!JSON.parse(await page.evaluate(() => PlayLog.exportPending())).batches.length) break;
-    }
-    assert.equal(JSON.parse(await page.evaluate(() => PlayLog.exportPending())).batches.length, 0);
-    assert.ok(requests.filter(b => b.id === retryId).length >= 2, 'retry retains batch ID');
-    assert.ok(accepted.has(retryId));
+    assert.equal(JSON.parse(await page.evaluate(() => PlayLog.exportPending())).runs.length, 0);
+    assert.ok(requests.filter(s => s.run === retryRun).length >= 2, 'retry resends the same run');
+    assert.ok(accepted.has(retryRun));
 
     const baselinePage = await context.newPage();
-    await baselinePage.route('**/js/play-log.js', route => route.fulfill({
+    await baselinePage.route('**/js/log/play-log.js', route => route.fulfill({
       contentType: 'text/javascript', body: 'globalThis.PlayLog={attach(){},card(){}};',
     }));
     await baselinePage.goto(origin + '/index.html');
@@ -106,13 +104,13 @@ const root = path.resolve(__dirname, '..');
     assert.deepEqual(errors, []);
 
     const localPage = await context.newPage();
-    await localPage.route('**/js/log-config.js', route => route.fulfill({
+    await localPage.route('**/js/log/log-config.js', route => route.fulfill({
       contentType: 'text/javascript', body: 'globalThis.PLAY_LOG_CONFIG={url:"",key:"",build:"test"};',
     }));
     await localPage.goto(origin + '/index.html');
     await localPage.evaluate(exercise);
     assert.equal(await localPage.evaluate(() => PlayLog.status.enabled), false);
-    assert.ok(JSON.parse(await localPage.evaluate(() => PlayLog.exportPending())).batches.length > 0, 'unconfigured mode records locally');
+    assert.ok(JSON.parse(await localPage.evaluate(() => PlayLog.exportPending())).runs.length > 0, 'unconfigured mode records locally');
 
     const brokenPage = await context.newPage();
     await brokenPage.addInitScript(() => {
@@ -121,10 +119,8 @@ const root = path.resolve(__dirname, '..');
     await brokenPage.goto(origin + '/index.html');
     const broken = await brokenPage.evaluate(exercise);
     assert.equal(broken.fingerprint, baseline.fingerprint, 'storage failure must not affect gameplay');
-    assert.ok(JSON.parse(await brokenPage.evaluate(() => PlayLog.exportPending())).memory.length > 0, 'storage failure retains memory for export');
-    console.log(JSON.stringify({ result: 'PASS', events: events.length,
-      executions: rows('card').reduce((n, r) => n + r[7].length, 0),
-      bytes: Buffer.byteLength(JSON.stringify(pending)), loggedMs: logged.ms, baselineMs: baseline.ms }));
+    assert.ok(JSON.parse(await brokenPage.evaluate(() => PlayLog.exportPending())).memory?.result, 'storage failure retains memory for export');
+    console.log(JSON.stringify({ result: 'PASS', bytes, requests: requests.length, loggedMs: logged.ms, baselineMs: baseline.ms }));
   } finally {
     await browser?.close();
     server.closeAllConnections();

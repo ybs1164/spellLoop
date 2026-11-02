@@ -3,7 +3,7 @@
 `node tools/extract-rules.cjs` 가 `tools/check-*.cjs` 의 단언에서 만든다. 서술형 규칙은 [MECHANICS.md](MECHANICS.md), 데이터는 `data/*.csv`.
 C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` 이 원래 검사다. 메시지가 없는 단언은 식을 싣는다.
 
-단언 847개 (메시지 있음 322개), 파일 32개.
+단언 848개 (메시지 있음 325개), 파일 32개.
 
 | 파일 | 항목 |
 | --- | --- |
@@ -28,7 +28,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-gimmick-bosses.cjs](../tools/check-gimmick-bosses.cjs) | 31 |
 | [check-mechanic-migrations.cjs](../tools/check-mechanic-migrations.cjs) | 65 |
 | [check-mine-sequence.cjs](../tools/check-mine-sequence.cjs) | 8 |
-| [check-play-logs.cjs](../tools/check-play-logs.cjs) | 19 |
+| [check-play-logs.cjs](../tools/check-play-logs.cjs) | 20 |
 | [check-pool.cjs](../tools/check-pool.cjs) | 4 |
 | [check-slot-sections.cjs](../tools/check-slot-sections.cjs) | 50 |
 | [check-slots.cjs](../tools/check-slots.cjs) | 24 |
@@ -728,24 +728,25 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 
 ## play-logs
 
-- `types.has(type)` — [check-play-logs.cjs:75](../tools/check-play-logs.cjs#L75)
-- `rows(table).length` — [check-play-logs.cjs:76](../tools/check-play-logs.cjs#L76)
-- missing damageEnemy — [check-play-logs.cjs:77](../tools/check-play-logs.cjs#L77)
-- missing takeDamage — [check-play-logs.cjs:78](../tools/check-play-logs.cjs#L78)
-- missing pickup_collect — [check-play-logs.cjs:79](../tools/check-play-logs.cjs#L79)
-- repeated card executions are compacted — [check-play-logs.cjs:80](../tools/check-play-logs.cjs#L80)
-- `rows('card').every(r => r[7].length === r[8].length)` — [check-play-logs.cjs:81](../tools/check-play-logs.cjs#L81)
-- `rows('entity').filter(r => r[3] === 'S').every(r => r[8].length === 21 && r[9] !== undefined)` — [check-play-logs.cjs:82](../tools/check-play-logs.cjs#L82)
-- failed uploads stay durable — [check-play-logs.cjs:84](../tools/check-play-logs.cjs#L84)
-- `JSON.parse(await page.evaluate(() => PlayLog.exportPending())).batches.length, 0` — [check-play-logs.cjs:95](../tools/check-play-logs.cjs#L95)
-- retry retains batch ID — [check-play-logs.cjs:96](../tools/check-play-logs.cjs#L96)
-- `accepted.has(retryId)` — [check-play-logs.cjs:97](../tools/check-play-logs.cjs#L97)
-- logging must not change gameplay — [check-play-logs.cjs:105](../tools/check-play-logs.cjs#L105)
-- `errors, []` — [check-play-logs.cjs:106](../tools/check-play-logs.cjs#L106)
-- `await localPage.evaluate(() => PlayLog.status.enabled), false` — [check-play-logs.cjs:114](../tools/check-play-logs.cjs#L114)
-- unconfigured mode records locally — [check-play-logs.cjs:115](../tools/check-play-logs.cjs#L115)
-- storage failure must not affect gameplay — [check-play-logs.cjs:123](../tools/check-play-logs.cjs#L123)
-- storage failure retains memory for export — [check-play-logs.cjs:124](../tools/check-play-logs.cjs#L124)
+- one durable summary per run — [check-play-logs.cjs:75](../tools/check-play-logs.cjs#L75)
+- `summary.result, 'victory'` — [check-play-logs.cjs:78](../tools/check-play-logs.cjs#L78)
+- `summary.card_id.length, summary.card_n.length` — [check-play-logs.cjs:79](../tools/check-play-logs.cjs#L79)
+- card executions are counted — [check-play-logs.cjs:80](../tools/check-play-logs.cjs#L80)
+- damage dealt is summed — [check-play-logs.cjs:81](../tools/check-play-logs.cjs#L81)
+- damage taken is summed — [check-play-logs.cjs:82](../tools/check-play-logs.cjs#L82)
+- deck edits are counted — [check-play-logs.cjs:83](../tools/check-play-logs.cjs#L83)
+- reward picks are kept — [check-play-logs.cjs:84](../tools/check-play-logs.cjs#L84)
+- final deck is kept — [check-play-logs.cjs:85](../tools/check-play-logs.cjs#L85)
+- summary fits the server limit — [check-play-logs.cjs:87](../tools/check-play-logs.cjs#L87)
+- `JSON.parse(await page.evaluate(() => PlayLog.exportPending())).runs.length, 0` — [check-play-logs.cjs:93](../tools/check-play-logs.cjs#L93)
+- retry resends the same run — [check-play-logs.cjs:94](../tools/check-play-logs.cjs#L94)
+- `accepted.has(retryRun)` — [check-play-logs.cjs:95](../tools/check-play-logs.cjs#L95)
+- logging must not change gameplay — [check-play-logs.cjs:103](../tools/check-play-logs.cjs#L103)
+- `errors, []` — [check-play-logs.cjs:104](../tools/check-play-logs.cjs#L104)
+- `await localPage.evaluate(() => PlayLog.status.enabled), false` — [check-play-logs.cjs:112](../tools/check-play-logs.cjs#L112)
+- unconfigured mode records locally — [check-play-logs.cjs:113](../tools/check-play-logs.cjs#L113)
+- storage failure must not affect gameplay — [check-play-logs.cjs:121](../tools/check-play-logs.cjs#L121)
+- storage failure retains memory for export — [check-play-logs.cjs:122](../tools/check-play-logs.cjs#L122)
 - Storage denied — [check-play-logs.cjs](../tools/check-play-logs.cjs)
 
 ## pool
