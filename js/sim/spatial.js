@@ -210,12 +210,13 @@ class GameSpatial {
 
   /** nearestEnemies 의 WASM 판: 범위 안의 살아 있는 적과 거리²를 C 가 목록 순서로 모은다. 같은 거리면 목록 앞선 적 (안정 정렬과 같은 결과). */
   nearestEnemiesWasm(x, y, n, r2) {
-    const list = this.enemies, c = WasmCore.exports.near_scan(list.length, x, y, r2), cand = WasmCore.cand, cd = WasmCore.candD;
+    const list = this.enemies;
     if (n === 1) {
-      let best = -1, bestD = Infinity;
-      for (let k = 0; k < c; k++) if (best < 0 || cd[k] < bestD) { best = k; bestD = cd[k]; }
-      return best >= 0 ? [list[cand[best]]] : [];
+      // 가장 가까운 하나는 C 가 바로 고른다 (후보를 모아 JS 에서 다시 훑지 않는다)
+      const best = WasmCore.exports.near_one(list.length, x, y, r2);
+      return best >= 0 ? [list[best]] : [];
     }
+    const c = WasmCore.exports.near_scan(list.length, x, y, r2), cand = WasmCore.cand, cd = WasmCore.candD;
     const m = Math.min(n, c), top = this._nearTop ||= [];
     top.length = 0;
     if (m < c && m <= 16) {

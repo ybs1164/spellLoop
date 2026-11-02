@@ -531,6 +531,20 @@ int near_scan(int n, double x, double y, double r2) {
   return c;
 }
 
+// near_scan 의 n = 1 판: 범위 안 가장 가까운 살아 있는 적의 목록 번호 (같은 거리면 목록 앞선 적, 없으면 -1). 후보를 모으지 않는다.
+EXPORT("near_one")
+int near_one(int n, double x, double y, double r2) {
+  int best = -1;
+  double bestD = 0;
+  for (int i = 0; i < n; i++) {
+    int o = ORD[i];
+    if (F[F_DEAD][o] != 0) continue;
+    double dx = x - SX[o], dy = y - SY[o], d = dx * dx + dy * dy;
+    if (d <= r2 && (best < 0 || d < bestD)) { best = i; bestD = d; }
+  }
+  return best;
+}
+
 // 목록 순서의 적(ORD) 중 죽은 것(F_DEAD)의 목록 번호를 CAND 에 오름차순으로 담는다 (resolveEntityDeaths·compactEnemies).
 EXPORT("scan_dead")
 int scan_dead(int n) {

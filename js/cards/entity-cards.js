@@ -52,6 +52,11 @@ CARDS.ifPlayerContact = {
     const o = env.at(t), p = env.game.player;
     return o !== p && dist2(o.x, o.y, p.x, p.y) < ((o.radius || o.r || 0) + p.radius) ** 2;
   },
+  // 대상이 슬롯 주인뿐인 진입 슬롯에서 test 와 같은 판정 (거짓인 동안 진입 슬롯은 아무 일도 하지 않는다)
+  enterQuick: (owner, game) => {
+    const p = game.player;
+    return owner !== p && dist2(owner.x, owner.y, p.x, p.y) < ((owner.radius || owner.r || 0) + p.radius) ** 2;
+  },
 };
 const ENTITY_TEAMS = { friendly: '아군', hostile: '적군', neutral: '중립' };
 function entityTeam(owner) { return owner.team ?? 'friendly'; }

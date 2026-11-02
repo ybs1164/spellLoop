@@ -108,9 +108,41 @@ function slotAnalysis(slot) {
     every: slotEveryFrame(slot),
     plan: undefined,
     blockers: undefined,
+    enterQuick: undefined,
+    quickReady: undefined,
   };
   a.blockers = slotBlockers(a);
+  a.enterQuick = slotEnterQuick(a);
+  a.quickReady = slotQuickReady(a);
   return a;
+}
+/** 환경 없이 같은 대상을 고르는 대상 카드: 슬롯 주인·플레이어, 또는 fixedResolve(난수·부수 효과 없음)가 있는 카드 */
+function fixedTargetCard(id) { return id === 'entitySelf' || id === 'self' || !!CARDS[id].fixedResolve; }
+/** 환경 없이 거를 수 있는 조건 카드 (quickTest 는 test 와 같은 판정) */
+function quickCondition(c) { return !!c.quickTest && !c.gate && !c.requires; }
+/**
+ * 조건 슬롯의 대상 카드들: 쿨타임이 걸리는 조건 슬롯이고, 대상 카드가 모두 환경 없이 해석되고, 조건이 모두 quickTest 면
+ * 준비된 채 막혔는지(isQuickBlockedSlot) 환경 없이 판정할 수 있다. 해당 없으면 null.
+ */
+function slotQuickReady(a) {
+  if (!a.ok || a.triggers.length || a.every || !a.conditions.length || !a.conditions.every(quickCondition) || a.artifacts.some(c => c.when)) return null;
+  const ids = [];
+  for (const id of a.stage) if (CARDS[id].type === 'target') { if (!fixedTargetCard(id)) return null; ids.push(id); }
+  return ids.length ? ids : null;
+}
+/** 진입 연쇄 카드로만 작동하고 대상이 슬롯 주인뿐인 슬롯의 진입 카드들 (모두 enterQuick 판정이 있을 때만). 해당 없으면 null. */
+function slotEnterQuick(a) {
+  if (!a.ok || !a.enters || a.every) return null;
+  for (const c of a.triggers) if (c.eventKind !== 'enter' || !c.enterQuick) return null;
+  for (const id of a.stage) if (CARDS[id].type === 'target' && id !== 'entitySelf') return null;
+  return a.triggers;
+}
+/** 이번 프레임 runEventSlot 이 아무것도 바꾸지 않는 진입 슬롯: 쿨타임이 없고, 진입 상태가 비었고, 진입 조건이 모두 거짓 */
+function isIdleEnterSlot(slot, analysis, game) {
+  const q = analysis.enterQuick;
+  if (!q || slot.linked || slot.cd > 0 || slot.eventState?.size) return false;
+  for (let i = 0; i < q.length; i++) if (q[i].enterQuick(slot.owner, game)) return false;
+  return true;
 }
 
 /**
@@ -161,12 +193,14 @@ function fixedSlotPlan(slot) {
   const a = slotAnalysis(slot);
   if (a.plan !== undefined) return a.plan;
   a.plan = null;
-  if (!a.ok || slot.linked || slot.owner.deck || a.chainRest || a.actions.length !== 1 || a.triggers.length || a.conditions.length || !a.every) return null;
+  if (!a.ok || slot.linked || slot.owner.deck || a.chainRest || a.actions.length !== 1 || a.triggers.length || !a.every) return null;
+  // 조건은 환경 없이 대상마다 판정할 수 있는 것(quickTest, 필수 특성·gate 없음)만 받는다
+  if (!a.conditions.every(quickCondition)) return null;
   if (a.artifacts.some(c => c.when)) return null;
   const ids = [];
   for (const id of slot.cards) {
     const card = CARDS[id];
-    if (card.type === 'target') { if (id !== 'entitySelf' && id !== 'self') return null; ids.push(id); }
+    if (card.type === 'target') { if (!fixedTargetCard(id)) return null; ids.push(id); }
     else if (card.type !== 'artifact' && card.type !== 'action') return null;
   }
   if (!ids.length) return null;
@@ -179,7 +213,96 @@ function fixedSlotPlan(slot) {
     ids, card, effect, passive, simple, hitTeamRule, key: cardBaseId(actionId),
     ownerOnly: ids.length === 1 && ids[0] === 'entitySelf',
     redirect: !!(effect.redirectTargets || effect.playerTargeted),
+    conds: a.conditions.length ? a.conditions : null,
+    resolvers: ids.some(id => CARDS[id].fixedResolve),
   });
+}
+/** 슬롯 주인의 플레이어 대상 래퍼 (selectSlotTargets 의 env.playerTarget() 과 같은 내용). 유인 대상이 같으면 같은 객체를 돌려준다. */
+function slotPlayerTarget(slot, owner, game) {
+  const rv = game.redirectedPlayerTarget(owner), obj = game.targetObj(rv), memo = slot._playerWrap;
+  if (memo && memo.kind === rv.kind && memo.obj === obj) return memo.t;
+  const t = { ...rv, playerSelection: true };
+  slot._playerWrap = { kind: rv.kind, obj, t };
+  return t;
+}
+// quickSlotTargets 의 작업 배열 (해석 중에 다시 불리지 않는다)
+const QUICK_TARGETS_SCRATCH = [];
+/**
+ * 대상 카드(fixedTargetCard)를 차례로 해석해 selectSlotTargets 와 같은 순서로 모은다 (없음·사망 제외, 같은 개체는 한 번).
+ * 결과는 작업 배열에 담고 개수를 돌려준다.
+ */
+function quickSlotTargets(slot, ids, owner, game) {
+  const out = QUICK_TARGETS_SCRATCH;
+  let n = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const t = id === 'self' ? slotPlayerTarget(slot, owner, game) : id === 'entitySelf' ? slotTarget(game, owner) : CARDS[id].fixedResolve(owner, game, slot);
+    if (!t) continue;
+    const o = game.targetObj(t);
+    if (!o || o.dead) continue;
+    let dup = false;
+    for (let k = 0; k < n; k++) if (game.targetObj(out[k]) === o) { dup = true; break; }
+    if (!dup) out[n++] = t;
+  }
+  return n;
+}
+/** 준비된(쿨타임 0) 조건 슬롯이 지금 조건·행동 가능 여부·행동 적용 대상 때문에 아무것도 하지 않는가 (runEventSlot 이 바꾸는 것 없이 끝나는가) */
+function isQuickBlockedSlot(slot, analysis, game) {
+  const ids = analysis.quickReady;
+  if (!ids || slot.linked || slot.cd > 0 || game._cardBudget <= 0) return false;
+  const owner = slot.owner, conds = analysis.conditions, n = quickSlotTargets(slot, ids, owner, game), out = QUICK_TARGETS_SCRATCH;
+  let blocked = true, passed = false;
+  for (let i = 0; i < n && blocked; i++) {
+    const t = out[i], o = game.targetObj(t);
+    let ok = true;
+    for (let k = 0; k < conds.length; k++) if (!conds[k].quickTest(owner, o, t)) { ok = false; break; }
+    if (!ok) continue;
+    if (!passed) {
+      passed = true;
+      if (!ownerCanAct(owner) && !CARDS[analysis.actions[0]].runsWhileBlocked) break;
+    }
+    if (actionApplies(CARDS[analysis.actions[0]], t, game.cardEnv(owner))) blocked = false;
+  }
+  for (let i = 0; i < n; i++) out[i] = undefined;
+  return blocked;
+}
+/** 고정 계획의 대상 목록 (조건으로 거르기 전). 같은 입력이면 같은 배열을 돌려준다. */
+function fixedTargets(slot, plan, owner, game) {
+  // 자기 자신만 고르는 슬롯의 대상 목록은 같은 개체의 슬롯끼리 함께 쓴다 (내용이 같고 고쳐 쓰지 않는다)
+  if (plan.ownerOnly) return slot._fixedTargets ||= owner.slot ? owner.slot._ownerTargets ||= [slotTarget(game, owner)] : [slotTarget(game, owner)];
+  if (plan.resolvers) {
+    // 해석한 대상이 지난번과 모두 같으면 지난 배열을 그대로 쓴다 (효과 값 재사용·표본 검증이 배열 동일성을 본다)
+    const n = quickSlotTargets(slot, plan.ids, owner, game), out = QUICK_TARGETS_SCRATCH;
+    let list = slot._resolvedTargets;
+    let same = !!list && list.length === n;
+    for (let i = 0; same && i < n; i++) same = list[i] === out[i];
+    if (!same) list = slot._resolvedTargets = out.slice(0, n);
+    for (let i = 0; i < n; i++) out[i] = undefined;
+    return list;
+  }
+  // 플레이어 대상은 유인 대상이 같으면 같은 목록이다: 목록(과 아래 효과 값)을 재사용해 매 프레임 객체를 만들지 않는다.
+  const rv = game.redirectedPlayerTarget(owner), rObj = game.targetObj(rv), memo = slot._targetMemo;
+  if (memo && memo.kind === rv.kind && memo.obj === rObj && memo.owner === owner) return memo.targets;
+  const targets = [];
+  for (const id of plan.ids) {
+    const t = id === 'self' ? { ...rv, playerSelection: true } : slotTarget(game, owner), o = game.targetObj(t);
+    if (!o || o.dead || targets.some(x => game.targetObj(x) === o)) continue;
+    targets.push(t);
+  }
+  slot._targetMemo = { kind: rv.kind, obj: rObj, owner, targets };
+  return targets;
+}
+/** 조건이 있는 고정 계획: 대상마다 모든 조건을 통과하면 1 인 비트 (대상 순서대로) */
+function fixedCondMask(plan, targets, owner, game) {
+  const conds = plan.conds;
+  let mask = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const o = game.targetObj(targets[i]);
+    let ok = true;
+    for (let k = 0; k < conds.length; k++) if (!conds[k].quickTest(owner, o, targets[i])) { ok = false; break; }
+    if (ok) mask |= 1 << i;
+  }
+  return mask;
 }
 function fixedApplies(plan, t, game, owner) {
   if (plan.simple) {
@@ -196,21 +319,18 @@ function slotListens(slots, kind) {
 function runFixedSlot(slot, plan, owner, game, dt, enabled, effects, shared) {
   tickSlotCooldown(slot, dt, owner);
   if (!plan.card.runsWhileBlocked && !ownerCanAct(owner)) return;
-  let targets;
-  // 자기 자신만 고르는 슬롯의 대상 목록은 같은 개체의 슬롯끼리 함께 쓴다 (내용이 같고 고쳐 쓰지 않는다)
-  if (plan.ownerOnly) targets = slot._fixedTargets ||= owner.slot ? owner.slot._ownerTargets ||= [slotTarget(game, owner)] : [slotTarget(game, owner)];
-  else {
-    // 플레이어 대상은 유인 대상이 같으면 같은 목록이다: 목록(과 아래 효과 값)을 재사용해 매 프레임 객체를 만들지 않는다.
-    const rv = game.redirectedPlayerTarget(owner), rObj = game.targetObj(rv), memo = slot._targetMemo;
-    if (memo && memo.kind === rv.kind && memo.obj === rObj && memo.owner === owner) targets = memo.targets;
-    else {
-      targets = [];
-      for (const id of plan.ids) {
-        const t = id === 'self' ? { ...rv, playerSelection: true } : slotTarget(game, owner), o = game.targetObj(t);
-        if (!o || o.dead || targets.some(x => game.targetObj(x) === o)) continue;
-        targets.push(t);
+  let targets = fixedTargets(slot, plan, owner, game);
+  if (plan.conds) {
+    // 조건 카드는 대상마다 test 와 같은 판정으로 거른다. 같은 목록·같은 결과면 거른 배열을 재사용한다 (효과 값 재사용이 배열 동일성을 본다)
+    const mask = fixedCondMask(plan, targets, owner, game), full = (1 << targets.length) - 1;
+    if (mask !== full) {
+      const memo = slot._condMemo;
+      if (memo && memo.base === targets && memo.mask === mask) targets = memo.targets;
+      else {
+        const base = targets;
+        targets = base.filter((t, i) => mask & (1 << i));
+        slot._condMemo = { base, mask, targets };
       }
-      slot._targetMemo = { kind: rv.kind, obj: rObj, owner, targets };
     }
   }
   for (let i = 0; i < targets.length; i++) {
@@ -287,6 +407,30 @@ function hasTriggerKind(triggers, kind) {
   for (let i = 0; i < triggers.length; i++) if (triggers[i].eventKind === kind) return true;
   return false;
 }
+/**
+ * runEventSlot 이 환경에 거는 enableMechanic (실행마다 클로저를 만들지 않고 환경 필드를 읽는다).
+ * 효과 값은 읽기 전용이라, 해석 결과·충돌 규칙이 같고 대상 목록의 내용이 같으면 지난 실행의 값 객체를 그대로 쓴다.
+ */
+function slotEnableMechanic(id, effect, selected) {
+  const slot = this._emSlot, rule = this._emRule;
+  this._emEnabled.add(id);
+  const resolved = cachedResolvedEffect(slot, this._emOwner, id, effect), targeted = !!(effect.redirectTargets || effect.playerTargeted);
+  const memo = slot._emMemo;
+  let value;
+  if (memo && memo.id === id && memo.resolved === resolved && memo.rule === rule && memo.targeted === targeted && (!targeted || sameItems(memo.value.targets, selected))) value = memo.value;
+  else {
+    value = { ...resolved };
+    if (rule) value.hitTeamRule = rule;
+    if (targeted) value.targets = selected;
+    slot._emMemo = { id, resolved, rule, targeted, value };
+  }
+  this._emEffects.set(id, value);
+}
+function sameItems(a, b) {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   const signal = context.event;
   if (!signal) tickSlotCooldown(slot, dt, owner);
@@ -359,14 +503,8 @@ function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   const enabled = context.enabled || new Set(), effects = context.effects || new Map();
   const selector = analysis.selector;
   env.summonMode = selector?.summonMode;
-  env.enableMechanic = (id, effect, selected) => {
-    enabled.add(id);
-    const resolved = cachedResolvedEffect(slot, owner, id, effect);
-    const value = { ...resolved };
-    if (selector?.hitTeamRule) value.hitTeamRule = selector.hitTeamRule;
-    if (effect.redirectTargets || effect.playerTargeted) value.targets = selected;
-    effects.set(id, value);
-  };
+  env._emSlot = slot; env._emOwner = owner; env._emRule = selector?.hitTeamRule; env._emEnabled = enabled; env._emEffects = effects;
+  env.enableMechanic = slotEnableMechanic;
   executeLinkedAction(game, slot, owner, actions, targets, env, selector?.hitTeamRule, analysis.chainRest);
   if (owner.deck) for (const t of targets) if (t.kind === 'enemy') owner.deck.lastEnemy = t.e;
   slot.enabled = enabled; slot.effects = effects;

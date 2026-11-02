@@ -123,6 +123,8 @@ CARDS.entityMovementTarget = {
     const enemy = env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).sight)[0];
     return [enemy || env.playerTarget()];
   },
+  // resolve 와 같은 대상 (플레이어 대상은 슬롯이 유인 대상마다 하나 만들어 둔 래퍼)
+  fixedResolve: (owner, game, slot) => game.nearestEnemies(owner.x, owner.y, 1, entityStats(owner).sight)[0] || slotPlayerTarget(slot, owner, game),
 };
 CARDS.entityMovementDistance = {
   type: 'artifact', eventKind: 'state', entityOnly: true, weight: 0, icon: 'fNearEnemy',
@@ -133,6 +135,7 @@ CARDS.entityMovementDistance = {
     const stop = t.playerSelection ? 60 : entityStats(env.owner).keepDistance + (target.radius || 0);
     return Math.hypot(target.x - env.owner.x, target.y - env.owner.y) > stop;
   },
+  quickTest: (owner, o, t) => Math.hypot(o.x - owner.x, o.y - owner.y) > (t.playerSelection ? 60 : entityStats(owner).keepDistance + (o.radius || 0)),
 };
 CARDS.entityInSight = {
   type: 'artifact', eventKind: 'state', entityOnly: true, weight: 0, icon: 'fNearEnemy',
@@ -169,6 +172,8 @@ CARDS.entityInReach = {
     const owner = env.owner, x = owner.x, y = owner.y, base = entityStats(owner).reach;
     return withCull(o => dist2(x, y, o.x, o.y) <= (base + (o.radius || o.r || 0)) ** 2, x, y, base, true);
   },
+  // 환경 없이 test 와 같은 판정 (고정 계획이 조건 슬롯을 바로 거르는 데 쓴다)
+  quickTest: (owner, o) => dist2(owner.x, owner.y, o.x, o.y) <= (entityStats(owner).reach + (o.radius || o.r || 0)) ** 2,
 };
 CARDS.entityInArea = {
   type: 'artifact', eventKind: 'state', entityOnly: true, weight: 0, icon: 'fNear',

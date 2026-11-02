@@ -47,6 +47,7 @@ const NO_TAIL = Object.freeze([]), NO_CREATED = Object.freeze([]);
 const DIRECT_STATUS_ACTIONS = new Set(['mark', 'root', 'burn']);
 // 실행 전 목록 길이 (실행 동안만 빌린다. 중첩 실행도 각자 빌린다)
 const EXECUTION_COUNTS_POOL = [];
+const EXECUTION_POOL = [];
 function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule, chainRest) {
   const id = actions[0], card = CARDS[id], base = cardBaseId(id), tail = actions.length > 1 ? actions.slice(1) : NO_TAIL;
   // 연쇄 카드로 이어진 스택이면 그 카드들이 연쇄 슬롯이 되고, 연쇄 카드 없이 쌓인 행동 카드(tail)는 이벤트·대상을 자동으로 이어 붙인다.
@@ -57,7 +58,10 @@ function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule,
   const prevActor = game.actionActor, prevCard = game.actionCard, prevRule = game.actionHitTeamRule, prevExecution = game._slotExecution, prevOrigin = game.actionOrigin, prevPower = game.actionPower;
   const counts = EXECUTION_COUNTS_POOL.pop() || new Array(7);
   for (let i = 0; i < 7; i++) counts[i] = game[EXECUTION_COLLECTIONS[i]].length;
-  const execution = { owner, actor, slot, hits: [], applied: [], tail, chain, base, depth: (env.slotEvent?.depth || 0) + 1 };
+  // 실행 기록은 이 호출 동안만 쓴다 (registerBurnLink·reportSlotHit·addDebuff 가 실행 중에만 읽고 쓴다): 풀에서 빌려 끝에 돌려준다
+  const execution = EXECUTION_POOL.pop() || { owner: null, actor: null, slot: null, hits: [], applied: [], tail: null, chain: null, base: null, depth: 0 };
+  execution.owner = owner; execution.actor = actor; execution.slot = slot; execution.tail = tail; execution.chain = chain; execution.base = base;
+  execution.depth = (env.slotEvent?.depth || 0) + 1;
   game.actionActor = actor; game.actionCard = card; game.actionHitTeamRule = teamRule; game._slotExecution = execution;
   game.actionPower = slotAnalysis(slot).power;
   game.actionOrigin = env.slotEvent ? { x: env.slotEvent.x, y: env.slotEvent.y } : actor;
@@ -124,7 +128,10 @@ function executeLinkedAction(game, slot, owner, actions, targets, env, teamRule,
     child._slotSpawned = true;
     emitSlotEvent(game, child, 'spawn', { subject: child, depth: execution.depth });
   }
-  emitSlotEvent(game, owner, 'complete', { subject: targets[0] && env.at(targets[0]), depth: execution.depth, exclude: slot });
+  if (ownerListens(owner, 'complete')) emitSlotEvent(game, owner, 'complete', { subject: targets[0] && env.at(targets[0]), depth: execution.depth, exclude: slot });
+  execution.owner = execution.actor = execution.slot = execution.tail = execution.chain = null;
+  execution.hits.length = 0; execution.applied.length = 0;
+  EXECUTION_POOL.push(execution);
 }
 
 /** 개체가 「타격 시」를 들으면 그 개체가 만든 투사체(shots)의 명중을 개체 자신의 타격 이벤트로도 보낸다. */
@@ -204,7 +211,9 @@ function reportSlotHit(game, source, target, damage, element) {
   // 명중 자료는 쓰는 곳이 있을 때만 만든다 (실행 기록·듣는 슬롯). 만들 때까지 대상 좌표는 바뀌지 않는다.
   let hit = null;
   const record = () => hit ||= { subject: target, x: target.x, y: target.y, damage };
-  if (game._slotExecution) game._slotExecution.hits.push(record());
+  // 실행의 명중 목록은 이어지는 행동(꼬리·연쇄)이 있을 때만 읽는다
+  const execution = game._slotExecution;
+  if (execution && (execution.tail.length || execution.chain)) execution.hits.push(record());
   if (element === 'fire') for (const effect of target.burnEventEffects || []) {
     if (effect.expires >= game.time) emitSlotEvent(game, effect, 'hit', record());
   }

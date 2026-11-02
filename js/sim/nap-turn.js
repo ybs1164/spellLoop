@@ -84,7 +84,7 @@ class GameNapTurn {
   napTurn(e, step, p) {
     if (!WasmCore.on() || e.dead) return false;
     const slot = e.slot, fast = slot._fast;
-    if (!fast || slot.version !== fast.version) return false;
+    if (!fast || slot.version !== fast.version || fast.quick) return false;   // 진입·조건 슬롯의 빠른 판정은 EntitySlots.napCheck 가 한다
     if (NAP_VERIFY && (slot.enabled !== fast.enabled || slot.effects !== fast.effects || e.slots !== fast.slots)) throw new Error('slot version missed a change');
     if (e.effectSlots?.length || e.burnEventEffects || this._slotEvents?.length) return false;
     if (ownerCanAct(e) !== fast.canAct || !(slot._sleepLeft - step * slot._sleepRate > 1e-8)) return false;

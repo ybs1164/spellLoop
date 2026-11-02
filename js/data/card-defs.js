@@ -109,6 +109,8 @@ const CARDS = {
     resolve: env => env.owner
       ? env.game.nearestEnemies(env.owner.x, env.owner.y, 1, 600)
       : env.byDist(env.enemiesInSight(600)).slice(0, 1),
+    // 슬롯 주인이 있는 환경의 resolve 와 같은 대상 하나 (없으면 null). 환경 없이 고정 계획·막힘 판정에 쓴다
+    fixedResolve: (owner, game) => game.nearestEnemies(owner.x, owner.y, 1, 600)[0] || null,
   },
   woundedEnemies: {
     type: 'target', kind: 'enemy', name: '마무리 대상', weight: 2,

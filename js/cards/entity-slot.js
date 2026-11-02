@@ -251,12 +251,23 @@ class EntitySlots extends EntitySlot {
     this._captureStructural = false;
     if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length) return null;
     const analyses = [], stats = [], refs = [], cver = this.version;
-    let needsRedirect = false, cool = null, deferred = false;
+    let needsRedirect = false, cool = null, deferred = false, condIdx = null, condTargets = null, condMask = null;
+    // 빠른 판정(진입 슬롯·조건/해석 대상 계획·막힌 준비 슬롯)은 예전에 표본을 만들 수 없던 슬롯(진입 슬롯, 조건·해석 대상이 있는 매 프레임 슬롯)이 있는 개체에만 쓴다.
+    // 그런 개체는 전에 잠든 적이 없으므로, 쿨타임을 몰아 깎는 수면(부동소수 결과가 달라진다)도 하지 않는다 (아래 noSleep).
+    let quick = false;
+    for (let i = 0; i < n && !quick; i++) {
+      const a = slotAnalysis(slots[i]), p = a.ok && !a.enters ? fixedSlotPlan(slots[i]) : null;
+      quick = a.ok && a.enters || !!p && (!!p.conds || p.resolvers);
+    }
     for (let i = 0; i < n; i++) {
       const slot = slots[i], analysis = slotAnalysis(slot);
       // 쿨타임 중인 조건 슬롯은 쿨타임이 끝나기 전까지 쿨타임만 깎고 아무 일도 하지 않는다 (runEventSlot 의 조기 종료와 같다).
       if (isCoolingSlot(slot, analysis)) { (cool ||= [])[i] = 1; analyses.push(analysis); continue; }
       if (isBlockedSlot(slot, analysis, game)) { (cool ||= [])[i] = 2; analyses.push(analysis); continue; }
+      // 진입 조건이 거짓이고 진입 상태가 빈 진입 슬롯: 조건이 참이 될 때까지 runEventSlot 은 아무것도 바꾸지 않는다
+      if (quick && isIdleEnterSlot(slot, analysis, game)) { (cool ||= [])[i] = 4; analyses.push(analysis); continue; }
+      // 준비됐지만 조건·행동 대상이 없어 작동하지 않는 조건 슬롯 (대상이 가까운 적처럼 환경 없이 해석되는 카드일 때)
+      if (quick && isQuickBlockedSlot(slot, analysis, game)) { (cool ||= [])[i] = 5; analyses.push(analysis); continue; }
       if (slot.cd > 0) return null;
       // 카드 이벤트 예산이 바닥나 미뤄질 준비된 조건 슬롯: runEventSlot 은 아무것도 바꾸지 않고 끝나므로(쿨타임 0 이라 깎을 것도 없다) 예산이 바닥난 동안은 표가 그대로다
       if (isDeferredSlot(slot, analysis, game)) { (cool ||= [])[i] = 3; analyses.push(analysis); deferred = true; continue; }
@@ -268,6 +279,11 @@ class EntitySlots extends EntitySlot {
       if (!plan && game._crowded && isCooledEventSlot(slot, analysis)) return null;
       if (!plan || plan.card.supports) { this._captureStructural = true; return null; }
       if (!plan.ownerOnly) needsRedirect = true;
+      // 조건이 있는 계획은 조건이 고르는 대상이 같을 때만 같은 표다
+      if (plan.conds || plan.resolvers) {
+        const targets = fixedTargets(slot, plan, owner, game);
+        (condIdx ||= []).push(i); (condTargets ||= []).push(targets); (condMask ||= []).push(plan.conds ? fixedCondMask(plan, targets, owner, game) : 0);
+      }
       const ratios = plan.effect.statRatios;
       if (ratios) for (const field in ratios) if (!stats.includes(ratios[field].stat)) stats.push(ratios[field].stat);
     }
@@ -276,7 +292,21 @@ class EntitySlots extends EntitySlot {
     for (const name of stats) refs.push(combat[name]);
     let rk, ro;
     if (needsRedirect) { const rv = game.redirectedPlayerTarget(owner); rk = rv.kind; ro = game.targetObj(rv); }
-    return { slots, n, cver, analyses: internArray(analyses), stats: internArray(stats), ids: internArray(stats.map(name => STAT_ID[name] ?? -1)), refs: internArray(refs), canAct: ownerCanAct(owner), bits: featureBits(owner), cool, deferred, needsRedirect, rk, ro, enabled: null, effects: null, ran: null };
+    return { slots, n, cver, analyses: internArray(analyses), stats: internArray(stats), ids: internArray(stats.map(name => STAT_ID[name] ?? -1)), refs: internArray(refs), canAct: ownerCanAct(owner), bits: featureBits(owner), cool, deferred, needsRedirect, rk, ro, condIdx, condTargets, condMask,
+      quick, noSleep: quick && !!cool?.includes(1), enabled: null, effects: null, ran: null };
+  }
+  /** 매 프레임 다시 보는 빠른 조건: 거짓 진입 슬롯은 그대로 거짓, 조건 슬롯은 같은 대상을 고르는가 */
+  quickSame(f, game) {
+    const slots = this.slots, owner = this.owner;
+    if (f.cool) for (let i = 0; i < f.n; i++) {
+      const mode = f.cool[i];
+      if (mode === 4 ? !isIdleEnterSlot(slots[i], f.analyses[i], game) : mode === 5 && !isQuickBlockedSlot(slots[i], f.analyses[i], game)) return false;
+    }
+    if (f.condIdx) for (let k = 0; k < f.condIdx.length; k++) {
+      const slot = slots[f.condIdx[k]], plan = fixedSlotPlan(slot), targets = fixedTargets(slot, plan, owner, game);
+      if (targets !== f.condTargets[k] || plan.conds && fixedCondMask(plan, targets, owner, game) !== f.condMask[k]) return false;
+    }
+    return true;
   }
   fixedMatches(f, game, dt) {
     const owner = this.owner, slots = this.slots, n = f.n;
@@ -292,6 +322,7 @@ class EntitySlots extends EntitySlot {
       if (mode === 1) { if (!(slot.cd - dt * (owner.stats?.cooldownRate ?? owner.cardRate ?? 1) > 1e-8)) return false; }
       else if (mode === 2) { if (!isBlockedSlot(slot, analyses[i], game)) return false; }
       else if (mode === 3) { if (!(game._cardBudget <= 0) || slot.cd > 0) return false; }
+      else if (mode === 4 || mode === 5) continue;   // 아래 quickSame 이 본다
       else if (slot.cd > 0) return false;
     }
     if (f.stats.length && !statsMatch(owner, f)) return false;
@@ -299,7 +330,7 @@ class EntitySlots extends EntitySlot {
       const rv = game.redirectedPlayerTarget(owner);
       if (rv.kind !== f.rk || game.targetObj(rv) !== f.ro) return false;
     }
-    return true;
+    return !f.quick || this.quickSame(f, game);
   }
   update(dt, game, context = NO_GROUP_CONTEXT) {
     const wasSoa = this._soa;
@@ -337,7 +368,7 @@ class EntitySlots extends EntitySlot {
       this.tickPooled(dt, game, chase, fast.enabled);
       flushSlotEvents(game);
       // 표가 안정된 개체는 다음 프레임부터 잠든다. 쿨타임 중인 슬롯이 있으면 그 남은 시간을 넘기지 않는 만큼만. 미룬 슬롯이 있으면 예산이 돌아오는 대로 작동해야 하므로 자지 않는다.
-      if (!owner.dead && !fast.deferred && (this._stable = (this._stable | 0) + 1) >= (fast.cool ? SLEEP_AFTER : SLEEP_AFTER_IDLE)) {
+      if (!owner.dead && !fast.deferred && !fast.noSleep && (this._stable = (this._stable | 0) + 1) >= (fast.cool ? SLEEP_AFTER : SLEEP_AFTER_IDLE)) {
         this._sleep = fast.cool ? (game._crowded ? SLEEP_FRAMES_CROWD : SLEEP_FRAMES) : SLEEP_FRAMES_IDLE - (sleepIdleSeq++ % SLEEP_IDLE_SPREAD); this._sleepLeft = left; this._sleepDt = 0; this._sleepFrames = 0;
         this._sleepRate = owner.stats?.cooldownRate ?? owner.cardRate ?? 1;
         // 자는 동안 쓰지 않는 표 버퍼는 놓는다 (오래 사는 개체마다 Set·Map 두 개를 덜 쥔다)
@@ -411,6 +442,7 @@ class EntitySlots extends EntitySlot {
     this._soa = true;
   }
   armPlan(game, fast) {
+    if (fast.quick) return null;   // C 는 진입·조건 슬롯의 빠른 판정을 하지 않는다
     // 조건 때문에 막힌 슬롯: 막는 조건이 모두 「플레이어가 시야 안인가」(entityInSight·entityPlayerInSight 의 quick)이면 C 가 거리로 판정한다.
     let blocked = 0;
     if (fast.cool?.includes(2)) {
@@ -435,7 +467,7 @@ class EntitySlots extends EntitySlot {
   armShotNap(game, fast) {
     const owner = this.owner, pi = owner._pi;
     if (!WasmCore.on() || pi === undefined || !(owner instanceof Projectile) || fast.version !== this.version) return;
-    if (fast.needsRedirect || fast.cool || !fast.canAct) return;
+    if (fast.needsRedirect || fast.cool || fast.quick || !fast.canAct) return;
     for (const name of fast.stats) if (!SHOT_NAP_STATS.has(name)) return;
     if (owner.effectSlots != null || owner.burnEventEffects || owner.directStates || owner.freezeT > 0 || owner.directFrozen || owner.slots !== fast.slots) return;
     const effects = fast.effects, move = effects.get('entityMove');
@@ -472,7 +504,7 @@ class EntitySlots extends EntitySlot {
       const slots = this.slots;
       for (let i = 0; i < slots.length; i++) if (fast.cool[i] === 2 && !isBlockedSlot(slots[i], fast.analyses[i], game)) return false;
     }
-    return true;
+    return !fast.quick || this.quickSame(fast, game);
   }
   /** napCheck 를 통과한 프레임: 슬롯 갱신 없이 몸만 움직인다. 쿨타임·실행 횟수는 깨어날 때 반영한다. */
   napRun(dt, game, chase) {
@@ -515,7 +547,7 @@ class EntitySlots extends EntitySlot {
 
 // 재사용 껍데기(Projectile.create·Enemy 풀)가 지난 생애의 슬롯 묶음을 그대로 쓸 때 허용하는 필드. 이 밖의 필드가 붙은 묶음(연계·유인 등)은 새로 만든다.
 // 카드·분석·대상·효과 값 캐시는 카드 배열·주인·참조 스탯으로 검증되므로 남기고, 생애 상태(쿨타임·실행 횟수·휴면 장부·사망)는 생성 직후 값으로 되돌린다.
-const REUSABLE_SLOT_KEYS = new Set(['owner', 'kind', '_cards', '_mayDecoy', '_defaults', 'cd', 'enabled', 'effects', 'effectCache', 'version', '_analysis', '_fixedTargets', 'runs',
+const REUSABLE_SLOT_KEYS = new Set(['owner', 'kind', '_cards', '_mayDecoy', '_defaults', 'cd', 'enabled', 'effects', 'effectCache', 'version', '_analysis', '_fixedTargets', '_condMemo', '_emMemo', '_resolvedTargets', '_playerWrap', 'runs',
   '_rcId', '_rcEntry', '_planValue', '_targetMemo', '_resolvedCache', '_hasMemo', 'eventState', 'deathDone', '_evCards', '_evMask', '_target']);
 const REUSABLE_GROUP_KEYS = new Set(['owner', 'kind', '_cards', '_mayDecoy', '_defaults', 'cd', 'enabled', 'effects', 'effectCache', 'version', 'slots', '_evVer', '_evList', '_evAll',
   '_stable', '_captureStructural', '_captureSkip', '_tables', '_target', '_ownerTargets', '_fast', '_sleep', '_sleepLeft', '_sleepDt', '_sleepFrames', '_sleepRate', 'deathDone', '_soa',

@@ -7,8 +7,10 @@ const BUFF_RATE_TIMERS = ['cd', 'shootCd', 'summonCd'];
 function buffActive(o, k) { return o.cardBuffs?.[k] > 0; }
 function scaleBuffField(o, key, factor) {
   if (!Number.isFinite(o[key])) return;
+  // 배율이 그대로면 값을 다시 쓰지 않는다: 매 프레임 x / f * f 를 되풀이하며 쌓이던 반올림 오차와 적 접근자(SoA·휴면 해제) 갱신을 피한다
+  const old = o.cardScales?.[key] || 1;
+  if (old === factor) return;
   o.cardScales ||= {};
-  const old = o.cardScales[key] || 1;
   o[key] = o[key] / old * factor;
   o.cardScales[key] = factor;
 }
@@ -66,7 +68,9 @@ class GameDamage {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
-    this._slotExecution?.applied.push(o);
+    // 걸린 대상 목록은 이어지는 행동(꼬리·연쇄)이 있을 때만 읽는다 (대량 대상 행동은 한 실행에 수천 번 걸린다)
+    const execution = this._slotExecution;
+    if (execution && (execution.tail.length || execution.chain)) execution.applied.push(o);
     if (key === 'burn') registerBurnLink(this, o, duration);
     const timers = direct ? (o.directStates ||= {}) : o;
     const timer = direct ? key : key + 'T';
@@ -80,9 +84,11 @@ class GameDamage {
       }
       // 남은 시간이 같은 스택은 하나로 합친다 (화상은 초당 피해 합, 표식은 중첩 수 count).
       // 전염이 스택을 서로 복사하며 개수가 기하급수로 늘어나 프레임이 멈추는 것을 막는다.
-      const same = o[stackKey].find(stack => stack.time === duration);
+      const stacks = o[stackKey];
+      let same = null;
+      for (let i = 0; i < stacks.length; i++) if (stacks[i].time === duration) { same = stacks[i]; break; }
       if (same) { same.dps += dps; same.count = (same.count ?? 1) + count; }
-      else o[stackKey].push({ time: duration, dps, count });
+      else stacks.push({ time: duration, dps, count });
       timers[timer] = Math.max(timers[timer] || 0, duration);
       if (key === 'mark') o.markT = Math.max(o.markT || 0, duration);
       // burnDps 는 항상 직전 스택 합계이므로 새로 더해진 초당 피해만 더한다.

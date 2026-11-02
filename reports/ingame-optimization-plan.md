@@ -389,3 +389,30 @@ GPU 포함 시간 (후속 측정): 앞서 적은 「`getImageData(0,0,1,1)` 을 
 해 보고 버린 것: 과밀 때 먼 적 탄 갱신 주기 늘리기 (적 탄은 시야 안 적이 쏴서 화면 1.5 배 밖까지 가는 탄이 거의 없다).
 
 남은 것 (적 3만 기준 비중): 적 JS 갱신 (실제 발사·새로 생긴 적의 첫 갱신·상태 이상 걸린 적, ~30%), 적 탄 갱신 (~15%, 매 프레임 JS 슬롯 갱신 — 투사체처럼 SoA·C 휴면으로 옮기는 것이 다음 큰 단계), 충돌·해시·장판. 벤치 도구: `BENCH_COUNT_KIND=type` 이면 개체 종류(`type`)별로 호출 수와 시간을 센다.
+
+
+## 실제 플레이 9차: 보석·아군 휴면, 슬롯 실행 할당, 버프·디버프 경로 (결과 동일)
+
+측정: `STAGE_FRAMES=3000 BENCH_CAL=1 BENCH_HIGH=1 node tools/bench-frame.cjs stage5 stage6 stage7` 과 `gems`, HEAD 사본과 번갈아 (다른 작업과 CPU 를 나눠 써서 벽시계가 크게 흔들린다 — 비율로 본다).
+
+| 시나리오 | 전 | 후 |
+| --- | --- | --- |
+| `gems` (보석 300) | 1.9 ~ 3.1ms | 0.9 ~ 1.7ms |
+| stage5 (보석 ~290) | 6.4 ~ 6.8ms | 4.8 ~ 5.7ms |
+| stage6 step/cal (기사 ~130) | 12.3 ~ 12.6 | 10.5 ~ 11.0 |
+| stage7 step/cal (적 ~1100) | 14.0 ~ 14.1 | 13.2 ~ 13.9 |
+
+바뀐 것:
+- **보석 휴면**: 보석 슬롯 `[사거리 이내 → 플레이어 → 이동]`·`[플레이어 접촉 시 → 흡수]` 는 매 프레임 `runEventSlot` 전체를 돌았다 (표본이 늘 구조 실패). `entityInReach.quickTest`(test 와 같은 식)로 조건 있는 매 프레임 슬롯도 고정 계획(`runFixedSlot`)이 되고, `ifPlayerContact.enterQuick` 으로 「진입 조건이 거짓이고 진입 상태가 빈 진입 슬롯」을 표본 모드 4 로 넣는다. 조건이 고르는 대상 비트·진입 판정은 `quickSame` 이 매 프레임(잠든 동안에도) 다시 본다. `gems` 의 `runEventSlot` 프레임당 740 → 20 회.
+- **아군(기사·궁수)**: 대상 카드에 `fixedResolve`(환경 없이 같은 대상: `nearestEnemy`, `entityMovementTarget`)를 두어 이동 슬롯이 고정 계획이 되고, 공격 슬롯이 「준비됐지만 사거리 안 적이 없음」일 때 표본 모드 5(`isQuickBlockedSlot`)로 넣는다.
+- **수면 규칙**: 위 빠른 판정은 예전에 표본을 만들 수 없던 슬롯이 있는 개체(`quick`)에만 쓴다. 그런 개체는 전에 잠든 적이 없으므로 쿨타임 슬롯이 있는 동안은 잠들지 않는다(`noSleep`: 몰아 깎는 쿨타임은 부동소수 결과가 달라진다). C 휴면(`armPlan`·`armShotNap`·`napTurn`)도 `quick` 표본은 넘기지 않는다. 포탑처럼 예전에도 표본을 만들던 개체는 그대로다.
+- **가까운 적 하나 C** (`near_one`): `nearestEnemies(n=1)` 이 범위 안 후보를 모두 모아 JS 에서 다시 훑던 것을 C 가 바로 고른다 (같은 거리면 목록 앞선 적).
+- **슬롯 실행 할당**: `runEventSlot` 의 `enableMechanic` 클로저 → 공유 함수(`slotEnableMechanic`), 해석 결과·충돌 규칙·대상 내용이 같으면 효과 값 객체 재사용, `executeLinkedAction` 의 실행 기록 풀링, 듣는 쪽 없는 완료 이벤트 자료를 만들지 않음, 명중·적용 목록은 꼬리·연쇄가 있을 때만 쌓음.
+- **버프 배율** (`scaleBuffField`): 배율이 그대로면 값을 다시 쓰지 않는다 (매 프레임 `x / f * f` 반복을 없앰).
+- **화상·표식 스택 찾기**: `find` 클로저 → 반복문.
+
+검증: `run-all-checks` 와 같은 항목(모든 `check-*`, `play-stages`, 기본 bench 지문 + `structs swarm hold burst`)이 변경 전 HEAD 와 같고, `stage0`~`stage7`(stage2 제외) 전체 길이 지문도 같다. `POOL_VERIFY=1 FIXED_VERIFY=1 NAP_VERIFY=1` 에서 예외 없음. playwright 검사 `check-play-logs`·`check-worker-sim` 통과, `check-event-ui` 는 변경 전에도 같은 단언으로 실패한다.
+
+알려진 차이: 고정 계획으로 바뀐 보석·아군 이동은 플레이 로그 카드 사용 횟수(`PlayLog.card`)에 더 이상 매 프레임 세지 않는다 (적의 고정 이동과 같은 처리).
+
+남은 것: stage7 은 적 갱신(`stepEnemiesWasm`)과 `전체 → 분노`·`적 → 화상/공포` 의 대상별 처리가 대부분이다. 보석이 잠든 동안에도 `sleepInputsSame`·`quickSame` 이 유인 대상(`redirectedPlayerTarget`)을 두 번 구한다.
