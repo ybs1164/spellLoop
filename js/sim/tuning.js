@@ -14,6 +14,9 @@ const MAX_PARTICLES = Infinity;
 const CROWD_MAX_TEXTS = 150;
 const CROWD_MAX_FX = 120;
 const CROWD_MAX_PARTICLES = 800;
+// 이펙트 중복 억제: 같은 자리(격자 칸 또는 따라가는 대상)·같은 모양의 이펙트가 이 시간(초) 안에 이미 생겼으면 새로 만들지 않는다
+const FX_DEDUPE_WINDOW = 0.1;
+const FX_DEDUPE_GRID = 8;   // 같은 자리로 보는 격자 한 칸 (px)
 // 분열 상한: 분열로 늘어나는 개체 수 (복제가 다시 분열하며 기하급수로 늘어나 멈추는 것을 막는다)
 const SPLIT_CAPS = { enemy: ['enemies', MAX_ENEMIES], self: ['allies', Infinity], ally: ['allies', Infinity], object: ['objects', Infinity], zone: ['zones', Infinity], shot: ['projectiles', Infinity], gem: ['pickups', Infinity], pickup: ['pickups', Infinity] };
 
