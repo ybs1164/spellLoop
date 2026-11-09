@@ -68,10 +68,6 @@ class GameDamage {
     const resistance = o.slot?.effect('entityResistance');
     if (!(duration > 0) || (key === 'fear' && resistance?.fearImmune)) return;
     if (key === 'freeze' && resistance) duration *= resistance.freezeMultiplier;
-    // 걸린 대상 목록은 이어지는 행동(꼬리·연쇄)이 있을 때만 읽는다 (대량 대상 행동은 한 실행에 수천 번 걸린다)
-    const execution = this._slotExecution;
-    if (execution && (execution.tail.length || execution.chain)) execution.applied.push(o);
-    if (key === 'burn') registerBurnLink(this, o, duration);
     const timers = direct ? (o.directStates ||= {}) : o;
     const timer = direct ? key : key + 'T';
     if (key === 'mark' || key === 'burn') {
@@ -99,13 +95,13 @@ class GameDamage {
     }
   }
 
-  directAction(id, t) {
+  directAction(id, t, damageScale = 1) {
     const o = this.targetObj(t), p = this.player;
     if (o.dead) return;
     const actor = this.actionActor || p, settings = entityActionConfig(actor, id, this.actionCard);
     if (id === 'snipe' && settings) {
       if ('swing' in actor) actor.swing = 0.15;   // 휘두르는 모션이 있는 개체만 모션을 재생한다
-      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1);
+      const damage = entityStats(actor).attackPower * settings.damageRatio * (settings.playerPower ? p.stats.might * p.cardMul : 1) * damageScale;
       if (actor.dead) return;
       if (t.kind === 'enemy') this.damageEnemy(o, damage, o.x - actor.x || 1, o.y - actor.y, settings.knockback, undefined, settings.elem);
       else this.damageTarget(t, damage, settings.knockback, settings.elem, false);
@@ -120,7 +116,7 @@ class GameDamage {
     if (id === 'spread') {
       this.spread(t);
     } else if (hits[id]) {
-      if (id !== 'frost' || Number.isFinite(o.hp)) this.damageTarget(t, this.actionValue(id, 'damage') * p.stats.might, this.actionValue(id, 'knockback'), id === 'frost' ? 'frost' : null);
+      if (id !== 'frost' || Number.isFinite(o.hp)) this.damageTarget(t, this.actionValue(id, 'damage') * p.stats.might * damageScale, this.actionValue(id, 'knockback'), id === 'frost' ? 'frost' : null);
     }
     const color = id === 'frost' ? '#9fd8ff' : id === 'burn' ? '#ff7b2e' : '#8be9ff';
     this.circleFx(o.x, o.y, (o.r || o.radius || 12) + 12, color, { life: 0.3, follow: o, style: 'wave' });

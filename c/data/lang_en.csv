@@ -1,0 +1,565 @@
+ko,en
+대상,Target
+행동,Action
+연쇄,Chain
+비어 있음,Empty
+{0}초,{0}s
+오늘도 평화로운,What a Peaceful
+마법 생활,Magic World
+카드를 쌓아 나만의 주문을 조립하라,Stack cards and assemble your own spells
+/ 방향키 이동,/ Arrow Keys Move
+카드 편집,Edit Cards
+일시정지,Pause
+보상 카드 선택,Pick Reward Card
+대상 카드,Target Cards
+행동 카드,Action Cards
+연쇄 카드,Chain Cards
+— 행동을 적용할 개체나 지점을 고릅니다.,— choose the entity or point an action applies to.
+— 선택한 대상에게 공격·회복·소환 등의 행동을 실행합니다.,"— perform an action such as attack, heal or summon on the chosen target."
+— 앞 행동의 결과를 다음 행동으로 잇거나 발동 조건·제약을 정합니다.,"— pass the previous action's result on to the next, or set triggers and constraints."
+시작하기,Start
+도감,Codex
+실행 리스트,Action List
+슬롯,Slots
+계속하기,Resume
+타이틀로,To Title
+알 수 없는 피해,Unknown damage
+결정타,Killing Blow
+준 피해,Damage Dealt
+초당 피해,DPS
+처치한 적 · {0}종,Enemies Slain · {0} types
+아직 처치한 적이 없습니다,No enemies slain yet
+외 {0}종 {1},+{0} more ×{1}
+{0} ×{1},{0} ×{1}
+모든 단계 돌파!,All Stages Cleared!
+쓰러졌습니다,You Fell
+{0}단계 {1},Stage {0} {1}
+최종 실행 리스트,Final Action List
+다시 하기,Play Again
+보상 {0}개,Rewards {0}
+스탯,Stats
+첫 카드,First card
+쿨타임 매 프레임 (={0}),Cooldown every frame (={0})
+쿨타임 {0} / {1}초,Cooldown {0} / {1}s
+쿨타임 {0}초,Cooldown {0}s
+슬롯 {0}개,{0} Slots
+카드를 슬롯 끝의 빈 칸으로 드래그 (대상 → 행동 → 연쇄 순서 반복) · 쿨타임은 기본 {0}초에 카드 연산(+ − × =)을 배치 순서대로 적용,"Drag cards into the empty space at the end of a slot (Target → Action → Chain, repeating) · Cooldown starts at {0}s and each card's operation (+ − × =) applies in placement order"
+보관함,Storage
+{0}장,{0}
+왼쪽 슬롯으로 드래그하세요.,Drag into a slot on the left.
+클릭하면 선택한 슬롯에 추가됩니다.,Click to add to the selected slot.
+슬롯 카드를 이곳으로 옮기면 보관합니다.,Move slot cards here to store them.
+{0} 카드,{0} Cards
+보관함이 비었습니다. 레벨업으로 카드를 얻으세요.,Storage is empty. Level up to get cards.
+닫기,Close
+전체,All
+플레이어,Player
+보스,Boss
+정예 적,Elite Enemy
+일반 적,Common Enemy
+아군,Ally
+설치물,Structure
+장판,Field
+투사체,Projectile
+아이템,Item
+적군,Enemy
+중립,Neutral
+시작 슬롯 {0}개,Starting Slots {0}
+{0}카드 슬롯 {1}개,{0}Card Slots {1}
+카드,Cards
+개체,Entities
+{0} 카드 · {1}장,{0} Cards · {1}
+{0} · {1}장,{0} · {1}
+"슬롯의 행동 카드 뒤에 놓습니다. 앞 행동의 결과(적중·완료)를 이어받아 뒤의 대상·행동을 실행하거나, 슬롯에 구성 제약·작동 조건을 겁니다.","Placed after an action card in a slot. Takes the previous action's result (hit, finished) to run the following target and action, or puts layout constraints and trigger conditions on the slot."
+개체 변형 카드 · {0}장,Entity Variant Cards · {0}
+"개체 도감의 슬롯에만 있는, 개체별 수치가 적용된 카드입니다.","Cards found only in entity codex slots, with each entity's own values applied."
+개체마다 소속 팀 · 분류 · 기본 스탯과 기본 슬롯 구조를 보여 줍니다. 카드에 마우스를 올리면 설명이 나옵니다.,"Shows each entity's team, category, base stats and default slot layout. Hover over a card to see its description."
+{0} · {1}종,{0} · {1} types
+적,Enemy
+구조물 · 오브,Structures · Orbs
+보석 · 아이템,Gems · Items
+개체 행동 속성,Entity Behavior
+각 개체의 스탯과 카드 슬롯을 확인할 수 있습니다.,View each entity's stats and card slots.
+"{0} #{1} ({2}, {3}) · 슬롯 {4}","{0} #{1} ({2}, {3}) · Slots {4}"
+현재 이 종류의 개체가 없습니다.,There are no entities of this kind right now.
+커뮤니티 · 피드백/버그 제보 (Discord),Community · Feedback / Bug Reports (Discord)
+소환 종류: {0},Summon type: {0}
+공격력 비율: {0}%,Attack ratio: {0}%
+선행 조준,Leads its aim
+범위: {0},Area: {0}
+화면을 누르면 결과 보기,Tap the screen to see results
+Enter · 클릭으로 결과 보기,Enter · Click to see results
+편집,Edit
+보스 보상!,Boss Reward!
+보물 상자!,Treasure Chest!
+회복 사제,Healing Priest
+기사,Knight
+궁수,Archer
+분신,Clone
+구체,Orb
+지뢰,Mine
+포탑,Turret
+미끼,Decoy
+화약통,Powder Keg
+독 장판,Poison Field
+소용돌이,Vortex
+회전 칼날,Spinning Blades
+점액,Slime Puddle
+결계,Barrier
+유성,Meteor
+심연,Abyss
+치유 장판,Healing Field
+보호 장판,Shelter Field
+화상 장판,Burning Field
+경험치 보석,XP Gem
+생명의 보석,Life Gem
+자석,Magnet
+보물 상자,Treasure Chest
+속박탄,Binding Shot
+적 탄환,Enemy Shot
+아군 탄환,Ally Shot
+{0}에게 쓰러졌습니다,Slain by {0}
+분노,Rage
+질주,Haste
+집중,Focus
+증폭,Amplify
+철갑,Ironclad
+보호막,Shield
+「바람의 장화」는 이동 카드가 포함된 슬롯에만 넣을 수 있습니다,"""Wind Boots"" can only go in a slot that contains a movement card"
+{0}은(는) 앞에 발동 연쇄 카드가 있어야 작동하므로 이 칸에 놓을 수 없습니다,"{0} needs a trigger chain card in front of it, so it can't go in this spot"
+{0}은(는) {1}을(를) 대상으로 삼을 수 없습니다,{0} can't target {1}
+{0}번째 칸에는 {1} 카드만 놓을 수 있습니다,Spot {0} only accepts {1} cards
+슬롯에는 카드를 {0}장까지만 놓을 수 있습니다,A slot can hold at most {0} cards
+같은 종류({0})의 카드 자리로만 옮길 수 있습니다,Can only be moved to a spot of the same type ({0})
+순서가 끊겨 뒤따르던 카드 {0}장을 보관함으로 되돌렸습니다,"The order was broken, so {0} following card(s) went back to storage"
+{0} 카드 자리에는 {1} 카드만 놓을 수 있습니다,{0} card spots only accept {1} cards
+다음 칸에는 {0} 카드만 놓을 수 있습니다,The next spot only accepts {0} cards
+슬롯 {0}: {1},Slot {0}: {1}
+포위 공격!,Surrounded!
+⚠ {0} 출현,⚠ {0} appears
+{0}단계 · {1},Stage {0} · {1}
+{0}분 {1}초에 {2},{2} at {0}m {1}s
+{0}분에 {1},{1} at {0}m
+「{0}」 카드 획득,"Got card ""{0}"""
+{0}단계 돌파!,Stage {0} Cleared!
+곧 다음 단계가 시작됩니다,The next stage begins soon
+전방 지점,Point Ahead
+후방 지점,Point Behind
+무작위 지점,Random Points
+쓰러진 자리,Fallen Spots
+탄환,Projectiles
+보석,Gems
+사냥감,Quarry
+직전 표적,Last Target
+가장 가까운 적,Nearest Enemy
+마무리 대상,Finishing Target
+마탄,Magic Bolt
+참격,Slash
+폭발,Explosion
+빙결,Freeze
+충격파,Shockwave
+기사 소환,Summon Knight
+오브 스폰,Spawn Orb
+치유,Heal
+산탄,Scatter Shot
+관통탄,Piercing Lance
+끌어당기기,Pull
+자력,Magnetism
+부유 구체,Floating Orb
+부메랑,Boomerang
+유도탄,Homing Missile
+레이저,Laser
+번개,Lightning
+속박,Root
+표식,Mark
+화상,Burn
+공포,Fear
+흡혈,Drain
+순간이동,Teleport
+돌진,Dash
+궁수 소환,Summon Archer
+전염,Contagion
+저격,Snipe
+분열,Split
+흡수,Absorb
+위치 교환,Swap Places
+부상일 때,When Hurt
+입력 방향 이동,Move by Input
+슬롯 주인,Slot Owner
+소멸,Vanish
+범위 내 적,Enemies in Area
+플레이어 접촉 시,On Player Contact
+충돌 대상: 다른 팀,Collides With: Other Team
+대상 위치 복사,Copy Target Position
+속도 이동,Speed Move
+거리 유지,Keep Distance
+범위 유인,Area Lure
+충돌 피해,Contact Damage
+상태 저항,Status Resistance
+빙결 취약,Weak to Freeze
+정면 방어 85%,Front Guard 85%
+공전,Orbit
+시야 내 가까운 적 / 없으면 플레이어,Nearest Enemy in Sight / Else Player
+유지 거리 밖 / 플레이어 거리 초과,Outside Keep Distance / Beyond Player Range
+시야 이내,Within Sight
+플레이어 시야 내,Player in Sight
+사거리 이내,Within Reach
+범위 이내,Within Area
+사거리 내 적 진입 시,On Enemy Entering Reach
+같은 팀,Same Team
+다른 팀,Other Team
+타격 시,On Hit
+피격 시,On Hurt
+사망 시,On Death
+생성 시,On Spawn
+행동 완료 시,On Action Done
+획득 시,On Pickup
+이동 완료 시,On Move Done
+기폭 시,On Detonate
+바람의 장화,Wind Boots
+질주의 깃털,Feather of Haste
+고요의 모래시계,Hourglass of Stillness
+피의 성배,Blood Chalice
+포위의 뿔피리,Horn of Siege
+가시 갑옷,Thorn Armor
+공명의 종,Bell of Resonance
+이벤트 상대,Event Other
+행동 주체,Action Source
+슬라임 소환,Summon Slimes
+보물 상자 드롭,Drop Treasure Chest
+박쥐 소환,Summon Bats
+상시 철갑,Permanent Ironclad
+적탄 발사,Fire Enemy Shots
+용암 거미 소환,Summon Lava Spiders
+경험치 드롭,Drop XP
+속박탄 발사,Fire Binding Shots
+화상 장판 남기기,Leave Burning Field
+슬라임 분열,Slime Split
+유령 소환,Summon Ghosts
+타격,Strike
+화살 사격,Shoot Arrow
+포탑 사격,Turret Shot
+독 피해,Poison Damage
+칼날 베기,Blade Cut
+부메랑 귀환,Boomerang Return
+적 추적,Enemy Homing
+속도 이동 속도 100% 이동,Speed Move: 100% Move Speed
+반경 350 유인,Lure in Radius 350
+충돌 피해 공격력 100%,Contact Damage 100% ATK
+유지 거리 밖 / 플레이어 거리 60 초과,Outside Keep Distance / Player Beyond 60
+지점,Point
+플레이어를 고른다.,Targets the player.
+시야 안의 모든 적을 고른다.,Targets every enemy in sight.
+바라보는 방향 160 앞.,160 ahead in the facing direction.
+등 뒤 120 지점.,A point 120 behind.
+주변 무작위 지점 3곳 (80~260).,3 random points nearby (80–260).
+최근 3초 안에 적이 쓰러진 자리를 모두 고른다.,Targets every spot where an enemy fell in the last 3 seconds.
+화약통을 포함한 모든 설치물을 고른다.,"Targets every structure, including powder kegs."
+소환한 아군 전부.,All summoned allies.
+모든 장판을 고른다.,Targets every field.
+시야 안의 모든 탄환을 고른다.,Targets every projectile in sight.
+모든 보석을 고른다.,Targets every gem.
+가장 강한 적을 계속 노린다.,Keeps aiming at the strongest enemy.
+모든 슬롯에서 가장 최근에 행동을 받은 적을 고른다.,Targets the enemy most recently hit by an action from any slot.
+모든 대상을 고른다.,Targets everything.
+슬롯 주인 기준 시야 안에서 가장 가까운 적 하나를 고른다.,Targets the single nearest enemy within the slot owner's sight.
+시야 안에서 체력이 50% 이하인 적을 모두 고른다.,Targets every enemy in sight at 50% health or less.
+마력탄을 발사한다.,Fires a magic bolt.
+범위를 즉시 베어 피해를 준다.,Instantly slashes an area for damage.
+범위를 폭발시켜 피해를 주고 밀어낸다.,"Blasts an area, dealing damage and knocking back."
+범위에 피해를 주고 0.9초간 얼린다.,Damages an area and freezes it for 0.9s.
+4초간 독 피해를 주는 장판을 만든다.,Creates a field that deals poison damage for 4s.
+1.5초간 주변 적을 끌어당긴다.,Pulls in nearby enemies for 1.5s.
+충격파로 주변에 피해를 주고 밀어낸다.,A shockwave damages and pushes back everything nearby.
+기사 1체를 10초간 소환한다.,Summons 1 knight for 10s.
+대상 위치에 설정된 경험치 오브 또는 아이템을 생성한다.,Spawns the configured XP orb or item at the target position.
+대상의 체력을 회복한다.,Restores the target's health.
+6초간 피해를 흡수하는 보호막을 부여한다.,Grants a shield that absorbs damage for 6s.
+4초간 이동 속도를 높인다.,Raises move speed for 4s.
+5초간 공격력을 높인다.,Raises attack for 5s.
+마탄 5발을 부채꼴로 발사한다.,Fires 5 magic bolts in a fan.
+관통하는 창을 발사한다.,Fires a piercing lance.
+5초간 슬롯 쿨타임 감소 속도 +54%.,Slot cooldowns tick 54% faster for 5s.
+6초간 범위를 넓힌다.,Widens area for 6s.
+6초간 매 타격의 피해를 줄인다.,Reduces the damage of every hit for 6s.
+선택한 대상을 시전자 쪽으로 끌어당긴다.,Pulls the chosen target toward the caster.
+보석·설치물이 플레이어에게 계속 끌려온다. 설치물은 곁에서 멈춘다.,Gems and structures keep getting drawn to the player. Structures stop beside them.
+대상 위치에 구체를 설치한다.,Places an orb at the target position.
+대상 위치에 지뢰를 설치한다.,Places a mine at the target position.
+대상 위치에 포탑을 설치한다.,Places a turret at the target position.
+대상 위치에 미끼를 설치한다.,Places a decoy at the target position.
+돌아오는 관통 부메랑을 던진다.,Throws a piercing boomerang that comes back.
+적을 추적하는 유도탄을 발사한다.,Fires a missile that homes in on enemies.
+직선으로 레이저를 발사한다.,Fires a laser in a straight line.
+최대 8체에 연쇄 번개 피해를 준다.,Chain lightning damages up to 8 targets.
+0.8초 뒤 범위에 유성을 떨어뜨린다.,Drops a meteor on an area after 0.8s.
+5초간 칼날을 공전시켜 0.2초마다 피해를 준다.,"Blades orbit for 5s, dealing damage every 0.2s."
+범위 적을 속박 1.6초 (중첩 시 시간 합산).,Roots enemies in an area for 1.6s (durations add up when stacked).
+6초간 중첩당 받는 피해 +90% (각각 만료).,"For 6s, +90% damage taken per stack (each expires separately)."
+범위에 3초간 화상을 입힌다.,Burns an area for 3s.
+범위 적에게 공포 1.8초 (중첩 시 시간 합산).,Fears enemies in an area for 1.8s (durations add up when stacked).
+대상에게 피해를 주고 체력을 흡수한다.,Damages the target and drains its health.
+바라보는 방향으로 대상을 순간이동시킨다.,Teleports the target in the facing direction.
+바라보는 방향으로 대상을 돌진시킨다.,Dashes the target in the facing direction.
+대상 위치에 궁수를 소환한다.,Summons an archer at the target position.
+3초간 주변 적을 밀어낸다.,Pushes nearby enemies away for 3s.
+대상의 상태 이상을 범위 내 주변 적에게 전파한다.,Spreads the target's status effects to nearby enemies in an area.
+총피해를 선택한 모든 대상에게 균등하게 나누어 즉시 타격한다.,Splits total damage evenly across all chosen targets and strikes instantly.
+대상을 복제하거나 둘로 나눈다. 분열로 생긴 개체는 분열을 쓸 수 없다.,Copies the target or splits it in two. Entities created by Split can't split.
+대상을 회수하거나 아이템을 얻는다.,Recalls the target or picks up the item.
+대상과 위치를 바꾸며 0.3초간 무적이 된다.,Swaps places with the target and becomes invulnerable for 0.3s.
+체력이 최대보다 낮은 대상에게만 작동한다.,Only works on targets below max health.
+화살표/WASD 입력 방향으로 대상을 이동 속도 스탯 × 1프레임만큼 이동시킨다.,Moves the target in the arrow/WASD input direction by move speed × 1 frame.
+자기 자신을 고른다.,Targets itself.
+선택한 대상을 사망 보상 없이 제거한다.,Removes the chosen target without death rewards.
+범위 내 적 전부를 고른다.,Targets every enemy in the area.
+플레이어 접촉 순간에만 작동한다.,Only works at the moment of touching the player.
+충돌 대상: 다른 팀. 이 슬롯의 충돌 행동은 이 팀에게만 작동한다.,Collides with: other team. This slot's contact actions only work on that team.
+장판 생성 행동이 지정한 개체의 X·Y 좌표를 매 프레임 복사한다. 지정한 개체가 사라지면 좌표 복사를 멈춘다.,Copies the X/Y position of the entity chosen by the field-spawning action every frame. Stops copying once that entity is gone.
+선택한 대상 쪽(자신이면 바라보는 방향)으로 이동한다.,Moves toward the chosen target (the facing direction if it is itself).
+추적 대상과 거리를 유지하며 옆으로 돈다.,Keeps its distance from the tracked target while circling sideways.
+범위 안의 적이 이 개체를 쫓도록 유인한다.,Lures enemies in the area into chasing this entity.
+충돌한 대상에게 피해와 넉백을 준다.,Deals damage and knockback to whatever it collides with.
+빙결 시간을 줄이며 공포에 저항한다.,Shortens freezes and resists fear.
+빙결 원소 피해를 2배 받는다.,Takes double damage from freeze.
+정면 타격을 막는다 (빙결 중 제외).,Blocks hits from the front (except while frozen).
+칼날 3개를 초당 4라디안으로 공전시킨다. 칼날의 충돌 반경은 14이다.,Orbits 3 blades at 4 radians per second. Each blade has a contact radius of 14.
+"시야 상태 안의 가장 가까운 적을 고르고, 적이 없으면 플레이어를 고른다.","Targets the nearest enemy within the Sight stat, or the player if there is none."
+"적과 거리 유지 거리 상태 + 적 반경, 플레이어와 거리보다 멀 때만 이동한다.","Only moves when farther than the Keep Distance stat + enemy radius from enemies, and farther than the set distance from the player."
+슬롯 주인과 거리가 시야 상태 이내인 대상만 고른다.,Only targets things within the slot owner's Sight stat.
+플레이어가 슬롯 주인의 시야 상태 이내일 때만 뒤 행동을 실행한다.,Only runs the following actions while the player is within the slot owner's Sight stat.
+슬롯 주인과 거리가 사거리 상태 + 대상 반경 이내인 대상만 고른다.,Only targets things within the slot owner's Reach stat + target radius.
+슬롯 주인과 거리가 범위 상태 이내인 대상만 고른다.,Only targets things within the slot owner's Area stat.
+사거리 내 적 진입 순간에만 작동한다.,Only works at the moment an enemy enters reach.
+슬롯 주인과 같은 팀인 대상만 고른다.,Only targets things on the slot owner's team.
+슬롯 주인과 다른 팀인 대상만 고른다.,Only targets things not on the slot owner's team.
+타격 시 작동한다. 이벤트 상대: 맞은 대상.,Works on hit. Event other: the target that was hit.
+슬롯 주인의 피격 순간에만 작동한다.,Only works at the moment the slot owner is hit.
+슬롯 주인의 사망 순간에만 작동한다.,Only works at the moment the slot owner dies.
+슬롯 주인의 생성 순간에만 작동한다.,Only works at the moment the slot owner spawns.
+행동 완료 시 작동한다. 이벤트 상대: 행동을 받은 대상.,Works when an action finishes. Event other: the target of the action.
+슬롯 주인의 획득 순간에만 작동한다.,Only works at the moment the slot owner is picked up.
+슬롯 주인의 이동 완료 순간에만 작동한다.,Only works at the moment the slot owner finishes moving.
+슬롯 주인의 기폭 순간에만 작동한다.,Only works at the moment the slot owner detonates.
+이동 카드가 포함된 슬롯에만 넣을 수 있다.,Can only go in a slot that contains a movement card.
+다음 대상 중 이동하는 대상에게만 작동한다.,Only works on following targets that are moving.
+다음 대상 중 멈춰 있는 대상에게만 작동한다.,Only works on following targets that are standing still.
+다음 대상 중 체력이 절반 이하인 대상에게만 작동한다.,Only works on following targets at half health or less.
+다음 대상 중 주변 180 안에 적이 3마리 이상인 대상에게만 작동한다.,Only works on following targets with 3 or more enemies within 180.
+다음 대상이 피격되는 순간에만 작동한다.,Only works at the moment the following target is hit.
+다음 대상의 다른 슬롯이 작동하는 순간에만 작동한다.,Only works at the moment another slot of the following target runs.
+"이벤트 상대를 고른다 (타격 시 맞은 대상, 피격 시 공격자).","Targets the event other (the target that was hit on hit, the attacker when hurt)."
+이벤트를 일으킨 행동 주체를 고른다.,Targets the action source that caused the event.
+슬라임을 소환한다.,Summons slimes.
+쓰러진 자리에 보물 상자 1개를 떨어뜨린다.,Drops 1 treasure chest where it fell.
+박쥐를 소환한다.,Summons bats.
+받는 피해를 타격마다 방어력만큼 줄인다. 최소 1은 받는다.,Reduces damage taken per hit by its armor. Always takes at least 1.
+탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다.,Fires Shot Count shots that deal Shot Attack damage. Two or more spread in a ring.
+용암 거미를 소환한다.,Summons lava spiders.
+쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다.,Drops gems worth its XP stat where it fell.
+주변 적에게 표식·속박을 거는 속박탄을 쏜다.,Fires binding shots that mark and root nearby enemies.
+그 자리에 화상 장판을 남긴다.,Leaves a burning field on the spot.
+슬라임 12체를 소환한다.,Summons 12 slimes.
+유령을 소환한다.,Summons ghosts.
+대상에게 공격력만큼 피해를 준다.,Deals damage equal to its attack to the target.
+대상에게 화살을 쏜다.,Shoots an arrow at the target.
+대상에게 포탄을 쏜다.,Fires a cannonball at the target.
+범위 안의 적에게 공격력 60%의 독 피해를 준다.,Deals 60% ATK poison damage to enemies in the area.
+공전하는 칼날에 닿은 적을 벤다. 같은 대상은 0.2초마다 다시 벤다.,Cuts enemies touched by the orbiting blades. The same target is cut again every 0.2s.
+"탄이 플레이어 쪽으로 계속 가속되어, 멀어지다 느려진 뒤 되돌아온다.","The shot keeps accelerating toward the player, so it slows as it flies out and then returns."
+탄이 가까운 적 쪽으로 방향을 튼다.,The shot turns toward nearby enemies.
+반경 70을 즉시 베어 피해 공격력 240%를 준다. 넉백 80.,Instantly slashes radius 70 for 240% ATK damage. Knockback 80.
+반경 100에 폭발을 일으켜 피해 공격력 260%을 주고 밀쳐낸다. 넉백 260.,Explodes in radius 100 for 260% ATK damage and knocks back. Knockback 260.
+반경 70에 피해 공격력 40%를 주고 0.9초간 얼린다 (중첩 시 시간 합산).,Deals 40% ATK damage in radius 70 and freezes for 0.9s (durations add up when stacked).
+반경 110에 피해 공격력 120%를 주고 밀쳐낸다. 넉백 520.,Deals 120% ATK damage in radius 110 and knocks back. Knockback 520.
+0.8초 뒤 대상 주변 반경 100에 유성 범위 피해 공격력 480%.,"After 0.8s, a meteor deals 480% ATK area damage in radius 100 around the target."
+반경 60 적을 속박 1.6초 (중첩 시 시간 합산).,Roots enemies in radius 60 for 1.6s (durations add up when stacked).
+반경 55에 3초간 중첩당 초당 피해 공격력 90%의 화상을 입힌다 (각각 만료).,"Burns radius 55 for 3s, 90% ATK damage per second per stack (each expires separately)."
+반경 120 적에게 공포 1.8초 (중첩 시 시간 합산).,Fears enemies in radius 120 for 1.8s (durations add up when stacked).
+대상의 상태 이상을 반경 90 내 주변 적에게 전파한다.,Spreads the target's status effects to nearby enemies within radius 90.
+반경 350 안의 적이 선택한 대상 대신 이 개체를 쫓게 한다. 유인 대상이 여러 개면 가장 가까운 것을 쫓는다.,"Makes enemies within radius 350 chase this entity instead of their chosen target. With several lures, they chase the nearest."
+"적과 거리 유지 거리 상태 + 적 반경, 플레이어와 거리 60보다 멀 때만 이동한다.","Only moves when farther than the Keep Distance stat + enemy radius from enemies, and farther than 60 from the player."
+빙결 · 스탯,Freeze · Stats
+표식 · 스탯,Mark · Stats
+피해 공격력 200%의 마력탄을 발사한다. 탄속 420. 넉백 150.,Fires a magic bolt dealing 200% ATK damage. Shot speed 420. Knockback 150.
+참격 — 반경 70을 즉시 베어 피해 공격력 240%를 준다. 넉백 80.,Slash — instantly slashes radius 70 for 240% ATK damage. Knockback 80.
+폭발 — 반경 100에 폭발을 일으켜 피해 공격력 260%을 주고 밀쳐낸다. 넉백 260.,Explosion — explodes in radius 100 for 260% ATK damage and knocks back. Knockback 260.
+빙결 — 반경 70에 피해 공격력 40%를 주고 0.9초간 얼린다 (중첩 시 시간 합산).,Freeze — deals 40% ATK damage in radius 70 and freezes for 0.9s (durations add up when stacked).
+4초간 초당 독 피해 공격력 120%.,120% ATK poison damage per second for 4s.
+1.5초간 끌어당기기. 끌어당기는 속도: 시전자 넉백 260%.,Pulls for 1.5s. Pull speed: 260% of caster knockback.
+충격파 — 반경 110에 피해 공격력 120%를 주고 밀쳐낸다. 넉백 520.,Shockwave — deals 120% ATK damage in radius 110 and knocks back. Knockback 520.
+기사 1체를 10초간 소환한다. 소환체 체력: 시전자 최대 체력 50%. 소환체 공격력: 시전자 공격력 120%. 소환체 이동 속도: 시전자 이동 속도 88.235%.,Summons 1 knight for 10s. Summon health: 50% of caster max health. Summon attack: 120% of caster attack. Summon move speed: 88.235% of caster move speed.
+대상 최대 체력 10% 회복.,Restores 10% of the target's max health.
+6초간 대상 최대 체력 25%만큼 피해 흡수.,Absorbs damage up to 25% of the target's max health for 6s.
+4초간 이동 속도 +40%.,+40% move speed for 4s.
+5초간 피해 +50%.,+50% damage for 5s.
+발당 피해 공격력 80%의 마탄 5발을 부채꼴로 발사한다. 탄속 400. 넉백 150.,"Fires 5 magic bolts in a fan, 80% ATK damage each. Shot speed 400. Knockback 150."
+피해 공격력 160%의 창을 발사해 경로를 관통한다. 탄속 900. 넉백 60.,Fires a lance dealing 160% ATK damage that pierces its path. Shot speed 900. Knockback 60.
+6초간 범위·크기 +40%.,+40% area and size for 6s.
+6초간 매 타격 피해를 대상 최대 체력 5%만큼 감소.,"For 6s, reduces each hit's damage by 5% of the target's max health."
+선택한 대상을 시전자 쪽으로 최대 시전자 넉백 160% × 1초만큼 끌어당긴다.,Pulls the chosen target toward the caster by up to 160% of caster knockback × 1s.
+대상 위치에 구체 설치. 소환체 체력: 시전자 최대 체력 30%. 소환체 공격력: 시전자 공격력 60%.,Places an orb at the target position. Summon health: 30% of caster max health. Summon attack: 60% of caster attack.
+대상 위치에 지뢰 설치. 소환체 체력: 시전자 최대 체력 20%. 소환체 공격력: 시전자 공격력 100%. 일반 폭발 카드를 사용한다.,Places a mine at the target position. Summon health: 20% of caster max health. Summon attack: 100% of caster attack. Uses a normal Explosion card.
+대상 위치에 포탑 설치. 소환체 체력: 시전자 최대 체력 60%. 소환체 공격력: 시전자 공격력 90%.,Places a turret at the target position. Summon health: 60% of caster max health. Summon attack: 90% of caster attack.
+대상 위치에 미끼 설치. 소환체 체력: 시전자 최대 체력 25%.,Places a decoy at the target position. Summon health: 25% of caster max health.
+피해 공격력 160%의 관통 칼날을 던져 되돌아오게 한다. 탄속 520. 넉백 80.,Throws a piercing blade dealing 160% ATK damage that comes back. Shot speed 520. Knockback 80.
+피해 공격력 400%의 추적 미사일을 발사한다. 탄속 340. 넉백 150.,Fires a homing missile dealing 400% ATK damage. Shot speed 340. Knockback 150.
+길이 450의 광선으로 피해 공격력 160%을 주며 관통한다. 넉백 60.,A 450-long beam pierces for 160% ATK damage. Knockback 60.
+"최대 8체에 연쇄 번개, 각각 피해 공격력 120%. 넉백 40.","Chain lightning on up to 8 targets, 120% ATK damage each. Knockback 40."
+유성 — 0.8초 뒤 대상 주변 반경 100에 유성 범위 피해 공격력 480%.,"Meteor — after 0.8s, deals 480% ATK area damage in radius 100 around the target."
+5초간 0.2초마다 칼날 피해 공격력 80%.,Blade damage of 80% ATK every 0.2s for 5s.
+속박 — 반경 60 적을 속박 1.6초 (중첩 시 시간 합산).,Root — roots enemies in radius 60 for 1.6s (durations add up when stacked).
+화상 — 반경 55에 3초간 중첩당 초당 피해 공격력 90%의 화상을 입힌다 (각각 만료).,"Burn — burns radius 55 for 3s, 90% ATK damage per second per stack (each expires separately)."
+공포 — 반경 120 적에게 공포 1.8초 (중첩 시 시간 합산).,Fear — fears enemies in radius 120 for 1.8s (durations add up when stacked).
+피해 공격력 360%을 준다. 넉백 40. 피해를 주면 시전자 최대 체력의 6%를 회복한다.,"Deals 360% ATK damage. Knockback 40. On damage, restores 6% of the caster's max health."
+바라보는 방향으로 대상 이동 속도 94.118% × 1초만큼 이동. 플레이어는 0.3초간 무적.,Moves the target in the facing direction by 94.118% of its move speed × 1s. The player is invulnerable for 0.3s.
+바라보는 방향으로 대상 이동 속도 100% × 1초만큼 돌진하며 경로의 적에게 피해 공격력 150%를 준다. 넉백 80. 플레이어는 0.2초간 무적.,"Dashes in the facing direction by 100% of the target's move speed × 1s, dealing 150% ATK damage to enemies in the path. Knockback 80. The player is invulnerable for 0.2s."
+궁수 소환 10초. 소환체 체력: 시전자 최대 체력 50%. 소환체 공격력: 시전자 공격력 100%. 소환체 이동 속도: 시전자 이동 속도 76.471%.,Summons an archer for 10s. Summon health: 50% of caster max health. Summon attack: 100% of caster attack. Summon move speed: 76.471% of caster move speed.
+3초간 밀어내기. 밀어내는 속도: 시전자 넉백 600%.,Pushes away for 3s. Push speed: 600% of caster knockback.
+전염 — 대상의 상태 이상을 반경 90 내 주변 적에게 전파한다.,Contagion — spreads the target's status effects to nearby enemies within radius 90.
+공격력의 1000% 피해를 선택한 모든 대상에게 균등하게 나누어 즉시 타격한다. 넉백 80.,Splits 1000% ATK damage evenly across all chosen targets and strikes instantly. Knockback 80.
+선택한 대상 쪽으로 초당 이동 속도 100% 이동한다. 자기 자신을 고르면 바라보는 방향으로 이동한다.,"Moves toward the chosen target at 100% move speed per second. If it targets itself, it moves in the facing direction."
+추적 대상과 거리가 유지 거리 상태의 80% 미만이면 후퇴하고 115% 초과면 접근한다. 동시에 이동 속도의 60%로 옆으로 돈다.,Backs off when closer than 80% of the Keep Distance stat to the tracked target and closes in beyond 115%. Meanwhile it circles sideways at 60% move speed.
+반경 350 유인 — 반경 350 안의 적이 선택한 대상 대신 이 개체를 쫓게 한다. 유인 대상이 여러 개면 가장 가까운 것을 쫓는다.,"Lure in Radius 350 — makes enemies within radius 350 chase this entity instead of their chosen target. With several lures, they chase the nearest."
+"타격 조건에 맞는 충돌 대상에게 피해 공격력 100%, 넉백 넉백 100%을 적용한다. 탄환은 같은 대상을 한 번만 타격하고 접촉·공전 개체는 각자의 재타격 간격을 따른다. 탄환은 관통 상태 횟수만큼 관통한 뒤 소멸한다.",Applies 100% ATK damage and 100% knockback to colliding targets that meet the hit rule. Projectiles hit the same target only once; contact and orbiting entities follow their own re-hit interval. Projectiles vanish after piercing as many times as their Pierce stat.
+빙결 지속시간을 40%로 줄이고 공포를 무효화한다.,Cuts freeze duration to 40% and nullifies fear.
+정면에서 날아온 타격 피해를 85% 막는다. 독·방향 없는 피해·빙결 중에는 막지 못한다.,"Blocks 85% of hit damage coming from the front. Can't block poison, directionless damage, or while frozen."
+"유지 거리 밖 / 플레이어 거리 60 초과 — 적과 거리 유지 거리 상태 + 적 반경, 플레이어와 거리 60보다 멀 때만 이동한다.","Outside Keep Distance / Player Beyond 60 — only moves when farther than the Keep Distance stat + enemy radius from enemies, and farther than 60 from the player."
+슬라임을 소환한다. 수량 소환 수 100% · 소환 종류 슬라임,Summons slimes. Count: 100% Summon Count · Summon type: Slime
+쓰러진 자리에 보물 상자 1개를 떨어뜨린다. 보상 보물 상자: 보상량 0 · 자석 확률 0,Drops 1 treasure chest where it fell. Reward Treasure Chest: amount 0 · magnet chance 0
+박쥐를 소환한다. 수량 소환 수 100% · 소환 종류 박쥐,Summons bats. Count: 100% Summon Count · Summon type: Bat
+받는 피해를 타격마다 방어력만큼 줄인다. 최소 1은 받는다. 방어량 방어력 100% · 상시 적용,Reduces damage taken per hit by its armor. Always takes at least 1. Armor: 100% Armor · Always on
+탄 공격력만큼 피해를 주는 탄을 발사 수만큼 쏜다. 2발 이상이면 원형으로 퍼진다. 피해/공격력 1 · 반경 7 · 수명 3.5 · 타격 넉백 0 · 관통 횟수 0 · 속도 탄속 100% · 수량 발사 수 100% · 원형 발사,Fires Shot Count shots that deal Shot Attack damage. Two or more spread in a ring. Damage/ATK 1 · Radius 7 · Lifetime 3.5 · Hit knockback 0 · Pierce count 0 · Speed: 100% Shot Speed · Count: 100% Shot Count · Ring fire
+용암 거미를 소환한다. 수량 소환 수 100% · 소환 종류 용암 거미,Summons lava spiders. Count: 100% Summon Count · Summon type: Lava Spider
+쓰러진 자리에 경험치 상태만큼의 보석을 떨어뜨린다. 보상 경험치 보석: 자석 확률 0,Drops gems worth its XP stat where it fell. Reward XP Gem: magnet chance 0
+주변 적에게 표식·속박을 거는 속박탄을 쏜다. 피해/공격력 1 · 반경 7 · 수명 3.5 · 타격 넉백 0 · 관통 횟수 0 · 속도 탄속 100% · 수량 발사 수 100% · 원형 발사,Fires binding shots that mark and root nearby enemies. Damage/ATK 1 · Radius 7 · Lifetime 3.5 · Hit knockback 0 · Pierce count 0 · Speed: 100% Shot Speed · Count: 100% Shot Count · Ring fire
+그 자리에 화상 장판을 남긴다. 장판 burningField,Leaves a burning field on the spot. Field: burningField
+슬라임 12체를 소환한다. 사망 소환: 수량 12 · 소환 종류 슬라임,Summons 12 slimes. Death summon: count 12 · Summon type: Slime
+유령을 소환한다. 수량 소환 수 100% · 소환 종류 유령,Summons ghosts. Count: 100% Summon Count · Summon type: Ghost
+대상에게 공격력만큼 피해를 준다. 피해/공격력 1 · 타격 넉백 넉백 100%,Deals damage equal to its attack to the target. Damage/ATK 1 · Hit knockback: 100% Knockback
+대상에게 화살을 쏜다. 피해/공격력 1 · 반경 4 · 수명 0.8 · 관통 횟수 0 · 발사 높이 0 · 타격 넉백 넉백 100% · 속도 탄속 100%,Shoots an arrow at the target. Damage/ATK 1 · Radius 4 · Lifetime 0.8 · Pierce count 0 · Launch height 0 · Hit knockback: 100% Knockback · Speed: 100% Shot Speed
+대상에게 포탄을 쏜다. 피해/공격력 1 · 반경 4 · 수명 1 · 관통 횟수 0 · 발사 높이 -6 · 타격 넉백 넉백 100% · 속도 탄속 100%,Fires a cannonball at the target. Damage/ATK 1 · Radius 4 · Lifetime 1 · Pierce count 0 · Launch height -6 · Hit knockback: 100% Knockback · Speed: 100% Shot Speed
+범위 안의 적에게 공격력 60%의 독 피해를 준다. 피해/공격력 0.6 · 타격 넉백 0 · 원소 독,Deals 60% ATK poison damage to enemies in the area. Damage/ATK 0.6 · Hit knockback 0 · Element: poison
+공전하는 칼날에 닿은 적을 벤다. 같은 대상은 0.2초마다 다시 벤다. 대상별 타격 간격 0.2 · 피해 공격력 100% · 타격 넉백 넉백 100% · 관통 횟수 관통 100%,Cuts enemies touched by the orbiting blades. The same target is cut again every 0.2s. Per-target hit interval 0.2 · Damage: 100% ATK · Hit knockback: 100% Knockback · Pierce count: 100% Pierce
+대상에게 공격력만큼 피해를 준다. 피해/공격력 1 · 타격 넉백 넉백 0%,Deals damage equal to its attack to the target. Damage/ATK 1 · Hit knockback: 0% Knockback
+"탄이 플레이어 쪽으로 계속 가속되어, 멀어지다 느려진 뒤 되돌아온다. 귀환 가속도 933.333 · 최대 속도 420 · 회수 거리 18 · 상시 적용","The shot keeps accelerating toward the player, so it slows as it flies out and then returns. Return acceleration 933.333 · Max speed 420 · Recall distance 18 · Always on"
+탄이 가까운 적 쪽으로 방향을 튼다. 회전 속도 7 · 감지 거리 500 · 상시 적용,The shot turns toward nearby enemies. Turn rate 7 · Detection range 500 · Always on
+체력을 가진 대상,Targets With Health
+범위를 가진 대상,Targets With Area
+공통,Common
+움직일 수 있는 대상,Movable Targets
+공격 가능한 대상,Targets That Attack
+발사 가능한 대상,Targets That Fire
+제한시간을 가진 대상,Targets With a Time Limit
+개체 기믹,Entity Gimmicks
+체력,Health
+위치,Position
+제한시간,Time Limit
+완전히 멈춤 · 중첩 시 지속시간 합산(상한 있음),Completely stopped · Durations add up when stacked (capped)
+이동 불가 · 중첩 시 지속시간 합산(상한 있음),Can't move · Durations add up when stacked (capped)
+나에게서 도망 · 중첩 시 지속시간 합산(상한 있음),Flees from you · Durations add up when stacked (capped)
+중첩당 받는 피해 +90% · 각각 만료,+90% damage taken per stack · Each expires separately
+중첩별 초당 피해 합산 · 각각 만료,Damage per second adds up per stack · Each expires separately
+언데드,Undead
+화염,Fire
+갑주,Armored
+방패,Shielded
+일반 공격으로 처치할 수 있다,Can be killed with normal attacks
+빙결에 2배 피해,Double damage from freeze
+타격마다 피해 -4 (최소 1),-4 damage per hit (min 1)
+"정면 피해를 85% 막는다. 등·옆, 독·화상, 빙결 중엔 못 막는다","Blocks 85% of frontal damage. Can't block from behind or the side, poison or burn, or while frozen"
+슬라임 둥지,Slime Nest
+끈적한 무리 — 분열하는 왕을 광역으로 쓸어라,A sticky horde — sweep the splitting king with area attacks
+이끼 온실,Moss Greenhouse
+치유사가 넘치는 정원 — 회복보다 빠르게 몰아쳐라,A garden full of healers — strike faster than they heal
+박쥐 병영,Bat Barracks
+격려받는 군단 — 지휘관부터 끊어라,An emboldened legion — cut down the commander first
+망자의 묘역,Graveyard of the Dead
+끝없이 일어나는 유령 — 사령술사를 먼저 처치하라,Ghosts that never stop rising — take out the necromancer first
+봉인된 성소,Sealed Sanctum
+속박과 저주탄 — 멈춰 서면 끝장이다,Roots and cursed shots — stand still and you're done
+철벽 요새,Iron Bastion
+방패와 갑주의 행군 — 등 뒤와 측면을 노려라,A march of shields and armor — hit them from behind and the flanks
+잿불 화구,Cinder Caldera
+화염 탄막과 용암 거미 — 빙결로 불을 꺼라,Fire barrages and lava spiders — put out the flames with freeze
+심연의 옥좌,Throne of the Abyss
+모든 위협이 모이는 곳 — 갑주 군주의 탄막을 버텨라,Where every threat gathers — survive the armored lord's barrage
+잔불 정령,Ember Spirit
+사망하면 6초간 화상 장판을 남긴다. 장판은 적군 소유이며 다른 팀에만 화상을 적용한다.,Leaves a burning field for 6s when it dies. The field belongs to the enemy team and only burns other teams.
+던전에 놓인 중립 설치물. 파괴되면 폭발한다. 불이 옆 화약통으로 번져 연쇄 폭발한다.,A neutral structure placed in the dungeon. Explodes when destroyed. The fire spreads to nearby kegs for chain explosions.
+힐 장판,Healing Field
+이동 치유사,Mobile Healer
+격려 오라,Rallying Aura
+약화 탄환,Weakening Shot
+화상 지대,Burning Zone
+회복 아이템,Healing Item
+장판 범위 안 같은 팀의 부상 개체를 3초마다 치유합니다.,Heals hurt same-team entities inside the field every 3s.
+장판 범위 안 같은 팀에 4초마다 보호막을 부여합니다.,Grants a shield to same-team entities inside the field every 4s.
+주변 160 안 같은 팀의 부상 개체를 3초마다 치유합니다.,Heals hurt same-team entities within 160 every 3s.
+주변 160 안 같은 팀에 분노와 집중을 부여합니다.,Grants Rage and Focus to same-team entities within 160.
+탄환 주변 40 안 다른 팀에 표식과 속박을 부여합니다.,Marks and roots other-team entities within 40 of the shot.
+장판 범위 안 다른 팀에 2초마다 화상을 부여합니다.,Burns other-team entities inside the field every 2s.
+습득 전 주변 90 안 플레이어를 3초마다 치유합니다.,"Until picked up, heals the player within 90 every 3s."
+재생의 모체,Regenerating Matriarch
+군단의 지휘자,Legion Marshal
+철벽의 수문장,Iron Gatekeeper
+속박의 예언자,Prophet of Binding
+잿불의 폭군,Cinder Tyrant
+회복 주술사,Healing Shaman
+전투 지휘관,Battle Commander
+속박 술사,Binder
+슬라임,Slime
+박쥐,Bat
+굴쥐,Burrow Rat
+외눈 거인,Cyclops
+슬라임 왕,Slime King
+유령,Ghost
+역병 쥐,Plague Rat
+사령술사,Necromancer
+망령 군주,Wraith Lord
+화염 마귀,Fire Imp
+용암 거미,Lava Spider
+화염 술사,Pyromancer
+미믹,Mimic
+타락 기사,Fallen Knight
+심연 군주,Abyss Lord
+화약통 탄,Powder Keg Blast
+스스로 재생하며 슬라임을 불러내는 모체.,A matriarch that regenerates and calls forth slimes.
+부하를 불러내고 군단을 강화하는 지휘자.,A marshal who calls minions and empowers the legion.
+방패와 갑주로 무장한 철벽의 수호자.,An ironclad guardian armed with shield and armor.
+표식과 속박으로 적을 옭아매는 예언자.,A prophet who ensnares foes with marks and roots.
+화염 탄막과 거미 군단을 이끄는 폭군.,A tyrant leading fire barrages and a spider horde.
+쓰러지면 작은 슬라임들로 분열하는 왕.,A king that splits into little slimes when it falls.
+끝없이 유령을 불러내는 망자의 군주.,A lord of the dead who endlessly summons ghosts.
+갑주를 두르고 사방에 화염 탄막을 펼치는 군주.,An armored lord who spreads fire barrages in every direction.
+닿은 적에게 0.4초마다 피해 6,Deals 6 damage every 0.4s to enemies it touches
+적이 가까이 오면 일반 폭발 후 소멸,Explodes normally and vanishes when an enemy comes close
+가까운 적을 0.7초마다 사격 (피해 9),Shoots the nearest enemy every 0.7s (9 damage)
+주변 적이 나 대신 미끼를 쫓는다,Nearby enemies chase the decoy instead of you
+던전에 놓인 중립 설치물. 파괴되면 폭발한다,A neutral structure placed in the dungeon. Explodes when destroyed
+화염 술사 등 적이 쏘는 탄환,Shots fired by enemies such as pyromancers
+속박 술사가 쏘는 탄환,Shots fired by binders
+최대 체력,Max Health
+이동 속도,Move Speed
+공격력,Attack
+넉백,Knockback
+넉백 저항,Knockback Resist
+기본 수명,Base Lifetime
+무제한,Unlimited
+범위,Area
+자석 범위,Magnet Range
+시야,Sight
+사거리,Reach
+유지 거리,Keep Distance
+소환 수,Summon Count
+소환 주기,Summon Interval
+보조 주기,Support Interval
+방어력,Armor
+탄 공격력,Shot Attack
+탄속,Shot Speed
+발사 수,Shot Count
+공격 주기,Attack Interval
+경험치,XP
+수명,Lifetime
+관통,Pierce
+값,Value

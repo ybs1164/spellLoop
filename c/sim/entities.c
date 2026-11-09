@@ -3,8 +3,12 @@
 #include "world.h"
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(__wasm_simd128__)
+#include <wasm_simd128.h>
+#endif
 
 #define TAU_F 6.2831853f
 static inline float d2(float ax, float ay, float bx, float by) { float dx = bx - ax, dy = by - ay; return dx * dx + dy * dy; }
@@ -48,14 +52,29 @@ static bool enemy_trait(int type, const char *trait) {
 static VarKV kv_num(const char *k, double v) { VarKV x = { { 0 }, v, { 0 }, false }; snprintf(x.key, sizeof x.key, "%s", k); return x; }
 static VarKV kv_str(const char *k, const char *v) { VarKV x = { { 0 }, 0, { 0 }, true }; snprintf(x.key, sizeof x.key, "%s", k); snprintf(x.str, sizeof x.str, "%s", v); return x; }
 
+static void period_stat(World *w, int i, int action, float period) {
+  const DataTable *t = data_table("entity_period_stats"), *stats = data_table("stat_order");
+  const char *key = data_str(t, data_row(t, CARDS[action].id), "value", "");
+  for (int st = 0; st < STAT__COUNT; st++) if (!strcmp(data_str(stats, st, "value", ""), key)) {
+    if (w->stat[i][st] == 0 || w->stat[i][st] == period) w->stat[i][st] = period;
+    break;
+  }
+}
+
 /** 슬롯 하나: 카드 이름들 + (행동 칸 하나의) 변형 */
 static int add_slot(World *w, Handle h, const char *const *ids, int n, const char *action, char cd_op, float cd, const VarKV *kv, int nkv) {
   int si = slot_add_entity_ids(w, h, ids, n);
   if (si < 0) return -1;
   Slot *s = &w->slots[si];
   int target = action ? card_find(action) : -1;
+  VarKV settings[VARIANT_KV];
+  int count = mini(nkv, VARIANT_KV);
+  if (count) memcpy(settings, kv, sizeof(VarKV) * (size_t)count);
+  if (cd_op == '=' && (target == CARD_BOLT || target == CARD_SNIPE || target == CARD_SUMMON) && count < VARIANT_KV)
+    settings[count++] = kv_num("afterMovement", 1);
   for (int k = 0; k < s->n; k++)
-    if (s->cards[k] == target) { s->vars[k] = (uint16_t)variant_make(w, target, cd_op, cd, kv, nkv); break; }
+    if (s->cards[k] == target) { s->vars[k] = (uint16_t)variant_make(w, target, cd_op, cd, settings, count); break; }
+  if (target >= 0 && cd_op == '=') period_stat(w, ent_index(w, h), target, cd);
   return si;
 }
 #define SLOT(h, ...) do { static const char *const ids_[] = { __VA_ARGS__ }; slot_add_entity_ids(w, h, ids_, (int)(sizeof ids_ / sizeof ids_[0])); } while (0)
@@ -72,7 +91,14 @@ static void add_recipe(World *w, Handle h, int i, const char *team, float range,
     ids[m++] = cards[k];
   }
   int si = slot_add_entity_ids(w, h, ids, m);
-  if (si >= 0 && action_at >= 0) w->slots[si].vars[action_at] = (uint16_t)variant_make(w, w->slots[si].cards[action_at], '=', period, NULL, 0);
+  if (si >= 0 && action_at >= 0) {
+    w->slots[si].vars[action_at] = (uint16_t)variant_make(w, w->slots[si].cards[action_at], '=', period, NULL, 0);
+    period_stat(w, i, w->slots[si].cards[action_at], period);
+    if (range >= 0 && w->stat[i][STAT_REACH] != range) {
+      VarKV kv = kv_num("range", range);
+      w->slots[si].vars[1] = (uint16_t)variant_make(w, CARD_ENTITY_IN_REACH, 0, 0, &kv, 1);
+    }
+  }
 }
 
 /** 기믹 레시피 (js ENTITY_GIMMICKS / installEntityGimmick) */
@@ -130,6 +156,12 @@ Handle spawn_enemy(World *w, int type, float x, float y) {
   if (ai && !strcmp(ai, "keep")) SLOT(h, "entitySelf", "entityKeep");
   if (enemy_trait(type, "fire")) SLOT(h, "entitySelf", "entityAffinity");
   if (enemy_trait(type, "shielded")) SLOT(h, "entitySelf", "entityGuard");
+  if (w->stat[i][STAT_DEFENSE] > 0) {
+    const char *ids[] = { "entitySelf", "armor" };
+    VarKV kv = kv_num("passive", 1);
+    add_slot(w, h, ids, 2, "armor", '=', (float)FRAME_COOLDOWN, &kv, 1);
+    w->eff[i].mask |= FX_ARMOR;
+  }
   if (shoots) {   // 시야 안에서 플레이어에게 탄을 쏜다 (적 탄)
     const char *ids[] = { "entityInSight", "self", "bolt", "entitySelf" };
     const char *pk = enemy_prop_str(type, "shoot.projectileKind");
@@ -163,9 +195,8 @@ Handle spawn_enemy(World *w, int type, float x, float y) {
   const char *split = enemy_prop_str(type, "split.type");
   if (split) {
     const char *ids[] = { "on_death", "entitySelf", "summon", "entitySelf" };
-    VarKV kv[] = { kv_str("type", split), kv_num("death", 1) };
-    add_slot(w, h, ids, 4, "summon", 0, 0, kv, 2);
-    w->stat[i][STAT_SUMMON_COUNT] = (float)enemy_prop(type, "split.n", 2);
+    VarKV kv[] = { kv_str("type", split), kv_num("death", 1), kv_num("n", enemy_prop(type, "split.n", 2)) };
+    add_slot(w, h, ids, 4, "summon", 0, 0, kv, 3);
   }
   {
     const char *ids[] = { "on_death", "entitySelf", "spawnOrb", "entitySelf" };
@@ -228,6 +259,13 @@ Handle spawn_hazard(World *w, int owner, float x, float y, float vx, float vy, f
   SLOT(h, "entitySelf", "entityMove");
   SLOT(h, "entitySelf", "entityHit");
   return h;
+}
+
+void configure_curse_shot(World *w, Handle h) {
+  int i = ent_index(w, h);
+  if (i < 0) return;
+  w->sub[i] = 1;   // curseBolt: 같은 탄의 스탯 + 기믹 슬롯으로 정의한다.
+  add_gimmick(w, h, i, "curse", 40);
 }
 
 /* ---------- 장판 ---------- */
@@ -331,8 +369,8 @@ Handle spawn_placed(Ctx *c, int kind, Vec2 at, const Target *t) {
       w->stat[o][STAT_KNOCKBACK] = 90; w->stat[o][STAT_SHOT_SPEED] = 460; w->stat[o][STAT_REACH] = 420;
       const char *ids[] = { "entityInReach", "nearestEnemy", "bolt", "entitySelf" };
       VarKV kv[] = { kv_num("damageRatio", 1), kv_num("radius", 4), kv_num("life", 1), kv_num("pierce", 0), kv_num("offsetY", -6), kv_num("playerPower", 1),
-                     kv_str("knockbackStat", "knockback"), kv_str("speedStat", "shotSpeed") };
-      add_slot(w, h, ids, 4, "bolt", '=', 0.7f, kv, 8);
+                     kv_str("knockbackStat", "knockback"), kv_str("speedStat", "shotSpeed"), kv_num("lead", 1) };
+      add_slot(w, h, ids, 4, "bolt", '=', 0.7f, kv, 9);
       break;
     }
     case OBJ_MINE:
@@ -390,28 +428,18 @@ Handle spawn_ally(Ctx *c, int kind, Vec2 at) {
   w->sprite[i] = (int16_t)td_index(data_str(T_ALLY, row, "sprite", "knight"));
   w->color[i] = hex_color(data_str(T_ALLY, row, "color", NULL), 0);
   w->phase[i] = rng_range(&w->fx_rng, 0, TAU_F);
-  if (kind == ALLY_KIND_KNIGHT || kind == ALLY_KIND_ARCHER) {
+  if (kind != ALLY_KIND_CLONE) {
     int card = kind == ALLY_KIND_ARCHER ? CARD_ARCHER : CARD_SUMMON;
     float hp = action_value(c, card, "summonHp", a), atk = action_value(c, card, "summonAttack", a), spd = action_value(c, card, "summonSpeed", a);
     if (hp > 0) w->hp[i] = w->stat[i][STAT_MAX_HP] = hp;
     if (atk > 0) w->stat[i][STAT_ATTACK_POWER] = atk;
     if (spd > 0) w->stat[i][STAT_MOVE_SPEED] = spd;
-    w->stat[i][STAT_KNOCKBACK] = kind == ALLY_KIND_ARCHER ? 80 : 120;
-    w->stat[i][STAT_SHOT_SPEED] = 520;
-  }
-  if (kind == ALLY_KIND_CLONE) {
-    // 분신: 플레이어 슬롯을 물려받는다 (자신 대상은 분신 자신)
-    w->stat[i][STAT_MOVE_SPEED] = w->stat[a][STAT_MOVE_SPEED];
-    w->stat[i][STAT_ATTACK_POWER] = w->stat[a][STAT_ATTACK_POWER];
-    for (int s = w->slot_head[a]; s >= 0; s = w->slots[s].next) {
-      const Slot *src = &w->slots[s];
-      if (src->linked) continue;
-      uint16_t cards[MAX_SLOT_CARDS];
-      for (int k = 0; k < src->n; k++) cards[k] = src->cards[k] == CARD_SELF ? (uint16_t)CARD_ENTITY_SELF : src->cards[k];
-      int ns = slot_add(w, h, cards, src->n);
-      if (ns >= 0) { memcpy(w->slots[ns].vars, src->vars, sizeof src->vars); w->slots[ns].cd = src->cd; }
+    if (kind != ALLY_KIND_MEDIC) {
+      w->stat[i][STAT_KNOCKBACK] = kind == ALLY_KIND_ARCHER ? 80 : 120;
+      w->stat[i][STAT_SHOT_SPEED] = 520;
     }
-  } else {
+  }
+  {
     SLOT(h, "entityMovementDistance", "entityMovementTarget", "entityMove", "entitySelf");
     if (kind == ALLY_KIND_KNIGHT) {
       w->stat[i][STAT_REACH] = reach;
@@ -422,8 +450,8 @@ Handle spawn_ally(Ctx *c, int kind, Vec2 at) {
       w->stat[i][STAT_REACH] = reach;
       const char *ids[] = { "entityInReach", "nearestEnemy", "bolt", "entitySelf" };
       VarKV kv[] = { kv_num("damageRatio", 1), kv_num("playerPower", 1), kv_num("radius", 4), kv_num("life", 0.8), kv_num("pierce", 0), kv_str("shape", "arrow"),
-                     kv_str("color", "#f4e1a1"), kv_str("knockbackStat", "knockback"), kv_str("speedStat", "shotSpeed") };
-      add_slot(w, h, ids, 4, "bolt", '=', (float)data_num(T_ALLY, row, "attackCd", 0.6), kv, 9);
+                     kv_str("color", "#f4e1a1"), kv_str("knockbackStat", "knockback"), kv_str("speedStat", "shotSpeed"), kv_num("lead", 1) };
+      add_slot(w, h, ids, 4, "bolt", '=', (float)data_num(T_ALLY, row, "attackCd", 0.6), kv, 10);
     } else if (kind == ALLY_KIND_MEDIC) add_gimmick(w, h, i, "medic", 160);
   }
   fx_circle(w, w->x[i], w->y[i], 30, 0xC9D4EAFFu, 0.35f, CS_WAVE, -1, -1, 0, 0);
@@ -433,7 +461,7 @@ Handle spawn_ally(Ctx *c, int kind, Vec2 at) {
 
 /* ---------- 아이템 ---------- */
 Handle spawn_pickup(World *w, int kind, float x, float y, float value) {
-  Handle h = ent_spawn(w, kind == PICK_GEM ? TK_GEM : TK_PICKUP, TEAM_NEUTRAL, x, y, kind == PICK_GEM ? 5 : 9);
+  Handle h = ent_spawn(w, kind == PICK_GEM ? TK_GEM : TK_PICKUP, TEAM_FRIENDLY, x, y, kind == PICK_GEM ? 5 : 9);
   int g = ent_index(w, h);
   if (g < 0) return HANDLE_NONE;
   w->sub[g] = (int16_t)kind;
@@ -441,9 +469,11 @@ Handle spawn_pickup(World *w, int kind, float x, float y, float value) {
   w->phase[g] = rng_range(&w->fx_rng, 0, TAU_F);
   // 아이템: 플레이어가 사거리 안이면 다가가고 (보석은 20배 거리에서, 0.3초에 걸쳐 가속), 닿으면 흡수된다
   w->stat[g][STAT_MOVE_SPEED] = 1100;
+  w->stat[g][STAT_RANGE] = w->r[g];
   w->stat[g][STAT_REACH] = kind == PICK_GEM ? 90 * 10 : 90;
   SLOT(h, "entityInReach", "self", "entityMove", "entitySelf");
   SLOT(h, "ifPlayerContact", "entitySelf", "absorb");
+  if (kind == PICK_HEART) add_gimmick(w, h, g, "blessing", 90);
   return h;
 }
 
@@ -451,9 +481,20 @@ Handle spawn_pickup(World *w, int kind, float x, float y, float value) {
 static void reset_effects(World *w, int i) {
   if (!can_act(w, i)) return;   // 행동할 수 없으면 지난 효과(방패·저항 등)가 남는다
   Effects *e = &w->eff[i];
+  uint64_t bit=UINT64_C(1)<<(i&63);
+  /* Only MOVE/HIT writers can leave this small set of fields nonzero. The
+   * full path establishes the cold-field invariant, also after loading. */
+  if((w->fast.basic_effects[i>>6]&bit) && !(e->mask&~(FX_MOVE|FX_HIT))) {
+    memset(e,0,offsetof(Effects,move_target));
+    memset(&e->move_speed,0,offsetof(Effects,decoy_range)-offsetof(Effects,move_speed));
+    memset(&e->fear_immune,0,offsetof(Effects,orbit_count)-offsetof(Effects,fear_immune));
+    return;
+  }
   Target keep = e->move_target;
+  if (e->mask & FX_DECOY) index_decoy(w, i, false);
   memset(e, 0, sizeof *e);
   e->move_target = keep;
+  w->fast.basic_effects[i>>6]|=bit;
 }
 
 /** 이동 방향 (js entityMovementDirection) */
@@ -629,7 +670,26 @@ static void tick_shot(World *w, int s) {
   int rule = e->hit_rule;
   static int near[4096];
   int m = grid_query(w, w->x[s], w->y[s], w->r[s], near, 4096);
+#if defined(__wasm_simd128__)
+  int probe = 0;
+#endif
   for (int q = 0; q < m && !w->dying[s]; q++) {
+#if defined(__wasm_simd128__)
+    /* Reject only packets whose four scalar distance tests are all no-ops.
+     * A real hit still reads live fields and runs in the original order. */
+    if (q >= probe && q + 4 <= m) {
+      probe = q + 4;
+      int a = near[q], b = near[q+1], c = near[q+2], d = near[q+3];
+      v128_t x = wasm_f32x4_make(w->x[a],w->x[b],w->x[c],w->x[d]);
+      v128_t y = wasm_f32x4_make(w->y[a],w->y[b],w->y[c],w->y[d]);
+      v128_t r = wasm_f32x4_make(w->r[a],w->r[b],w->r[c],w->r[d]);
+      v128_t dx = wasm_f32x4_sub(x,wasm_f32x4_splat(w->x[s]));
+      v128_t dy = wasm_f32x4_sub(y,wasm_f32x4_splat(w->y[s]));
+      v128_t rr = wasm_f32x4_add(r,wasm_f32x4_splat(w->r[s]));
+      v128_t distance = wasm_f32x4_add(wasm_f32x4_mul(dx,dx),wasm_f32x4_mul(dy,dy));
+      if (wasm_i32x4_all_true(wasm_f32x4_gt(distance,wasm_f32x4_mul(rr,rr)))) { q += 3; continue; }
+    }
+#endif
     int en = near[q];
     if (!ent_live(w, en) || w->kind[en] != TK_ENEMY) continue;
     float rr = w->r[s] + w->r[en];
@@ -639,7 +699,8 @@ static void tick_shot(World *w, int s) {
     if (--w->pierce[s] < 0) w->dying[s] = 1;
   }
   if (w->dying[s]) return;
-  for (int o = 0; o < w->hi && !w->dying[s]; o++) {
+  for (int o = w->fast.nstructures ? index_next(w->fast.structures, 0, w->hi) : w->hi;
+       o < w->hi && !w->dying[s]; o = index_next(w->fast.structures, o + 1, w->hi)) {
     if (!ent_live(w, o) || (w->kind[o] != TK_OBJECT && w->kind[o] != TK_ALLY) || !can_hit(w, s, o, rule) || hit_remembered(w, s, ent_handle(w, o), (float)w->time)) continue;
     float rr = w->r[s] + w->r[o];
     if (d2(w->x[s], w->y[s], w->x[o], w->y[o]) > rr * rr) continue;
@@ -668,6 +729,11 @@ static void tick_pickup(World *w, int g) {
   float dx = w->x[t] - w->x[g], dy = w->y[t] - w->y[g], d = sqrtf(dx * dx + dy * dy);
   if (d <= 0) return;
   float max = e->move_speed * w->card_move[g], accel = max / 0.3f;
+  if (w->sub[g] != PICK_GEM && w->sub[g] != PICK_HEART) {
+    float step = minf(d, max * dt);
+    w->x[g] += dx / d * step; w->y[g] += dy / d * step;
+    return;
+  }
   float wx = dx / d * max - w->vx[g], wy = dy / d * max - w->vy[g], want = sqrtf(wx * wx + wy * wy), dv = minf(want, accel * dt);
   if (want > 0) { w->vx[g] += wx / want * dv; w->vy[g] += wy / want * dv; }
   float sp = sqrtf(w->vx[g] * w->vx[g] + w->vy[g] * w->vy[g]);
@@ -678,7 +744,7 @@ static void tick_pickup(World *w, int g) {
 /** 적이 설치물·아군에 닿으면 0.5초마다 피해 (js collideStructures) */
 static void collide_structures(World *w) {
   static int near[4096];
-  for (int o = 0; o < w->hi; o++) {
+  for (int o = index_next(w->fast.structures, 0, w->hi); o < w->hi; o = index_next(w->fast.structures, o + 1, w->hi)) {
     if (!ent_live(w, o) || (w->kind[o] != TK_OBJECT && w->kind[o] != TK_ALLY)) continue;
     w->contact_cd[o] = maxf(0, w->contact_cd[o] - SIM_DT);
     if (w->contact_cd[o] > 0) continue;
@@ -714,8 +780,8 @@ static void recycle_far_enemies(World *w) {
   int p = player_i(w);
   if (p < 0) return;
   float ring = spawn_ring(w), far = ring * 1.6f;
-  for (int i = 0; i < w->hi; i++) {
-    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY) continue;
+  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) {
+    if (!ent_live(w, i)) continue;
     float dx = w->x[i] - w->x[p], dy = w->y[i] - w->y[p], dd = dx * dx + dy * dy;
     if (dd <= far * far) continue;
     float d = sqrtf(dd);
@@ -734,15 +800,19 @@ static void tick_life(World *w, int i) {
 
 static void run_kind(World *w, int kind, const SimInput *in, void (*tick)(World *, int)) {
   int hi = w->hi;
-  for (int i = 0; i < hi; i++) {
+  for (int i = kind_next(w, kind, 0, hi); i < hi; i = kind_next(w, kind, i + 1, hi)) {
     if (!ent_live(w, i) || w->kind[i] != kind) continue;
+    if (kind != TK_SELF && kind != TK_ENEMY) {
+      tick_life(w, i);
+      if (!ent_live(w, i)) continue;
+    }
     if (w->flash[i] > 0) w->flash[i] -= SIM_DT;
     if (w->invuln[i] > 0) w->invuln[i] -= SIM_DT;
     reset_effects(w, i);
-    slots_update(w, i, in);
+    slots_update_before(w, i, in);
     if (!ent_live(w, i)) continue;
     if (tick) tick(w, i);
-    if (kind != TK_SELF && kind != TK_ENEMY) tick_life(w, i);
+    if (ent_live(w, i)) slots_update_after(w, i, in);
   }
 }
 
@@ -758,9 +828,8 @@ void entities_update(World *w, const SimInput *in) {
   }
   grid_build(w, 1u << TK_ENEMY);
   run_kind(w, TK_ENEMY, in, tick_enemy);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) w->phase[i] += SIM_DT * 7 * (w->freeze_t[i] > 0 ? 0 : 1);
-  grid_build(w, 1u << TK_ENEMY);
-  separate_enemies(w);
+  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) if (ent_live(w, i)) w->phase[i] += SIM_DT * 7 * (w->freeze_t[i] > 0 ? 0 : 1);
+  separate_enemies_for_tick(w);
   recycle_far_enemies(w);
   grid_build(w, 1u << TK_ENEMY);   // 밀어내기·재배치로 칸이 바뀐 적도 아래 질의(탄·장판·접촉)에 잡히게
   run_kind(w, TK_ALLY, in, tick_ally);
@@ -781,7 +850,7 @@ void resolve_deaths(World *w, const SimInput *in) {
   for (int round = 0; round < 8; round++) {
     bool any = false;
     int hi = w->hi;
-    for (int i = 0; i < hi; i++) {
+    for (int i = entity_scan_next(w, 0, hi); i < hi; i = entity_scan_next(w, i + 1, hi)) {
       if (!w->alive[i] || w->dying[i] != 1) continue;
       if (w->kind[i] == TK_SELF) { w->dying[i] = 0; continue; }   // 플레이어는 게임 오버로 끝낸다
       if (w->kind[i] == TK_ENEMY && w->hp[i] <= 0 && !w->merged[i]) { /* 처치 수·파티클은 kill_enemy 가 이미 */ }
@@ -791,7 +860,7 @@ void resolve_deaths(World *w, const SimInput *in) {
     }
     if (!any) break;
   }
-  for (int i = 0; i < w->hi; i++) {
+  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
     if (!w->alive[i]) continue;
     if (w->dying[i]) { ent_free(w, i); continue; }
     if (w->kind[i] == TK_ENEMY) enemies++;

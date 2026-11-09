@@ -105,6 +105,7 @@ canvas { display: block; image-rendering: pixelated; }
 .panel .title-en { margin-top: 8px; font-size: 15px; letter-spacing: 1px; color: var(--muted); }
 .panel h2 { font-size: 28px; margin-bottom: 4px; text-shadow: 3px 3px 0 #000; }
 .panel .sub { color: var(--muted); margin-top: 10px; }
+.title-card-types { display: grid; gap: 6px; margin-bottom: 18px; color: var(--muted); text-align: left; }
 
 .keys {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px;

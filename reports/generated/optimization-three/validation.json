@@ -1,0 +1,42 @@
+{
+  "nativeRules": {
+    "passed": 151,
+    "total": 151
+  },
+  "wasmRules": {
+    "passed": 151,
+    "total": 151
+  },
+  "cardImplementationCoverage": [
+    101,
+    101
+  ],
+  "nativeStateAndOldSave": [
+    24,
+    24
+  ],
+  "wasmPgoStateAndOldSave": [
+    24,
+    24
+  ],
+  "exactPixelComparisons": [
+    33,
+    33
+  ],
+  "maxChannelDelta": 0,
+  "roundingSamples": 2000000,
+  "shippingStaticSiteSmoke": true,
+  "realLoopRows": 40,
+  "sameFrameRows": 20,
+  "sameFrameCoreValuesEqual": true,
+  "benchmarkSourcesMatch": true,
+  "pgoSourcesMatch": true,
+  "jsAndNativeReferenceFilesUnchanged": true,
+  "referenceFileCount": 69,
+  "sharedCsvChanges": [],
+  "worldBytes": 60538504,
+  "wasmHeapBytes": [
+    80543744
+  ],
+  "limitation": "Sparse/high-water workloads improve; same-frame dense/shots workloads cost approximately 2-4% more."
+}

@@ -85,17 +85,18 @@ class Player {
 
   takeDamage(amount, game) {
     if (this.dead || this.invuln > 0 || game.state !== 'playing') return;
-    let dmg = Math.max(1, amount * markMultiplier(this) - this.stats.armor);
+    let dmg = Math.max(1, amount * markMultiplier(this) - this.stats.armor), absorbed = 0;
     if (this.shield > 0) {
-      const absorbed = Math.min(this.shield, dmg);
+      absorbed = Math.min(this.shield, dmg);
       this.shield -= absorbed;
       dmg -= absorbed;
       if (this.shield <= 0) this.shieldT = 0;
       game.addText(this.x, this.y - 24, `(${Math.round(absorbed)})`, '#7fb2ff');
-      if (dmg <= 0) { this.invuln = 0.3; return; }
+      // 보호막이 막은 피해도 피격이다 (설치물·적처럼 흡수량을 함께 알린다): 보호막 뒤의 피격 연쇄가 보호막 때문에 막히지 않게 한다
+      if (dmg <= 0) { this.invuln = 0.3; reportSlotHit(game, game._collisionSource || game.actionActor, this, absorbed); return; }
     }
     this.hp -= dmg;
-    reportSlotHit(game, game._collisionSource || game.actionActor, this, dmg);
+    reportSlotHit(game, game._collisionSource || game.actionActor, this, dmg + absorbed);
     this.invuln = 0.5;
     this.hurtT = 2;
     game.shake(6);

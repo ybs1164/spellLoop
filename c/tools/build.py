@@ -4,13 +4,14 @@
     python c/tools/build.py fetch            SDL3 소스를 c/third_party 로 받는다
     python c/tools/build.py desktop [--run]  데스크톱 앱·실행기·시험 (zig cc) → c/build/desktop
     python c/tools/build.py test             데스크톱 빌드 후 규칙 시험 실행
-    python c/tools/build.py web              emscripten → c/build/web/amagos.html (EMSDK 또는 ~/emsdk)
+    python c/tools/build.py web [--site DIR] emscripten → c/build/web/amagos.html, 정적 사이트를 DIR 에 복사
     python c/tools/build.py android          Gradle → c/android/app/build/outputs/apk/debug/*.apk (ANDROID_HOME)
     python c/tools/build.py android-install  위 APK 를 adb 로 연결된 기기에 설치·실행
 
 데스크톱 컴파일러는 zig cc (python -m pip install ziglang) 이고, 없으면 PATH 의 cc 를 쓴다.
 zig·emscripten·Gradle 캐시와 임시 파일은 모두 c/build/ 아래에 둔다 (시스템 드라이브를 채우지 않게).
 """
+import hashlib
 import os
 import shutil
 import subprocess
@@ -138,7 +139,34 @@ def emsdk_dir():
     raise SystemExit('emsdk 가 없다: EMSDK 환경변수, ~/emsdk, 또는 프로젝트 드라이브의 Tools/emsdk')
 
 
-def web():
+def web_profile(em, env):
+    """Index the portable, reviewed training counts with the active SDK."""
+    source = os.path.join(ROOT, 'profiles', 'web.proftext')
+    if not os.path.isfile(source):
+        return ''
+    tool = os.path.join(em, 'upstream', 'bin', 'llvm-profdata' + EXE)
+    try:
+        version = subprocess.check_output([tool, '--version'], text=True, env=env)
+    except (OSError, subprocess.CalledProcessError):
+        print('This SDK has no usable llvm-profdata; using the normal optimized build.', flush=True)
+        return ''
+    with open(source, 'rb') as stream:
+        digest = hashlib.sha256(stream.read() + version.encode()).hexdigest()[:20]
+    directory = os.path.join(BUILD, 'pgo')
+    os.makedirs(directory, exist_ok=True)
+    target = os.path.join(directory, f'web-{digest}.profdata')
+    if not os.path.isfile(target):
+        result = subprocess.run([tool, 'merge', '-o', target, source], env=env)
+        if result.returncode:
+            if os.path.exists(target):
+                os.remove(target)
+            print('This SDK cannot read the web PGO profile; using the normal optimized build.', flush=True)
+            return ''
+    print('Web PGO:', source, flush=True)
+    return target
+
+
+def web(use_pgo=True):
     fetch()
     em = emsdk_dir()
     toolchain = os.path.join(em, 'upstream', 'emscripten', 'cmake', 'Modules', 'Platform', 'Emscripten.cmake')
@@ -148,10 +176,24 @@ def web():
     env['PATH'] = os.pathsep.join([os.path.join(em, 'upstream', 'emscripten'), *node, env['PATH']])
     env['EMSDK'] = em
     out = os.path.join(BUILD, 'web')
+    profile = web_profile(em, env) if use_pgo else ''
     run(['cmake', '-S', ROOT, '-B', out, '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release', f'-DCMAKE_TOOLCHAIN_FILE={toolchain}',
-         f'-DPython3_EXECUTABLE={sys.executable}', '-DAMAGOS_TOOLS=OFF'], env=env)
+         f'-DPython3_EXECUTABLE={sys.executable}', '-DAMAGOS_TOOLS=OFF',
+         f'-DAMAGOS_WEB_PGO_PROFILE={profile}'], env=env)
     run(['cmake', '--build', out], env=env)
+    shutil.copy2(os.path.join(out, 'amagos.html'), os.path.join(out, 'index.html'))
     print('웹:', os.path.join(out, 'amagos.html'))
+    return out
+
+
+def web_site(out, dest):
+    """정적 호스팅에 필요한 파일만 모은다."""
+    os.makedirs(dest, exist_ok=True)
+    for source, target in [('amagos.html', 'index.html'), ('amagos.js', 'amagos.js'),
+                           ('amagos.wasm', 'amagos.wasm'), ('amagos.data', 'amagos.data')]:
+        shutil.copy2(os.path.join(out, source), os.path.join(dest, target))
+    open(os.path.join(dest, '.nojekyll'), 'a').close()
+    print('정적 사이트:', os.path.abspath(dest))
 
 
 def android(install=False):
@@ -179,7 +221,12 @@ def main():
     elif cmd == 'test':
         test()
     elif cmd == 'web':
-        web()
+        out = web(use_pgo='--no-pgo' not in sys.argv)
+        if '--site' in sys.argv:
+            at = sys.argv.index('--site')
+            if at + 1 >= len(sys.argv):
+                raise SystemExit('--site 뒤에 출력 폴더가 필요하다')
+            web_site(out, os.path.abspath(sys.argv[at + 1]))
     elif cmd == 'android':
         android()
     elif cmd == 'android-install':

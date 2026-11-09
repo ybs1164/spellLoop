@@ -1,0 +1,10180 @@
+:ir
+SDL_AppEvent
+# Func Hash:
+963707801822874695
+# Num Counters:
+100
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+SDL_AppIterate
+# Func Hash:
+775880641890416940
+# Num Counters:
+58
+# Counter Values:
+0
+0
+0
+0
+32
+0
+0
+960
+0
+0
+0
+944
+0
+960
+0
+944
+944
+944
+960
+0
+960
+0
+960
+0
+0
+960
+0
+0
+960
+0
+0
+0
+0
+0
+0
+0
+960
+960
+960
+960
+0
+960
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+944
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+3
+2
+513:786
+16:158
+2
+513:786
+16:158
+3
+513:470
+257:316
+8:158
+
+SDL_AppQuit
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+SDL_main
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+2
+# Num Bitmap Bytes:
+$0
+
+__main_argc_argv
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+2
+# Num Bitmap Bytes:
+$0
+
+action_accepts_any_position
+# Func Hash:
+567185242815643766
+# Num Counters:
+5
+# Counter Values:
+204
+104
+82
+6548024
+2
+# Num Bitmap Bytes:
+$0
+
+action_applies
+# Func Hash:
+417728286886180799
+# Num Counters:
+56
+# Counter Values:
+0
+144
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+51380
+144
+0
+144
+144
+0
+0
+51380
+51380
+144
+0
+144
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+144
+# Num Bitmap Bytes:
+$0
+
+action_damage
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+150
+150
+# Num Bitmap Bytes:
+$0
+
+action_impl_done
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+action_value
+# Func Hash:
+391331300761852340
+# Num Counters:
+6
+# Counter Values:
+900
+450
+450
+0
+150
+150
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_absorb
+# Func Hash:
+1029578617221251227
+# Num Counters:
+16
+# Counter Values:
+1800
+1800
+0
+1800
+0
+1800
+1800
+0
+1800
+1800
+0
+1800
+0
+0
+1800
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_amplify
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_archer
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_armor
+# Func Hash:
+238984484622511769
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_blades
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_blink
+# Func Hash:
+334492581840957869
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_bolt
+# Func Hash:
+312111766657528519
+# Num Counters:
+40
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+150
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+150
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_burn
+# Func Hash:
+567185242739573998
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_chain
+# Func Hash:
+118056773700432245
+# Num Counters:
+14
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_dash
+# Func Hash:
+290495008051888092
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_decoy
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_disappear
+# Func Hash:
+844982798274935104
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_drain
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_explode
+# Func Hash:
+974670604916260396
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_fear
+# Func Hash:
+1124680652115249575
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_focus
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_frost
+# Func Hash:
+798733564930955788
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_haste
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_heal
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+144
+144
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_input_move
+# Func Hash:
+824185422946127725
+# Num Counters:
+15
+# Counter Values:
+0
+0
+2984
+2984
+2984
+2984
+0
+0
+0
+2984
+2984
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_lance
+# Func Hash:
+536873290231689177
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_laser
+# Func Hash:
+1063705159482881504
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_magnet
+# Func Hash:
+694937217715391559
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_mark
+# Func Hash:
+287486625264445807
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_meteor
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_mine
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_orb
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_poison
+# Func Hash:
+334492582535598025
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_pull
+# Func Hash:
+753202731795583847
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_rage
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_root
+# Func Hash:
+567185242739573998
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_scatter
+# Func Hash:
+1096621591212189245
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_shield
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_shockwave
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_slash
+# Func Hash:
+1124680650144255556
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_snipe
+# Func Hash:
+1152385649157788750
+# Num Counters:
+12
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_spawn_orb
+# Func Hash:
+52047014844586789
+# Num Counters:
+9
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_split
+# Func Hash:
+153077738497013568
+# Num Counters:
+29
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_spread
+# Func Hash:
+102051345874190083
+# Num Counters:
+20
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_summon
+# Func Hash:
+764657765053087804
+# Num Counters:
+13
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_swap
+# Func Hash:
+591567704917102359
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_turret
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_vortex
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;a_ward
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;aim_at
+# Func Hash:
+1080275684530342554
+# Num Counters:
+8
+# Counter Values:
+174
+48
+0
+150
+24
+0
+0
+48
+# Num Bitmap Bytes:
+$0
+
+actions.c;direct_status
+# Func Hash:
+798733565808455187
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;drain_enemy
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;each_debuff
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;eff_value
+# Func Hash:
+391331300520242514
+# Num Counters:
+6
+# Counter Values:
+0
+126
+6
+9868338
+6
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;force_zone
+# Func Hash:
+464484864811084140
+# Num Counters:
+26
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;hostile
+# Func Hash:
+331865489293140573
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+2
+0
+0
+
+actions.c;m_affinity
+# Func Hash:
+360019388340869800
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_boomerang_or_bolt
+# Func Hash:
+1070589992893489342
+# Num Counters:
+18
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_decoy
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_follow
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_guard
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_hit
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_keep
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_move
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+46302
+46302
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_orbit
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;m_resist
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;mark_enemy
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;move_target
+# Func Hash:
+187771963762497576
+# Num Counters:
+9
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;place_at
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions.c;zone_at
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+actions_init
+# Func Hash:
+146835646621254984
+# Num Counters:
+2
+# Counter Values:
+110
+2
+# Num Bitmap Bytes:
+$0
+
+add_debuff
+# Func Hash:
+78193997372039021
+# Num Counters:
+19
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+can_act
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+9923200
+9923200
+# Num Bitmap Bytes:
+$0
+
+can_hit
+# Func Hash:
+177584446666788873
+# Num Counters:
+12
+# Counter Values:
+1666740
+1666740
+1666740
+1666740
+0
+0
+0
+1666740
+12400
+1654340
+716440
+950300
+# Num Bitmap Bytes:
+$0
+
+card_filter
+# Func Hash:
+557045190543081570
+# Num Counters:
+8
+# Counter Values:
+92604
+48102
+92604
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+2
+0
+2
+targets.c;t_player_contact:46302
+targets.c;t_in_reach:46302
+
+card_find
+# Func Hash:
+536873291286352859
+# Num Counters:
+4
+# Counter Values:
+79467902
+78042868
+79467902
+1438390
+# Num Bitmap Bytes:
+$0
+
+card_icon
+# Func Hash:
+928018418651980845
+# Num Counters:
+6
+# Counter Values:
+204
+118
+34636
+2
+34636
+2
+# Num Bitmap Bytes:
+$0
+
+card_prop
+# Func Hash:
+238984482735615095
+# Num Counters:
+4
+# Counter Values:
+6
+12
+6
+6
+# Num Bitmap Bytes:
+$0
+
+card_prop_str
+# Func Hash:
+1063705162558100101
+# Num Counters:
+3
+# Counter Values:
+6
+6
+6
+# Num Bitmap Bytes:
+$0
+
+card_resolve
+# Func Hash:
+515008863242494524
+# Num Counters:
+6
+# Counter Values:
+96380
+46302
+49430
+648
+49430
+46302
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+1
+targets.c;r_nearest_enemy:648
+
+card_run
+# Func Hash:
+1108181534497045817
+# Num Counters:
+4
+# Counter Values:
+51380
+0
+46302
+5078
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+4
+actions.c;a_input_move:2984
+actions.c;a_absorb:1800
+actions.c;a_bolt:150
+actions.c;a_heal:144
+
+card_when
+# Func Hash:
+728453322856651412
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+0
+
+cards_impl.c;compile_value
+# Func Hash:
+278041623350615371
+# Num Counters:
+16
+# Counter Values:
+84
+4072
+84
+84
+84
+774
+84
+690
+84
+84
+1956
+28
+1954
+28
+200
+2040
+# Num Bitmap Bytes:
+$0
+
+cards_impl.c;prop
+# Func Hash:
+798733565653647393
+# Num Counters:
+4
+# Counter Values:
+9138
+8084
+8084
+208
+# Num Bitmap Bytes:
+$0
+
+cards_impl_coverage
+# Func Hash:
+414921810812944256
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+cards_impl_init
+# Func Hash:
+414921811447228423
+# Num Counters:
+7
+# Counter Values:
+2040
+204
+204
+248
+248
+84
+2
+# Num Bitmap Bytes:
+$0
+
+cast_buff
+# Func Hash:
+70168000411568897
+# Num Counters:
+16
+# Counter Values:
+144
+144
+144
+0
+0
+144
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+claim_reward
+# Func Hash:
+140494398242795027
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+combat.c;add_stack
+# Func Hash:
+753202735107972951
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+combat.c;buff_dur
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+configure_curse_shot
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+css_color
+# Func Hash:
+650973720236310173
+# Num Counters:
+9
+# Counter Values:
+630054
+0
+4
+630050
+0
+0
+0
+0
+630050
+# Num Bitmap Bytes:
+$0
+
+damage_enemy
+# Func Hash:
+540387574098289612
+# Num Counters:
+33
+# Counter Values:
+716440
+0
+716440
+0
+716440
+716440
+716440
+0
+716440
+0
+0
+0
+716440
+0
+0
+0
+0
+0
+0
+716440
+0
+0
+716440
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+damage_target
+# Func Hash:
+1063287640478194994
+# Num Counters:
+27
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+data_cell
+# Func Hash:
+1124680650898168297
+# Num Counters:
+4
+# Counter Values:
+468756
+468756
+468756
+468756
+# Num Bitmap Bytes:
+$0
+
+data_col
+# Func Hash:
+391331302336053357
+# Num Counters:
+6
+# Counter Values:
+1458
+174
+174
+34589326
+34589326
+34589326
+# Num Bitmap Bytes:
+$0
+
+data_init
+# Func Hash:
+1107929278755321731
+# Num Counters:
+31
+# Counter Values:
+202
+184
+0
+1034
+1836
+1836
+924
+924
+202
+0
+168
+0
+204
+154
+136
+40
+0
+204
+204
+204
+0
+0
+0
+204
+0
+2
+0
+2
+2
+2
+136
+# Num Bitmap Bytes:
+$0
+
+data_num
+# Func Hash:
+567185241309809066
+# Num Counters:
+6
+# Counter Values:
+768884
+1160132
+801506
+1160132
+1160132
+1160132
+# Num Bitmap Bytes:
+$0
+
+data_row
+# Func Hash:
+331779888049814397
+# Num Counters:
+9
+# Counter Values:
+52372
+51564
+52372
+52372
+808
+816
+108858
+108712
+108712
+# Num Bitmap Bytes:
+$0
+
+data_str
+# Func Hash:
+1096621590674166899
+# Num Counters:
+7
+# Counter Values:
+32630204
+202
+32925774
+32630406
+32925770
+32925770
+32925770
+# Num Bitmap Bytes:
+$0
+
+data_table
+# Func Hash:
+391331302456652441
+# Num Counters:
+6
+# Counter Values:
+726
+40
+120032
+40
+120026
+120026
+# Num Bitmap Bytes:
+$0
+
+deck_changed
+# Func Hash:
+1096621591240978536
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+deck_move
+# Func Hash:
+1106806632541371785
+# Num Counters:
+69
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+8
+0
+0
+0
+0
+0
+0
+0
+0
+
+deck_move_slot
+# Func Hash:
+431494656919539458
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+emit_event
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+1980
+1800
+# Num Bitmap Bytes:
+$0
+
+end_zone
+# Func Hash:
+1124680651190764884
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+enemies_at_least
+# Func Hash:
+534572324270222953
+# Num Counters:
+25
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ent_free
+# Func Hash:
+1124680653601441999
+# Num Counters:
+3
+# Counter Values:
+10858
+5546
+234
+# Num Bitmap Bytes:
+$0
+
+ent_index
+# Func Hash:
+37730076839988558
+# Num Counters:
+5
+# Counter Values:
+21775946
+21767012
+21767012
+21767012
+21767012
+# Num Bitmap Bytes:
+$0
+
+ent_kill
+# Func Hash:
+290495009207408220
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ent_spawn
+# Func Hash:
+928018416584383491
+# Num Counters:
+6
+# Counter Values:
+258
+240
+150
+116212
+116212
+150
+# Num Bitmap Bytes:
+$0
+
+entities.c;add_gimmick
+# Func Hash:
+334492581168854424
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;add_recipe
+# Func Hash:
+1013336874689902107
+# Num Counters:
+12
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;add_slot
+# Func Hash:
+195503184139918498
+# Num Counters:
+10
+# Counter Values:
+0
+0
+195200
+97600
+97600
+97600
+0
+0
+97600
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+1
+64:97600
+
+entities.c;enemy_prop
+# Func Hash:
+1096621589866700812
+# Num Counters:
+6
+# Counter Values:
+0
+26352000
+0
+585600
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;enemy_prop_str
+# Func Hash:
+844982800138822595
+# Num Counters:
+4
+# Counter Values:
+4392000
+0
+97600
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;enemy_trait
+# Func Hash:
+536873290425391316
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+357874
+# Num Bitmap Bytes:
+$0
+
+entities.c;move_dir
+# Func Hash:
+391331300241012703
+# Num Counters:
+6
+# Counter Values:
+0
+2332600
+0
+2332600
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;period_stat
+# Func Hash:
+844982796315098460
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;run_kind
+# Func Hash:
+629592968630027551
+# Num Counters:
+35
+# Counter Values:
+71136
+987714
+3323298
+3323298
+3323298
+3323298
+3322998
+11652
+3316750
+3323298
+3323298
+987714
+26856
+941412
+449478
+2456
+3323298
+6548
+987714
+42066
+3281232
+3323298
+6548
+0
+987714
+0
+6548
+0
+3281232
+3321498
+3318514
+3321498
+3321498
+3317986
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+3
+entities.c;tick_enemy:2332600
+entities.c;tick_shot:941412
+entities.c;tick_pickup:44502
+
+entities.c;tables
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+103808
+2
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_ally
+# Func Hash:
+495986877603489449
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_enemy
+# Func Hash:
+375942207228126528
+# Num Counters:
+16
+# Counter Values:
+0
+0
+0
+0
+0
+2332600
+2332600
+0
+2332600
+2332600
+0
+2332600
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_object
+# Func Hash:
+1135183729808123776
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_pickup
+# Func Hash:
+174542563570399748
+# Num Counters:
+9
+# Counter Values:
+0
+44502
+44502
+0
+40506
+42
+44460
+0
+10290
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_shot
+# Func Hash:
+4263018442436283
+# Num Counters:
+79
+# Counter Values:
+1138290
+0
+0
+0
+8412438
+0
+0
+8409114
+7886456
+5828398
+4999122
+0
+0
+0
+5828398
+770592
+941412
+0
+3719006
+0
+5731520
+5731520
+0
+941412
+0
+0
+0
+5828398
+0
+0
+0
+941412
+0
+941412
+941412
+941412
+5828398
+0
+0
+0
+0
+0
+0
+0
+1487032
+0
+0
+0
+0
+0
+0
+0
+0
+937900
+0
+0
+0
+716440
+770592
+0
+937900
+937900
+0
+0
+3512
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1138290
+76930
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities.c;tick_zone
+# Func Hash:
+1113760048401563636
+# Num Counters:
+27
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+entities_update
+# Func Hash:
+328996283430902093
+# Num Counters:
+68
+# Counter Values:
+9914
+0
+17368
+17368
+0
+0
+2332600
+0
+2332600
+0
+2332600
+2332600
+0
+0
+12400
+9914
+0
+2332600
+2332600
+2332600
+55588
+2332600
+52604
+12400
+0
+2332600
+2332600
+0
+0
+12400
+2330114
+0
+2332600
+0
+0
+2330114
+2332600
+0
+0
+12400
+0
+0
+0
+2984
+12400
+0
+2984
+2486
+2984
+2984
+0
+12400
+2486
+2486
+0
+0
+0
+12400
+2486
+0
+0
+2486
+2486
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+flush_events
+# Func Hash:
+306298213926800965
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+2984
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+1
+0:2984
+
+forced_move_scale
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+fx_add
+# Func Hash:
+2202714313002754
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+fx_banner
+# Func Hash:
+702941992757231615
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+fx_beam
+# Func Hash:
+2202714313002754
+# Num Counters:
+2
+# Counter Values:
+1800
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+fx_burst
+# Func Hash:
+395509790418504103
+# Num Counters:
+3
+# Counter Values:
+9600
+0
+480
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+fx_circle
+# Func Hash:
+2202714313002754
+# Num Counters:
+2
+# Counter Values:
+1744
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+fx_label
+# Func Hash:
+419242269249203525
+# Num Counters:
+5
+# Counter Values:
+1440
+144
+144
+0
+18
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+fx_shake
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+90
+90
+# Num Bitmap Bytes:
+$0
+
+fx_text
+# Func Hash:
+1043763186205332531
+# Num Counters:
+8
+# Counter Values:
+7181300
+3542
+721672
+718130
+716530
+0
+0
+713152
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+0
+
+gain_xp
+# Func Hash:
+1124680652115249575
+# Num Counters:
+3
+# Counter Values:
+48
+48
+1800
+# Num Bitmap Bytes:
+$0
+
+game.c;enter_stage
+# Func Hash:
+927205942013004666
+# Num Counters:
+13
+# Counter Values:
+0
+0
+0
+158
+0
+0
+0
+0
+158
+158
+0
+158
+0
+# Num Bitmap Bytes:
+$0
+
+game.c;pool_open
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+131296
+11936
+# Num Bitmap Bytes:
+$0
+
+game.c;tables
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+3226
+2
+# Num Bitmap Bytes:
+$0
+
+game_new
+# Func Hash:
+456618552320832286
+# Num Counters:
+13
+# Counter Values:
+1920
+640
+800
+560
+480
+160
+240
+240
+160
+240
+80
+800
+240
+# Num Bitmap Bytes:
+$0
+
+game_set_stage
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+78
+# Num Bitmap Bytes:
+$0
+
+gfx.c;cached_shadow
+# Func Hash:
+508516458397299939
+# Num Counters:
+18
+# Counter Values:
+0
+168
+32
+2814528
+0
+24
+2814520
+8
+8
+0
+8
+0
+2814528
+8
+8
+2
+0
+24
+# Num Bitmap Bytes:
+$0
+
+gfx.c;glyph
+# Func Hash:
+159996863809711089
+# Num Counters:
+89
+# Counter Values:
+24968
+0
+0
+0
+68184
+139901
+29634
+771688
+144406
+0
+0
+1952
+73942
+25129
+136368
+16479
+29634
+144406
+29634
+0
+48974
+13155
+7272
+0
+0
+0
+0
+136303
+0
+1952
+0
+0
+68184
+771688
+17832
+118536
+0
+0
+1952
+8916
+59268
+13928
+8916
+8916
+27682
+36680
+1952
+0
+0
+5997959
+32741
+35972
+18020
+3904
+0
+0
+3904
+5995975
+1952
+5994376
+1984
+0
+5963234
+16
+0
+1952
+1952
+1952
+5965218
+54
+1952
+11
+11
+0
+0
+1952
+15008
+15008
+0
+14626
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+11
+65:20619
+33:11737
+129:1203
+17:1115
+257:870
+64:382
+32:355
+9:175
+16:128
+8:78
+4:18
+10
+65:21001
+33:11151
+129:1203
+64:941
+257:870
+32:636
+17:607
+16:175
+9:78
+8:18
+
+gfx.c;next_cp
+# Func Hash:
+798733566408009235
+# Num Counters:
+4
+# Counter Values:
+2232822
+23122
+252674
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;quad_px
+# Func Hash:
+78612108347578148
+# Num Counters:
+9
+# Counter Values:
+12113363
+7406
+0
+2172
+12528
+24
+12029351
+12528
+24
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt_FindGlyphIndex
+# Func Hash:
+510152026225458854
+# Num Counters:
+21
+# Counter Values:
+0
+56292
+0
+5920
+0
+0
+0
+0
+0
+5920
+5920
+0
+0
+0
+0
+0
+5920
+1228
+29970
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt_GetGlyphBitmapBoxSubpixel
+# Func Hash:
+1013336876316401024
+# Num Counters:
+12
+# Counter Values:
+32
+3904
+3936
+32
+32
+1952
+1952
+3904
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt_GetGlyphShape
+# Func Hash:
+66975584801048502
+# Num Counters:
+44
+# Counter Values:
+0
+0
+0
+16
+41342
+17926
+36380
+22888
+8916
+59252
+6964
+12704
+11826
+0
+8
+0
+0
+0
+0
+1952
+0
+0
+50352
+0
+0
+0
+1952
+1952
+0
+0
+0
+0
+0
+0
+0
+1952
+0
+0
+0
+0
+0
+7940
+11226
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+0
+0
+
+gfx.c;stbtt__GetGlyfOffset
+# Func Hash:
+334492584295367941
+# Num Counters:
+5
+# Counter Values:
+5888
+5888
+5888
+0
+32
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__cff_get_index
+# Func Hash:
+1152385646201002032
+# Num Counters:
+11
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__cff_index_get
+# Func Hash:
+824185420628626610
+# Num Counters:
+12
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__cff_int
+# Func Hash:
+653247342577758065
+# Num Counters:
+13
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__close_shape
+# Func Hash:
+798733565943042918
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+8916
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__csctx_close_shape
+# Func Hash:
+844982797235863713
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__csctx_rccurve_to
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__csctx_rline_to
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__csctx_rmove_to
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__dict_get_ints
+# Func Hash:
+508516458012067753
+# Num Counters:
+19
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__find_table
+# Func Hash:
+391331301207825485
+# Num Counters:
+7
+# Counter Values:
+248
+216
+44
+32
+32
+36
+32
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__get_subrs
+# Func Hash:
+262909784508308745
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__handle_clipped_edge
+# Func Hash:
+174542564227572456
+# Num Counters:
+10
+# Counter Values:
+272606
+272606
+272606
+52836
+26122
+65226
+207380
+65226
+65226
+65226
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__run_charstring
+# Func Hash:
+841168442759455207
+# Num Counters:
+100
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__sort_edges_quicksort
+# Func Hash:
+830659415837389182
+# Num Counters:
+8
+# Counter Values:
+8310
+7206
+6494
+1104
+772
+966
+3690
+420
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__tesselate_cubic
+# Func Hash:
+844982799182320153
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__tesselate_curve
+# Func Hash:
+844982799182320153
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;stbtt__track_vertex
+# Func Hash:
+414921809153531719
+# Num Counters:
+9
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx.c;trim_sprite
+# Func Hash:
+669092623270532626
+# Num Counters:
+14
+# Counter Values:
+3106132
+3106132
+3106132
+3106132
+3106132
+3106132
+3106132
+3106132
+3106132
+0
+0
+862292
+862292
+862292
+# Num Bitmap Bytes:
+$0
+
+gfx_accelerated
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+5822
+# Num Bitmap Bytes:
+$0
+
+gfx_baseline
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+99548
+# Num Bitmap Bytes:
+$0
+
+gfx_begin
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+5830
+5822
+# Num Bitmap Bytes:
+$0
+
+gfx_circle
+# Func Hash:
+1060395440191895509
+# Num Counters:
+13
+# Counter Values:
+85332
+85332
+85332
+84012
+85332
+85332
+4476
+79536
+65872
+84012
+84012
+84012
+84012
+# Num Bitmap Bytes:
+$0
+
+gfx_clip
+# Func Hash:
+365085830245702292
+# Num Counters:
+6
+# Counter Values:
+6
+6
+6
+5
+6
+6
+# Num Bitmap Bytes:
+$0
+
+gfx_dither
+# Func Hash:
+211488477446415301
+# Num Counters:
+18
+# Counter Values:
+1920
+20480
+0
+96
+192
+8
+8
+6
+0
+2
+0
+2
+1824
+1760
+1920
+1920
+1920
+1920
+# Num Bitmap Bytes:
+$0
+
+gfx_flush
+# Func Hash:
+886271542074319524
+# Num Counters:
+4
+# Counter Values:
+20578
+36
+14700
+20532
+# Num Bitmap Bytes:
+$0
+
+gfx_font_metrics
+# Func Hash:
+844982800087245094
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx_has_glyph
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+gfx_icon
+# Func Hash:
+1007112939986446439
+# Num Counters:
+6
+# Counter Values:
+89188
+89188
+79299
+89186
+79299
+89186
+# Num Bitmap Bytes:
+$0
+
+gfx_init
+# Func Hash:
+1043374928656999942
+# Num Counters:
+94
+# Counter Values:
+67584
+55660
+4
+0
+4224
+67584
+0
+114688
+0
+0
+0
+0
+0
+4
+0
+0
+0
+264
+352
+0
+276
+64
+0
+0
+12
+4
+4
+0
+4
+4
+4
+4
+4
+4
+0
+0
+0
+0
+4
+0
+4
+0
+2
+2
+4
+0
+0
+0
+0
+2
+0
+0
+0
+0
+4
+0
+0
+0
+0
+4
+0
+4
+2
+0
+0
+2
+0
+0
+4
+0
+2
+4
+4
+0
+0
+0
+2
+0
+0
+0
+0
+2
+0
+2
+0
+52216
+51618
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx_layer_begin
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+8
+8
+# Num Bitmap Bytes:
+$0
+
+gfx_layer_create
+# Func Hash:
+679210743074613351
+# Num Counters:
+4
+# Counter Values:
+2
+2
+2
+2
+# Num Bitmap Bytes:
+$0
+
+gfx_layer_end
+# Func Hash:
+382993475055910911
+# Num Counters:
+2
+# Counter Values:
+8
+0
+# Num Bitmap Bytes:
+$0
+
+gfx_letter_spacing
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+112
+# Num Bitmap Bytes:
+$0
+
+gfx_line_normal
+# Func Hash:
+702941992757231615
+# Num Counters:
+3
+# Counter Values:
+40710
+4142
+4142
+# Num Bitmap Bytes:
+$0
+
+gfx_origin
+# Func Hash:
+702941992757231615
+# Num Counters:
+3
+# Counter Values:
+11644
+11644
+11644
+# Num Bitmap Bytes:
+$0
+
+gfx_quit
+# Func Hash:
+187771963895573240
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+gfx_rect
+# Func Hash:
+208392344378501223
+# Num Counters:
+7
+# Counter Values:
+7369617
+7360349
+9268
+7360288
+7360173
+7333529
+7360173
+# Num Bitmap Bytes:
+$0
+
+gfx_scale
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+1768
+# Num Bitmap Bytes:
+$0
+
+gfx_sheet_texture
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+8
+# Num Bitmap Bytes:
+$0
+
+gfx_sprite
+# Func Hash:
+339365028690605040
+# Num Counters:
+18
+# Counter Values:
+296542
+296542
+291604
+296542
+0
+291604
+140474
+296542
+0
+296542
+296542
+296542
+151427
+150621
+296542
+296542
+296542
+296542
+# Num Bitmap Bytes:
+$0
+
+gfx_sprite_with_shadow
+# Func Hash:
+493137858363495297
+# Num Counters:
+25
+# Counter Values:
+2809590
+0
+2809590
+2809590
+2809590
+2809590
+2809590
+2809590
+2809590
+0
+721818
+2809590
+2809590
+940453
+1408695
+1424269
+2809590
+2809590
+2809590
+2809590
+2809590
+1400900
+2809590
+1407213
+2809590
+# Num Bitmap Bytes:
+$0
+
+gfx_tabular_nums
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+128388
+# Num Bitmap Bytes:
+$0
+
+gfx_text
+# Func Hash:
+980738353513564933
+# Num Counters:
+14
+# Counter Values:
+1876440
+1876440
+1510126
+1510126
+1449174
+1322482
+1449174
+639348
+639348
+365555
+606353
+375288
+187644
+1201696
+# Num Bitmap Bytes:
+$0
+
+gfx_text_shadow
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+279784
+# Num Bitmap Bytes:
+$0
+
+gfx_text_width
+# Func Hash:
+78612111224672024
+# Num Counters:
+9
+# Counter Values:
+1580160
+1580160
+998492
+998492
+840476
+396692
+396692
+286404
+158016
+# Num Bitmap Bytes:
+$0
+
+gfx_textured
+# Func Hash:
+960862598675300351
+# Num Counters:
+5
+# Counter Values:
+25056
+25056
+25056
+25056
+25056
+# Num Bitmap Bytes:
+$0
+
+grid_build
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+9030
+# Num Bitmap Bytes:
+$0
+
+grid_query
+# Func Hash:
+629916274308893278
+# Num Counters:
+14
+# Counter Values:
+0
+22221192
+16471942
+0
+945044
+3464736
+0
+1750718
+945044
+0
+22221192
+0
+0
+16471942
+# Num Bitmap Bytes:
+$0
+
+grid_reindex
+# Func Hash:
+287486624739216673
+# Num Counters:
+5
+# Counter Values:
+7244800
+2132416
+23135464
+21020048
+10524
+# Num Bitmap Bytes:
+$0
+
+has_state
+# Func Hash:
+567185242011084039
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+heal_entity
+# Func Hash:
+342810747811683729
+# Num Counters:
+13
+# Counter Values:
+144
+144
+144
+144
+144
+0
+0
+0
+0
+0
+144
+0
+0
+# Num Bitmap Bytes:
+$0
+
+hex_color
+# Func Hash:
+1124680652285324760
+# Num Counters:
+4
+# Counter Values:
+97600
+97600
+97600
+97600
+# Num Bitmap Bytes:
+$0
+
+hit_circle
+# Func Hash:
+345737795946146026
+# Num Counters:
+11
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+0
+
+hit_line
+# Func Hash:
+992371479268225999
+# Num Counters:
+18
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+icon_index
+# Func Hash:
+93478046238836803
+# Num Counters:
+7
+# Counter Values:
+5304664
+5259784
+5304664
+5304664
+44880
+44880
+2
+# Num Bitmap Bytes:
+$0
+
+kill_enemy
+# Func Hash:
+334492582228857713
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;act
+# Func Hash:
+420071105425589245
+# Num Counters:
+40
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;create_window_renderer
+# Func Hash:
+1063705161908944610
+# Num Counters:
+3
+# Counter Values:
+2
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;draw
+# Func Hash:
+1096621589436312519
+# Num Counters:
+6
+# Counter Values:
+5822
+0
+4054
+0
+4054
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;interp_begin
+# Func Hash:
+773013091734853136
+# Num Counters:
+9
+# Counter Values:
+3715704
+53296424
+53296424
+53155928
+53155896
+53155896
+34920
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+2
+513:19600
+16:15320
+2
+513:19600
+16:15320
+
+main_sdl.c;interp_end
+# Func Hash:
+720567947398579528
+# Num Counters:
+4
+# Counter Values:
+3715704
+34920
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+2
+513:19600
+16:15320
+2
+513:19600
+16:15320
+
+main_sdl.c;load_game
+# Func Hash:
+238984481799490044
+# Num Counters:
+3
+# Counter Values:
+2
+2
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;new_world
+# Func Hash:
+238984484093187152
+# Num Counters:
+3
+# Counter Values:
+2
+0
+2
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;pointer_down
+# Func Hash:
+750865547442404991
+# Num Counters:
+18
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;pointer_move
+# Func Hash:
+876259025524591132
+# Num Counters:
+15
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;pointer_up
+# Func Hash:
+701607649808330078
+# Num Counters:
+14
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;save_game
+# Func Hash:
+391331304051899927
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;shot_setup
+# Func Hash:
+157411390544570133
+# Num Counters:
+12
+# Counter Values:
+312
+312
+312
+0
+390
+156
+156
+78
+0
+0
+78
+0
+# Num Bitmap Bytes:
+$0
+
+main_sdl.c;update_layout
+# Func Hash:
+334492583970739629
+# Num Counters:
+5
+# Counter Values:
+0
+2000
+2000
+0
+2000
+# Num Bitmap Bytes:
+$0
+
+mark_multiplier
+# Func Hash:
+1124680652115249575
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+mechanic_hit
+# Func Hash:
+431494656919539458
+# Num Counters:
+3
+# Counter Values:
+3274012
+0
+941412
+# Num Bitmap Bytes:
+$0
+
+mechanic_move
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+3274012
+# Num Bitmap Bytes:
+$0
+
+nearest_enemies
+# Func Hash:
+191814648829789322
+# Num Counters:
+35
+# Counter Values:
+0
+0
+140796
+0
+140796
+0
+138690
+140796
+0
+0
+0
+0
+140796
+0
+0
+140796
+0
+0
+138840
+498
+138840
+648
+0
+150
+0
+150
+0
+0
+648
+140796
+138840
+150
+138690
+5616
+5616
+# Num Bitmap Bytes:
+$0
+
+open_rewards
+# Func Hash:
+272651197744718410
+# Num Counters:
+19
+# Counter Values:
+7494
+31680
+31200
+15072
+14832
+37200
+9534
+9294
+24480
+9534
+15600
+7734
+240
+240
+48
+48
+48
+48
+240
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+1
+0:48
+
+SDL_AppInit
+# Func Hash:
+489351976739838604
+# Num Counters:
+30
+# Counter Values:
+0
+2
+0
+0
+0
+0
+2
+0
+0
+2
+0
+0
+0
+2
+0
+0
+2
+0
+0
+0
+2
+0
+2
+0
+0
+2
+0
+0
+0
+2
+# Num Bitmap Bytes:
+$0
+
+player_damage
+# Func Hash:
+231012522291087472
+# Num Counters:
+12
+# Counter Values:
+540
+0
+2486
+2486
+2486
+90
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+player_slot
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+push_reward
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_arc
+# Func Hash:
+613345751517038799
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_band
+# Func Hash:
+734729900208784110
+# Num Counters:
+12
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_band_dither
+# Func Hash:
+1151968153049448909
+# Num Counters:
+18
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_ellipse
+# Func Hash:
+262909783191561189
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_ellipse_dither
+# Func Hash:
+124721840643332610
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_line
+# Func Hash:
+613345751517038799
+# Num Counters:
+7
+# Counter Values:
+82920
+18000
+17580
+9600
+0
+45316
+44936
+# Num Bitmap Bytes:
+$0
+
+px_poly
+# Func Hash:
+324340097794064955
+# Num Counters:
+15
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_ring
+# Func Hash:
+796955050175563983
+# Num Counters:
+9
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+px_shadow
+# Func Hash:
+1009344032353998454
+# Num Counters:
+19
+# Counter Values:
+0
+4938
+4938
+0
+0
+4938
+4938
+4938
+0
+4938
+4938
+4938
+4938
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+render.c;draw_shot
+# Func Hash:
+1110663957465787359
+# Num Counters:
+26
+# Counter Values:
+0
+3437685
+0
+0
+1145895
+0
+1145895
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+1145895
+573604
+568334
+1145895
+1145895
+1721432
+1727860
+# Num Bitmap Bytes:
+$0
+
+render.c;draw_world
+# Func Hash:
+521878400490516913
+# Num Counters:
+270
+# Counter Values:
+0
+0
+0
+4938
+0
+0
+21070
+0
+384
+384
+284
+0
+0
+315160
+0
+0
+0
+0
+114868
+7249400
+0
+1176772
+1176772
+103332
+454104
+260032
+0
+0
+0
+0
+114868
+7249400
+7249400
+0
+0
+1176772
+1176772
+1176772
+1176772
+114584
+103332
+454104
+260032
+344604
+0
+0
+114868
+7249400
+0
+1176772
+1176772
+0
+0
+7248104
+0
+1176358
+1176358
+114584
+0
+0
+0
+0
+0
+0
+0
+0
+0
+9702
+9702
+0
+0
+7245948
+0
+1176022
+1176022
+0
+0
+2640
+0
+0
+114868
+7249400
+0
+1176772
+1176772
+114428
+0
+0
+18000
+0
+0
+0
+0
+114868
+0
+1176772
+0
+0
+0
+0
+0
+291604
+0
+0
+2809590
+2809590
+0
+0
+0
+0
+0
+0
+0
+2809590
+0
+0
+0
+4938
+1544
+85332
+1145895
+0
+0
+2517986
+0
+0
+0
+4938
+3452
+0
+4938
+750
+750
+0
+2809590
+0
+928907
+0
+0
+0
+0
+114868
+0
+0
+0
+0
+0
+0
+0
+3452
+0
+750
+750
+0
+0
+0
+0
+0
+2517986
+440
+4938
+0
+0
+0
+0
+0
+0
+0
+0
+0
+3452
+0
+750
+750
+0
+0
+2517986
+440
+0
+1586
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+44464
+114868
+114868
+58371
+59586
+114868
+0
+0
+0
+0
+0
+0
+0
+0
+2128242
+0
+0
+0
+0
+0
+0
+0
+0
+0
+928907
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+950
+0
+0
+0
+0
+0
+4938
+4938
+4938
+4938
+0
+4476
+16080
+0
+123650
+158842
+168918
+0
+0
+0
+0
+237280
+221278
+232161
+0
+132930
+130950
+242530
+# Num Bitmap Bytes:
+$0
+
+render.c;icon_shadow
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+9876
+# Num Bitmap Bytes:
+$0
+
+render.c;in_view
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+9358508
+4935417
+# Num Bitmap Bytes:
+$0
+
+render_frame
+# Func Hash:
+281282369186660897
+# Num Counters:
+127
+# Counter Values:
+23288
+60
+32
+34566
+442
+8644982
+14318
+11644
+48
+0
+0
+0
+29628
+29628
+34566
+4938
+0
+34566
+29628
+24690
+8545978
+14206
+0
+0
+0
+0
+29628
+29628
+29628
+0
+8545978
+29628
+0
+7249400
+3490
+19752
+9876
+3490
+0
+0
+7249400
+0
+9876
+0
+5822
+5822
+5822
+0
+2
+0
+4938
+0
+4938
+4938
+4938
+0
+5822
+0
+0
+4938
+0
+0
+884
+0
+4938
+4938
+0
+0
+4938
+0
+4054
+442
+660
+0
+0
+4054
+0
+0
+0
+10
+12
+12
+12
+10
+5474
+5479
+0
+0
+0
+0
+0
+0
+0
+0
+0
+14206
+14008
+0
+0
+4938
+4938
+4938
+29628
+0
+14814
+14814
+0
+14814
+4938
+29628
+14814
+0
+29628
+0
+0
+14814
+29628
+29628
+3490
+6980
+34566
+0
+4938
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+render_prepare
+# Func Hash:
+319113596625138657
+# Num Counters:
+15
+# Counter Values:
+8192
+442
+256
+5822
+4938
+5822
+8
+4
+442
+2
+2
+0
+5820
+248
+432
+# Num Bitmap Bytes:
+$0
+
+report_hit
+# Func Hash:
+844982796844589917
+# Num Counters:
+4
+# Counter Values:
+716530
+90
+90
+0
+# Num Bitmap Bytes:
+$0
+
+resolve_deaths
+# Func Hash:
+426301857783460700
+# Num Counters:
+26
+# Counter Values:
+0
+4508712
+4268696
+0
+0
+0
+5312
+0
+0
+0
+3480964
+3558
+0
+574
+5312
+0
+0
+3317986
+0
+0
+0
+0
+2984
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+resolve_mechanic_target
+# Func Hash:
+249841959647122317
+# Num Counters:
+19
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+2382030
+4215424
+0
+2382030
+0
+2382030
+2378902
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+rgba8
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+1963363
+# Num Bitmap Bytes:
+$0
+
+rng_float
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+97840
+# Num Bitmap Bytes:
+$0
+
+rng_range
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+953160
+# Num Bitmap Bytes:
+$0
+
+rng_seed
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+160
+# Num Bitmap Bytes:
+$0
+
+rng_u32
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+99584
+# Num Bitmap Bytes:
+$0
+
+save_read
+# Func Hash:
+167457811838338024
+# Num Counters:
+453
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+141
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+save_write
+# Func Hash:
+709641084659412430
+# Num Counters:
+159
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+74
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+
+separate_enemies
+# Func Hash:
+45209321716501596
+# Num Counters:
+17
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+separate_enemies_for_tick
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+2984
+1494
+# Num Bitmap Bytes:
+$0
+
+shatter
+# Func Hash:
+1124680651190764884
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+sim_step
+# Func Hash:
+270376691535792025
+# Num Counters:
+74
+# Counter Values:
+0
+0
+0
+0
+0
+0
+131296
+0
+23872
+177156
+318204
+73034
+0
+2552
+2552
+2984
+169956
+316774
+69926
+0
+0
+0
+2984
+0
+2984
+0
+0
+0
+0
+2984
+0
+0
+0
+0
+0
+0
+2984
+0
+2984
+496
+0
+0
+0
+0
+0
+0
+0
+2984
+0
+0
+48
+0
+2984
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+2984
+0
+0
+0
+0
+1904
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+6
+2
+513:492
+32:4
+3
+513:484
+65:6
+256:6
+1
+513:496
+0
+0
+0
+
+slot_add
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+slot_add_entity_ids
+# Func Hash:
+928018417451004592
+# Num Counters:
+7
+# Counter Values:
+330140
+430380
+100240
+0
+430380
+330140
+0
+# Num Bitmap Bytes:
+$0
+
+slot_add_ids
+# Func Hash:
+753202734530303937
+# Num Counters:
+7
+# Counter Values:
+861080
+861080
+0
+861080
+0
+330620
+330620
+# Num Bitmap Bytes:
+$0
+
+slot_changed
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+342072
+342072
+# Num Bitmap Bytes:
+$0
+
+slot_cooldown
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+29664
+# Num Bitmap Bytes:
+$0
+
+slot_next_type
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+12
+6
+# Num Bitmap Bytes:
+$0
+
+slot_of
+# Func Hash:
+1096621590852471201
+# Num Counters:
+5
+# Counter Values:
+1992
+2586
+672
+672
+594
+# Num Bitmap Bytes:
+$0
+
+slot_rule_error
+# Func Hash:
+414921809149846531
+# Num Counters:
+12
+# Counter Values:
+0
+0
+0
+2
+0
+0
+4
+14
+14
+2
+12
+0
+# Num Bitmap Bytes:
+$0
+
+slot_rule_message
+# Func Hash:
+382993475055910911
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+slot_runnable
+# Func Hash:
+5832819738532168
+# Num Counters:
+14
+# Counter Values:
+0
+0
+0
+4938
+0
+0
+9876
+34566
+34566
+34566
+4938
+29628
+14814
+0
+# Num Bitmap Bytes:
+$0
+
+slots.c;add_link
+# Func Hash:
+927946423185678421
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+0
+0
+
+slots.c;card_trigger
+# Func Hash:
+974670608811315989
+# Num Counters:
+7
+# Counter Values:
+18
+284
+260
+204
+52
+95352
+2
+# Num Bitmap Bytes:
+$0
+
+slots.c;execute_linked
+# Func Hash:
+943652199290450505
+# Num Counters:
+34
+# Counter Values:
+0
+0
+0
+0
+150
+150
+150
+0
+0
+150
+0
+0
+0
+0
+0
+0
+150
+0
+0
+0
+0
+0
+51380
+51380
+0
+2094
+51380
+0
+0
+0
+0
+0
+2094
+2094
+# Num Bitmap Bytes:
+$0
+
+slots.c;owner_events
+# Func Hash:
+11922954151346883
+# Num Counters:
+6
+# Counter Values:
+11056
+0
+0
+60916
+5420
+0
+# Num Bitmap Bytes:
+$0
+
+slots.c;plan_matches
+# Func Hash:
+567921128543509426
+# Num Counters:
+4
+# Counter Values:
+2596784
+2596382
+2596358
+2596142
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+3
+6:2496816
+4:75602
+0:23940
+3
+6:2496816
+4:75386
+0:23940
+
+slots.c;queue_event
+# Func Hash:
+183913954829896461
+# Num Counters:
+33
+# Counter Values:
+2094
+3714
+0
+121650
+112716
+0
+0
+121470
+0
+0
+67476
+0
+0
+65724
+121218
+0
+0
+4224
+22500
+0
+0
+0
+4224
+0
+4224
+0
+2184
+0
+0
+504
+432
+504
+0
+# Num Bitmap Bytes:
+$0
+
+slots.c;run_slot
+# Func Hash:
+120443863504640999
+# Num Counters:
+107
+# Counter Values:
+2443108
+2332600
+0
+4215424
+0
+0
+44502
+101556
+3776
+2984
+0
+0
+0
+48102
+0
+0
+0
+0
+8991132
+46302
+1800
+0
+8991132
+48102
+46302
+1800
+1800
+0
+101556
+0
+0
+51380
+46302
+3274012
+2434156
+8991132
+101556
+51380
+2378902
+0
+0
+3278
+8991132
+101556
+5968
+0
+0
+150
+101556
+8982180
+96380
+0
+0
+0
+46302
+101556
+2592
+0
+96380
+4760788
+48102
+2332600
+51878
+0
+0
+51380
+46302
+0
+0
+6548024
+2332600
+6548024
+3776
+0
+2094
+0
+6548024
+6548024
+6548024
+0
+0
+6548024
+0
+6548024
+0
+6548024
+6548024
+0
+0
+3274012
+3274012
+0
+2332600
+0
+46302
+50078
+0
+0
+96380
+1800
+1800
+0
+48102
+51878
+51878
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+2
+0:44502
+4:1800
+
+slots.c;select_targets
+# Func Hash:
+319113595476247747
+# Num Counters:
+14
+# Counter Values:
+0
+0
+95882
+95882
+95882
+95882
+0
+95882
+288348
+96380
+96380
+95882
+95882
+95882
+# Num Bitmap Bytes:
+$0
+
+slots.c;slot_add_vars
+# Func Hash:
+567921128234269055
+# Num Counters:
+4
+# Counter Values:
+330620
+330620
+330620
+330620
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+3
+6:200320
+4:130060
+0:240
+3
+6:200320
+4:130060
+0:240
+
+slots.c;slot_alloc
+# Func Hash:
+567185242471254291
+# Num Counters:
+4
+# Counter Values:
+214150
+330242
+116470
+330242
+# Num Bitmap Bytes:
+$0
+
+slots.c;slots_update_phase
+# Func Hash:
+362960092167337301
+# Num Counters:
+23
+# Counter Values:
+8989332
+1800
+13743568
+8992032
+0
+8991132
+0
+8991132
+8982630
+5404
+8991132
+0
+0
+3323448
+0
+0
+150
+3323298
+3323148
+0
+8989332
+8989332
+8989332
+# Num Bitmap Bytes:
+$0
+
+slots.c;structural_analysis
+# Func Hash:
+648536726138377616
+# Num Counters:
+57
+# Counter Values:
+0
+0
+0
+60
+0
+0
+0
+120
+285420
+816
+816
+816
+816
+30
+30
+816
+0
+0
+816
+816
+0
+132
+342
+30
+0
+0
+0
+36
+0
+186
+0
+0
+630
+132
+12
+30
+6
+72
+60
+112860
+2596544
+112860
+2596544
+402
+2483924
+342
+342
+342
+2596544
+0
+2483684
+0
+0
+342
+474
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+3
+4:210
+6:132
+0:60
+3
+4:210
+6:132
+0:60
+
+slots_cache_reset
+# Func Hash:
+798733564041814136
+# Num Counters:
+4
+# Counter Values:
+0
+0
+80
+0
+# Num Bitmap Bytes:
+$0
+
+slots_inherit
+# Func Hash:
+331779890330533973
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+slots_on_death
+# Func Hash:
+1124680650489911425
+# Num Counters:
+3
+# Counter Values:
+0
+5312
+0
+# Num Bitmap Bytes:
+$0
+
+slots_update
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+slots_update_after
+# Func Hash:
+1063705160269360465
+# Num Counters:
+3
+# Counter Values:
+3317986
+150
+3317986
+# Num Bitmap Bytes:
+$0
+
+slots_update_before
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+3323298
+# Num Bitmap Bytes:
+$0
+
+spatial.c;cell_group
+# Func Hash:
+290495010236014274
+# Num Counters:
+5
+# Counter Values:
+0
+291536
+1891664
+291536
+291536
+# Num Bitmap Bytes:
+$0
+
+spatial.c;grid_build_links
+# Func Hash:
+890259285671713818
+# Num Counters:
+27
+# Counter Values:
+0
+0
+98418688
+13407096
+14031904
+0
+0
+0
+13407096
+0
+9428000
+0
+0
+0
+9990
+0
+0
+0
+12014
+0
+2024
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spatial.c;group_separation_cells
+# Func Hash:
+7584312055010677
+# Num Counters:
+42
+# Counter Values:
+2183200
+989000
+0
+0
+291536
+2183200
+0
+3327580
+3327580
+0
+3327580
+3327580
+0
+3327580
+2183200
+0
+0
+3172200
+0
+0
+0
+2984
+0
+2183200
+0
+0
+3172200
+0
+0
+1490
+1490
+0
+1490
+1490
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+1
+513:1490
+0
+
+spatial.c;separate_prepared
+# Func Hash:
+1021261859437146426
+# Num Counters:
+111
+# Counter Values:
+27094912
+27094912
+9627218
+0
+0
+0
+7224232
+0
+0
+0
+0
+9472
+516764
+25987172
+19751842
+8748682
+8683020
+0
+0
+22374
+22374
+1490
+1948184
+2300000
+8607544
+2183200
+0
+0
+11607678
+4658442
+2333300
+0
+0
+0
+8220366
+7411468
+9845150
+9845150
+149400
+37722
+12530384
+2332600
+2332600
+9627218
+387178
+9627218
+0
+3322800
+373572
+7458
+3478972
+0
+3478972
+2332600
+7458
+5824724
+2332600
+0
+9472
+2183200
+7458
+3322800
+2332600
+498
+0
+0
+2332600
+7458
+9627218
+4625798
+2984
+2183200
+2332600
+2332600
+149400
+7458
+0
+2183200
+8262012
+1494
+2984
+2183200
+8261712
+2183200
+498
+1490
+2984
+2183200
+0
+0
+0
+3109480
+2248878
+0
+2183200
+2826
+4658442
+1490
+0
+0
+0
+0
+0
+5073180
+516764
+2284468
+6235330
+6235330
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+2
+17:996
+8:498
+
+spatial.c;separate_unindexed
+# Func Hash:
+349483443963672023
+# Num Counters:
+20
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spatial.c;separation_bucket_fallback
+# Func Hash:
+845409191845831075
+# Num Counters:
+28
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spatial.c;separation_general
+# Func Hash:
+1127065869931210758
+# Num Counters:
+90
+# Counter Values:
+66112
+0
+62908
+283620
+0
+0
+0
+135892
+63232
+0
+36
+48684
+44712
+0
+14548
+66112
+0
+0
+231464
+0
+66112
+0
+0
+0
+0
+231464
+0
+0
+0
+0
+2420
+0
+25464
+0
+0
+684784
+0
+2320
+22800
+0
+1612
+18240
+684784
+0
+283620
+0
+0
+684784
+684784
+0
+100
+2664
+0
+0
+2596
+0
+439628
+2596
+0
+401164
+2556
+0
+316764
+210700
+190428
+2504
+0
+0
+208180
+0
+149400
+204028
+117112
+149400
+4152
+0
+0
+0
+0
+0
+0
+2508
+0
+0
+36
+2596
+2596
+0
+0
+135892
+# Num Bitmap Bytes:
+$0
+
+spatial.c;update_cell
+# Func Hash:
+303685790409320236
+# Num Counters:
+12
+# Counter Values:
+0
+0
+9556832
+0
+964038
+0
+963166
+732720
+231110
+732120
+713726
+0
+# Num Bitmap Bytes:
+$0
+
+spawn_ally
+# Func Hash:
+876259026893204609
+# Num Counters:
+13
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spawn_enemy
+# Func Hash:
+763805117920107361
+# Num Counters:
+37
+# Counter Values:
+0
+0
+292800
+292800
+0
+97600
+97600
+0
+0
+0
+0
+0
+97600
+0
+0
+0
+0
+0
+97600
+97600
+0
+0
+65074
+0
+0
+0
+32526
+0
+0
+0
+0
+0
+49786
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spawn_hazard
+# Func Hash:
+238984482812021090
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spawn_pickup
+# Func Hash:
+167471839646732933
+# Num Counters:
+6
+# Counter Values:
+2400
+2400
+0
+2400
+2400
+2400
+# Num Bitmap Bytes:
+$0
+
+spawn_placed
+# Func Hash:
+446858651564710048
+# Num Counters:
+20
+# Counter Values:
+240
+0
+0
+240
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+240
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+spawn_ring
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+2984
+# Num Bitmap Bytes:
+$0
+
+spawn_shot
+# Func Hash:
+844982798729968240
+# Num Counters:
+4
+# Counter Values:
+16150
+0
+16150
+16150
+# Num Bitmap Bytes:
+$0
+
+spawn_zone
+# Func Hash:
+44612228717374138
+# Num Counters:
+29
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+stage_boss_summary
+# Func Hash:
+694937221009476410
+# Num Counters:
+5
+# Counter Values:
+1296
+162
+0
+0
+162
+# Num Bitmap Bytes:
+$0
+
+stage_title
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+4942
+# Num Bitmap Bytes:
+$0
+
+target_impl_done
+# Func Hash:
+536873292037576985
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+target_index
+# Func Hash:
+1063705158695194055
+# Num Counters:
+3
+# Counter Values:
+9922846
+9922846
+0
+# Num Bitmap Bytes:
+$0
+
+target_of
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+target_pos
+# Func Hash:
+844982799132005805
+# Num Counters:
+4
+# Counter Values:
+2332750
+2332750
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;all_of_kind
+# Func Hash:
+458129221320715145
+# Num Counters:
+16
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+1
+0
+
+targets.c;cmp_dist
+# Func Hash:
+382993475055910911
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;exclude_mask
+# Func Hash:
+287486628455277359
+# Num Counters:
+5
+# Counter Values:
+58
+34
+204
+51484
+2
+# Num Bitmap Bytes:
+$0
+
+targets.c;g_player_in_sight
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;object_visible
+# Func Hash:
+1063705160746808702
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;owner_moving
+# Func Hash:
+694937217817843185
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;point_from_player
+# Func Hash:
+431494654108067943
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_ahead
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_all
+# Func Hash:
+842039260745827441
+# Num Counters:
+26
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_allies
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_behind
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_enemies
+# Func Hash:
+238984483460161447
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_entity_area
+# Func Hash:
+753202732557049314
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_event_owner
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_event_subject
+# Func Hash:
+798733565613682178
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_fallen
+# Func Hash:
+1096621590871652906
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_gems
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_last_hit
+# Func Hash:
+37730074275502569
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_movement_target
+# Func Hash:
+238984482966880379
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_nearest_enemy
+# Func Hash:
+1063705161908944610
+# Num Counters:
+3
+# Counter Values:
+648
+648
+150
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_objects
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_owner
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_prey
+# Func Hash:
+157411391096954737
+# Num Counters:
+14
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_random_point
+# Func Hash:
+431494654108067943
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_self
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_shots
+# Func Hash:
+325048436873797447
+# Num Counters:
+17
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_wounded
+# Func Hash:
+1096621591504385254
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;r_zones
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;requires_mask
+# Func Hash:
+783548777111472355
+# Num Counters:
+9
+# Counter Values:
+228
+114
+106
+104
+0
+204
+51584
+2
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_enemy_in_reach
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_hurt
+# Func Hash:
+798733564041371138
+# Num Counters:
+5
+# Counter Values:
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_in_area
+# Func Hash:
+844982799132005805
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_in_reach
+# Func Hash:
+93478049218802613
+# Num Counters:
+7
+# Counter Values:
+46302
+46302
+46302
+46302
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_in_sight
+# Func Hash:
+844982799132005805
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_movement_distance
+# Func Hash:
+414921810845465278
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_other_team
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_player_contact
+# Func Hash:
+247671768009510077
+# Num Counters:
+11
+# Counter Values:
+46302
+46302
+0
+46302
+46302
+46302
+46302
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;t_same_team
+# Func Hash:
+844982799132005805
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;w_chalice
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;w_feather
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;w_horn
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets.c;w_hourglass
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0
+
+targets_init
+# Func Hash:
+798733567211207843
+# Num Counters:
+4
+# Counter Values:
+42
+20
+8
+2
+# Num Bitmap Bytes:
+$0
+
+td_index
+# Func Hash:
+1124680653337888707
+# Num Counters:
+3
+# Counter Values:
+455430
+97600
+97600
+# Num Bitmap Bytes:
+$0
+
+ui.c;backdrop
+# Func Hash:
+238984482720105921
+# Num Counters:
+3
+# Counter Values:
+8
+8
+8
+# Num Bitmap Bytes:
+$0
+
+ui.c;big_card_content
+# Func Hash:
+238984482353853237
+# Num Counters:
+3
+# Counter Values:
+1160
+194
+654
+# Num Bitmap Bytes:
+$0
+
+ui.c;browse_nav
+# Func Hash:
+775397826257064537
+# Num Counters:
+34
+# Counter Values:
+0
+4
+4
+4
+4
+4
+8
+0
+4
+4
+4
+0
+0
+0
+0
+8
+4
+0
+8
+4
+4
+0
+4
+0
+4
+0
+4
+4
+8
+4
+0
+4
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;browse_text
+# Func Hash:
+494545323557912575
+# Num Counters:
+4
+# Counter Values:
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;btn_w
+# Func Hash:
+78612109633320858
+# Num Counters:
+10
+# Counter Values:
+144
+60
+54
+6
+6
+90
+90
+48
+48
+78
+# Num Bitmap Bytes:
+$0
+
+ui.c;button_row
+# Func Hash:
+569252460730079223
+# Num Counters:
+39
+# Counter Values:
+0
+48
+20
+18
+2
+2
+2
+30
+2
+16
+30
+30
+0
+16
+16
+16
+12
+12
+8
+16
+30
+0
+16
+18
+12
+0
+14
+14
+14
+14
+14
+12
+16
+0
+0
+14
+14
+4
+20
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_cdop
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+50
+252
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_desc
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+210
+950
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_grid
+# Func Hash:
+128589196383029477
+# Num Counters:
+25
+# Counter Values:
+508
+508
+284
+368
+254
+284
+30
+284
+30
+284
+30
+30
+30
+30
+30
+284
+30
+30
+30
+0
+30
+30
+128
+40
+40
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_icon_at
+# Func Hash:
+1124680650380144322
+# Num Counters:
+3
+# Counter Values:
+346
+0
+70
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_name
+# Func Hash:
+1124680652961176977
+# Num Counters:
+3
+# Counter Values:
+210
+1018
+1018
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_stats
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+0
+86
+# Num Bitmap Bytes:
+$0
+
+ui.c;card_ui_str
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+420
+1900
+# Num Bitmap Bytes:
+$0
+
+ui.c;cd_badge
+# Func Hash:
+1061802871684633309
+# Num Counters:
+10
+# Counter Values:
+302
+48
+48
+48
+48
+48
+284
+284
+284
+284
+# Num Bitmap Bytes:
+$0
+
+ui.c;centered_panel
+# Func Hash:
+234913555361450167
+# Num Counters:
+27
+# Counter Values:
+2
+4
+2
+2
+2
+0
+0
+0
+0
+6
+6
+0
+0
+4
+2
+0
+0
+0
+2
+0
+0
+2
+0
+0
+4
+0
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_IndirectCallTarget:
+0
+# NumValueSites:
+3
+3
+ui.c;pause_body:2
+ui.c;title_body:2
+ui.c;codex_body:2
+1
+ui.c;codex_body:2
+2
+ui.c;pause_body:2
+ui.c;title_body:2
+
+ui.c;codex_body
+# Func Hash:
+885519240717823396
+# Num Counters:
+119
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+4080
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+816
+0
+0
+0
+0
+0
+0
+0
+1948
+0
+1948
+0
+0
+0
+0
+408
+1760
+0
+324
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+40
+0
+0
+0
+0
+0
+0
+1860
+0
+1860
+8
+8
+32
+4
+0
+0
+0
+620
+4
+100
+0
+0
+12
+620
+0
+0
+0
+12
+0
+4
+4
+0
+0
+4
+4
+2
+4
+4
+4
+2
+1860
+1860
+636
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;cooldown_text
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+24
+12
+# Num Bitmap Bytes:
+$0
+
+ui.c;cx_card_chain
+# Func Hash:
+375942209207324950
+# Num Counters:
+16
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;dash_line
+# Func Hash:
+669092623299931622
+# Num Counters:
+11
+# Counter Values:
+408
+9484
+408
+328
+710
+710
+56
+56
+56
+5580
+5620
+# Num Bitmap Bytes:
+$0
+
+ui.c;dashed
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+14
+# Num Bitmap Bytes:
+$0
+
+ui.c;dragged_card
+# Func Hash:
+694937220021114942
+# Num Counters:
+7
+# Counter Values:
+16
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;draw_lines
+# Func Hash:
+58037171920965922
+# Num Counters:
+7
+# Counter Values:
+13694
+1096
+4686
+3962
+3266
+2112
+1096
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+11
+3:6216
+9:3654
+6:2742
+7:488
+4:182
+16:112
+2:98
+1:70
+8:60
+5:36
+17:36
+
+ui.c;end_body
+# Func Hash:
+938433104659192431
+# Num Counters:
+19
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;frame
+# Func Hash:
+1096621588666191211
+# Num Counters:
+5
+# Counter Values:
+5552
+4474
+4474
+4474
+4474
+# Num Bitmap Bytes:
+$0
+
+ui.c;hit
+# Func Hash:
+518752327041767362
+# Num Counters:
+11
+# Counter Values:
+4444
+4426
+4426
+4412
+48
+34
+48
+48
+48
+26
+48
+# Num Bitmap Bytes:
+$0
+
+ui.c;hover
+# Func Hash:
+13698033821877172
+# Num Counters:
+12
+# Counter Values:
+4600
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;inspector_body
+# Func Hash:
+628499646100229463
+# Num Counters:
+54
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;kbd
+# Func Hash:
+567185241801516361
+# Num Counters:
+5
+# Counter Values:
+328
+166
+166
+166
+166
+# Num Bitmap Bytes:
+$0
+
+ui.c;kbd_w
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+696
+696
+# Num Bitmap Bytes:
+$0
+
+ui.c;mini_card
+# Func Hash:
+844982799942478543
+# Num Counters:
+4
+# Counter Values:
+44
+0
+44
+22
+# Num Bitmap Bytes:
+$0
+
+ui.c;panel_bg
+# Func Hash:
+1096621588666191211
+# Num Counters:
+5
+# Counter Values:
+10
+10
+10
+10
+10
+# Num Bitmap Bytes:
+$0
+
+ui.c;pause_body
+# Func Hash:
+396404985652768745
+# Num Counters:
+58
+# Counter Values:
+0
+28
+16
+48
+0
+48
+0
+40
+0
+208
+20
+32
+16
+16
+0
+0
+0
+0
+16
+8
+16
+0
+4
+4
+0
+8
+16
+8
+12
+8
+8
+4
+8
+4
+0
+4
+4
+4
+2
+2
+2
+2
+2
+2
+2
+4
+4
+20
+4
+4
+4
+4
+0
+0
+0
+0
+4
+2
+# Num Bitmap Bytes:
+$0
+
+ui.c;pcard_h
+# Func Hash:
+494545323557912575
+# Num Counters:
+4
+# Counter Values:
+50
+12
+12
+50
+# Num Bitmap Bytes:
+$0
+
+ui.c;pcard_variant
+# Func Hash:
+663399543786263710
+# Num Counters:
+26
+# Counter Values:
+44
+44
+18
+0
+18
+18
+18
+18
+18
+18
+18
+4
+0
+18
+4
+0
+0
+0
+0
+0
+4
+4
+10
+10
+4
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;section_title
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+46
+# Num Bitmap Bytes:
+$0
+
+ui.c;skill_list
+# Func Hash:
+495568735060261721
+# Num Counters:
+15
+# Counter Values:
+28
+24
+24
+24
+12
+12
+12
+12
+12
+6
+4
+12
+28
+12
+12
+# Num Bitmap Bytes:
+$0
+
+ui.c;title_body
+# Func Hash:
+760384479727809310
+# Num Counters:
+30
+# Counter Values:
+40
+28
+16
+40
+12
+8
+28
+12
+8
+16
+16
+4
+12
+16
+4
+4
+4
+4
+4
+4
+2
+0
+0
+4
+0
+4
+0
+0
+0
+4
+# Num Bitmap Bytes:
+$0
+
+ui.c;ui_draw_content
+# Func Hash:
+605866906881013436
+# Num Counters:
+201
+# Counter Values:
+2
+2
+0
+0
+0
+0
+0
+0
+26
+0
+0
+14
+14
+280
+6
+6
+140
+140
+140
+0
+0
+0
+12
+0
+12
+12
+0
+140
+140
+6
+12
+140
+0
+6
+6
+6
+0
+0
+4
+0
+0
+12
+0
+4062
+4062
+4062
+4062
+4062
+2
+2
+12
+0
+4
+6
+6
+12
+0
+4058
+0
+10
+12
+12
+2
+0
+12
+4058
+0
+0
+0
+0
+0
+0
+0
+12
+12
+0
+12
+4
+12
+8
+4
+12
+12
+140
+4058
+0
+0
+0
+0
+0
+2
+2
+0
+0
+0
+0
+2
+0
+0
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+2
+0
+0
+0
+0
+2
+0
+0
+0
+2
+2
+0
+0
+0
+2
+0
+2
+2
+2
+0
+0
+0
+14
+0
+0
+0
+0
+2
+2
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+12
+0
+12
+0
+2
+0
+0
+0
+0
+0
+4
+0
+0
+0
+0
+0
+0
+0
+2
+2
+2
+0
+0
+0
+0
+0
+0
+0
+0
+0
+6
+0
+140
+0
+0
+0
+0
+0
+0
+0
+0
+0
+4062
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;ui_type
+# Func Hash:
+146835647075900052
+# Num Counters:
+2
+# Counter Values:
+786
+2182
+# Num Bitmap Bytes:
+$0
+
+ui.c;variant_tip
+# Func Hash:
+599005161352185571
+# Num Counters:
+9
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui.c;view_heading
+# Func Hash:
+290495010541241410
+# Num Counters:
+6
+# Counter Values:
+4
+2
+2
+2
+2
+4
+# Num Bitmap Bytes:
+$0
+
+ui.c;view_sub
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+8
+# Num Bitmap Bytes:
+$0
+
+ui.c;wrap
+# Func Hash:
+669926802519542766
+# Num Counters:
+34
+# Counter Values:
+0
+24
+0
+10
+30
+8
+6
+0
+0
+0
+48
+10458
+7244
+0
+7244
+3346
+13774
+15320
+13774
+128
+130
+26354
+0
+3342
+13774
+13774
+3220
+10458
+1432
+3316
+3316
+0
+10458
+0
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+1
+11
+3:6222
+9:3686
+6:2784
+7:488
+4:182
+16:112
+2:98
+1:70
+8:60
+5:36
+17:36
+
+ui_clear_cache
+# Func Hash:
+784007056844089447
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui_draw
+# Func Hash:
+362388869145229222
+# Num Counters:
+27
+# Counter Values:
+1018368
+7072
+7072
+7072
+0
+7072
+7072
+7072
+7072
+148512
+10608
+4054
+5822
+1768
+2
+1768
+0
+1768
+0
+1766
+0
+8
+2
+2
+1766
+1766
+1766
+# Num Bitmap Bytes:
+$0
+
+ui_drop
+# Func Hash:
+784007059655560962
+# Num Counters:
+2
+# Counter Values:
+0
+0
+# Num Bitmap Bytes:
+$0
+
+ui_hit_at
+# Func Hash:
+167471836369277467
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+update_barrels
+# Func Hash:
+599005161600259078
+# Num Counters:
+10
+# Counter Values:
+0
+0
+0
+0
+2984
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+update_buffs
+# Func Hash:
+384391550417383398
+# Num Counters:
+49
+# Counter Values:
+19938888
+0
+0
+3480934
+17904
+3480934
+0
+0
+3323148
+0
+0
+3323148
+0
+0
+0
+3323148
+0
+0
+0
+0
+0
+3323148
+0
+0
+3323148
+2984
+3323148
+0
+0
+2456
+0
+3323148
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+update_statuses
+# Func Hash:
+900373282350871933
+# Num Counters:
+37
+# Counter Values:
+3323298
+0
+0
+0
+0
+0
+3480964
+0
+3480964
+0
+3323298
+0
+0
+3323298
+0
+3323298
+990698
+0
+0
+0
+0
+0
+0
+0
+2984
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+var_has
+# Func Hash:
+1096621588163198511
+# Num Counters:
+6
+# Counter Values:
+0
+0
+0
+150
+0
+0
+# Num Bitmap Bytes:
+$0
+
+var_num
+# Func Hash:
+93478048223395104
+# Num Counters:
+8
+# Counter Values:
+2332630
+2332630
+2332630
+15577298
+2332630
+0
+2332630
+0
+# Num Bitmap Bytes:
+$0
+
+var_str
+# Func Hash:
+753202733960839683
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+variant_get
+# Func Hash:
+1063705160746808702
+# Num Counters:
+3
+# Counter Values:
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+variant_make
+# Func Hash:
+685179185192661719
+# Num Counters:
+13
+# Counter Values:
+97554
+0
+97554
+97554
+97554
+97600
+97554
+46
+97554
+97554
+46
+0
+46
+# Num Bitmap Bytes:
+$0
+# Num Value Kinds:
+1
+# ValueKind = IPVK_MemOPSize:
+1
+# NumValueSites:
+2
+1
+64:97554
+1
+64:46
+
+world.c;new_save_field
+# Func Hash:
+287486625829148147
+# Num Counters:
+7
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+world_create
+# Func Hash:
+1124680650489911425
+# Num Counters:
+3
+# Counter Values:
+655360
+80
+80
+# Num Bitmap Bytes:
+$0
+
+world_destroy
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+78
+# Num Bitmap Bytes:
+$0
+
+world_reindex
+# Func Hash:
+331779888901583603
+# Num Counters:
+8
+# Counter Values:
+0
+0
+0
+0
+0
+0
+0
+0
+# Num Bitmap Bytes:
+$0
+
+xp_for_level
+# Func Hash:
+742261418966908927
+# Num Counters:
+1
+# Counter Values:
+0
+# Num Bitmap Bytes:
+$0

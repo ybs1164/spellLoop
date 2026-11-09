@@ -29,7 +29,7 @@ int nearest_enemies(const World *w, float x, float y, int n, float r, int *out, 
   static int cand[MAX_ENTITIES];
   static ByDist buf[MAX_ENTITIES];
   int c = isfinite(r) ? grid_query(w, x, y, r, cand, MAX_ENTITIES) : 0, m = 0;
-  if (!isfinite(r)) for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) cand[c++] = i;
+  if (!isfinite(r)) for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) cand[c++] = i;
   for (int k = 0; k < c; k++) {
     int e = cand[k];
     if (!ent_live(w, e) || w->kind[e] != TK_ENEMY) continue;
@@ -39,19 +39,53 @@ int nearest_enemies(const World *w, float x, float y, int n, float r, int *out, 
     for (int q = 0; q < nex && !skip; q++) skip = exclude[q] == e;
     if (!skip) buf[m++] = (ByDist){ e, d };
   }
+  /* Most callers need one target. A unique, finite minimum has the same
+   * result as qsort; keep the original sort for ties and nonfinite inputs
+   * so its existing tie selection is preserved on every platform. */
+  if (n == 1 && m > 0) {
+    int best = 0;
+    bool unique = isfinite(buf[0].d), finite = unique;
+    for (int k = 1; k < m; k++) {
+      finite &= isfinite(buf[k].d);
+      if (buf[k].d < buf[best].d) { best = k; unique = true; }
+      else if (buf[k].d == buf[best].d) unique = false;
+    }
+    if (finite && unique) { out[0] = buf[best].i; return 1; }
+  }
   qsort(buf, (size_t)m, sizeof *buf, cmp_dist);
   int k = mini(n, m);
   for (int q = 0; q < k; q++) out[q] = buf[q].i;
   return k;
 }
 
+/* Match nearest_enemies' eligibility, including its nonfinite-radius policy,
+ * without sorting targets that a predicate never observes. Snapshot public
+ * candidates first: cards may mutate the grid when a caller subsequently acts. */
+bool enemies_at_least(const World *w, float x, float y, float r, int count) {
+  if (count <= 0) return true;
+  static int candidates[MAX_ENTITIES];
+  bool finite = isfinite(r);
+  int n = finite ? grid_query(w, x, y, r, candidates, MAX_ENTITIES) : 0;
+  if (!finite) {
+    for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
+      if (ent_live(w, i)) candidates[n++] = i;
+  }
+  for (int k = 0; k < n; k++) {
+    int i = candidates[k];
+    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY) continue;
+    if (finite && d2(x, y, w->x[i], w->y[i]) > r * r) continue;
+    if (--count == 0) return true;
+  }
+  return false;
+}
+
 /** 유인: 가까운 유인 개체의 범위 안이면 플레이어 대신 그 개체 (js findRedirect) */
 static Target redirected_player(const World *w, int unit) {
   int p = player_i(w);
   Target self = p >= 0 ? target_of(w, p) : (Target){ TK_POINT, 0, 0, 0, 0 };
-  if (unit == p || unit < 0) return self;
+  if (unit == p || unit < 0 || !w->fast.ndecoys) return self;
   float best = INFINITY;
-  for (int i = 0; i < w->hi; i++) {
+  for (int i = index_next(w->fast.decoys, 0, w->hi); i < w->hi; i = index_next(w->fast.decoys, i + 1, w->hi)) {
     if (!ent_live(w, i) || !(w->eff[i].mask & FX_DECOY) || i == unit) continue;
     float d = d2(w->x[i], w->y[i], w->x[unit], w->y[unit]), r = w->eff[i].decoy_range;
     if (d < r * r && d < best) { best = d; self = target_of(w, i); }
@@ -64,7 +98,7 @@ static int in_range_of_player(const World *w, uint32_t kinds, bool (*pred)(const
   static ByDist buf[MAX_ENTITIES];
   int p = player_i(w), m = 0;
   if (p < 0) return 0;
-  for (int i = 0; i < w->hi; i++) {
+  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
     if (!ent_live(w, i) || !(kinds & (1u << w->kind[i])) || (pred && !pred(w, i))) continue;
     float d = d2(w->x[i], w->y[i], w->x[p], w->y[p]);
     if (d <= r * r) buf[m++] = (ByDist){ i, d };
@@ -76,16 +110,18 @@ static int in_range_of_player(const World *w, uint32_t kinds, bool (*pred)(const
 }
 
 /* ---------- 대상 카드 ---------- */
-static int r_self(Ctx *c, Target *out, int cap) {
-  if (cap < 1 || player_i(c->w) < 0) return 0;
-  out[0] = redirected_player(c->w, c->owner);
-  out[0].player_sel = 1;
+int resolve_mechanic_target(const World *w, int owner, int card, Target *out) {
+  if(card==CARD_ENTITY_SELF){*out=target_of(w,owner);return 1;}
+  if(player_i(w)<0)return 0;
+  *out=redirected_player(w,owner);out->player_sel=1;
   return 1;
+}
+static int r_self(Ctx *c, Target *out, int cap) {
+  return cap<1?0:resolve_mechanic_target(c->w,c->owner,CARD_SELF,out);
 }
 static int r_owner(Ctx *c, Target *out, int cap) {
   if (cap < 1) return 0;
-  out[0] = target_of(c->w, c->owner);
-  return 1;
+  return resolve_mechanic_target(c->w,c->owner,CARD_ENTITY_SELF,out);
 }
 static int r_enemies(Ctx *c, Target *out, int cap) {
   static int buf[MAX_ENTITIES];
@@ -142,7 +178,7 @@ static int r_fallen(Ctx *c, Target *out, int cap) {
 /** 목록 순서(생성 순) 그대로 */
 static int all_of_kind(const World *w, int kind, Target *out, int cap, bool (*pred)(const World *, int)) {
   int n = 0;
-  for (int i = 0; i < w->hi && n < cap; i++) if (ent_live(w, i) && w->kind[i] == kind && (!pred || pred(w, i))) out[n++] = target_of(w, i);
+  for (int i = kind_next(w, kind, 0, w->hi); i < w->hi && n < cap; i = kind_next(w, kind, i + 1, w->hi)) if (ent_live(w, i) && (!pred || pred(w, i))) out[n++] = target_of(w, i);
   return n;
 }
 static bool object_visible(const World *w, int i) {
@@ -154,7 +190,7 @@ static int r_objects(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK
 static int r_allies(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK_ALLY, out, cap, NULL); }
 static int r_zones(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK_ZONE, out, cap, NULL); }
 static int r_shots(Ctx *c, Target *out, int cap) { return in_range_of_player(c->w, 1u << TK_SHOT, NULL, SIGHT, out, cap); }
-static int r_gems(Ctx *c, Target *out, int cap) { return in_range_of_player(c->w, 1u << TK_GEM, NULL, SIGHT, out, cap); }
+static int r_gems(Ctx *c, Target *out, int cap) { return all_of_kind(c->w, TK_GEM, out, cap, NULL); }
 static int r_prey(Ctx *c, Target *out, int cap) {
   World *w = c->w;
   int e = ent_index(w, w->prey), p = player_i(w);
@@ -183,8 +219,10 @@ static int r_all(Ctx *c, Target *out, int cap) {
   int n = 0, p = player_i(w);
   if (p >= 0 && cap > 0) out[n++] = target_of(w, p);
   for (int k = 0; k < (int)(sizeof ORDER / sizeof ORDER[0]); k++)
-    for (int i = 0; i < w->hi && n < cap; i++)
-      if (ent_live(w, i) && (w->kind[i] == ORDER[k] || (ORDER[k] == TK_GEM && w->kind[i] == TK_PICKUP))) out[n++] = target_of(w, i);
+    for (int i = ORDER[k] == TK_GEM ? pickup_next(w, 0, w->hi) : kind_next(w, ORDER[k], 0, w->hi);
+         i < w->hi && n < cap;
+         i = ORDER[k] == TK_GEM ? pickup_next(w, i + 1, w->hi) : kind_next(w, ORDER[k], i + 1, w->hi))
+      if (ent_live(w, i)) out[n++] = target_of(w, i);
   return n;
 }
 static int r_entity_area(Ctx *c, Target *out, int cap) {
@@ -244,7 +282,7 @@ static bool t_in_sight(Ctx *c, const Target *t) {
 }
 static bool t_in_reach(Ctx *c, const Target *t) {
   Vec2 o = target_pos(c->w, t);
-  float r = c->w->stat[c->owner][STAT_REACH] + tr(c->w, t);
+    float r = (float)var_num(c->w, c->var, "range", c->w->stat[c->owner][STAT_REACH]) + tr(c->w, t);
   return d2(c->w->x[c->owner], c->w->y[c->owner], o.x, o.y) <= r * r;
 }
 static bool t_in_area(Ctx *c, const Target *t) {
@@ -254,8 +292,7 @@ static bool t_in_area(Ctx *c, const Target *t) {
 }
 static bool t_enemy_in_reach(Ctx *c, const Target *t) {
   (void)t;
-  int e;
-  return nearest_enemies(c->w, c->w->x[c->owner], c->w->y[c->owner], 1, c->w->stat[c->owner][STAT_REACH], &e, NULL, 0) > 0;
+  return enemies_at_least(c->w, c->w->x[c->owner], c->w->y[c->owner], c->w->stat[c->owner][STAT_REACH], 1);
 }
 static bool t_same_team(Ctx *c, const Target *t) { int i = target_index(c->w, t); return i >= 0 ? c->w->team[i] == c->w->team[c->owner] : c->w->team[c->owner] == TEAM_FRIENDLY; }
 static bool t_other_team(Ctx *c, const Target *t) { return !t_same_team(c, t); }
@@ -278,8 +315,7 @@ static bool w_feather(Ctx *c) { return owner_moving(c); }
 static bool w_hourglass(Ctx *c) { return !owner_moving(c); }
 static bool w_chalice(Ctx *c) { int o = c->owner; return c->w->stat[o][STAT_MAX_HP] > 0 && c->w->hp[o] <= c->w->stat[o][STAT_MAX_HP] * 0.5f; }
 static bool w_horn(Ctx *c) {
-  static int buf[8];
-  return nearest_enemies(c->w, c->w->x[c->owner], c->w->y[c->owner], 3, 180, buf, NULL, 0) >= 3;
+  return enemies_at_least(c->w, c->w->x[c->owner], c->w->y[c->owner], 180, 3);
 }
 
 /* ---------- 연결 ---------- */
@@ -324,7 +360,12 @@ bool target_impl_done(int card, int field) {
   return false;
 }
 
-int card_resolve(int card, Ctx *c, Target *out, int cap) { return resolve_of[card] ? resolve_of[card](c, out, cap) : 0; }
+int card_resolve(int card, Ctx *c, Target *out, int cap) {
+  if (!resolve_of[card]) return 0;
+  if (card == CARD_ENTITY_SELF) return r_owner(c,out,cap);
+  if (card == CARD_SELF) return r_self(c,out,cap);
+  return resolve_of[card](c,out,cap);
+}
 
 int card_filter(int card, Ctx *c, Target *ts, int n) {
   if (!test_of[card]) return (CARDS[card].fn[CF_TEST].key || CARDS[card].fn[CF_GATE].key) ? 0 : n;   // 아직 없는 조건은 통과시키지 않는다
@@ -421,8 +462,17 @@ static bool supports(int card, const World *w, const Target *t) {
 bool action_applies(int card, Ctx *c, const Target *t) {
   int need = requires_mask(card);
   if (need < 0) return (CARDS[card].accepts & (1u << t->kind)) != 0;
-  if ((features(c->w, t) & need) != need) return false;
+  if ((need & ~F_POSITION) && (features(c->w, t) & need) != need) return false;
   if (exclude_mask(card) & (1u << t->kind)) return false;
   if (CARDS[card].fn[CF_SUPPORTS].key && !supports(card, c->w, t)) return false;
   return true;
+}
+
+bool action_accepts_any_position(int card) {
+  static uint8_t eligible[CARD__COUNT];static bool ready;
+  if(!ready) {
+    for(int c=0;c<CARD__COUNT;c++)eligible[c]=requires_mask(c)==F_POSITION && !exclude_mask(c) && !CARDS[c].fn[CF_SUPPORTS].key;
+    ready=true;
+  }
+  return eligible[card]!=0;
 }

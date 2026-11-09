@@ -12,13 +12,63 @@ __declspec(dllimport) int __stdcall SetConsoleOutputCP(unsigned int);   /* windo
 
 #include "sim/world.h"
 
+static void probe_entity(World *w, Handle h, const char *kind, const char *id, bool *comma) {
+  int i = ent_index(w, h);
+  if (i < 0) return;
+  printf("%s{\"key\":\"%s:%s\",\"team\":%d,\"stats\":{", *comma ? "," : "", kind, id, w->team[i]);
+  *comma = true;
+  const DataTable *stats = data_table("stat_order");
+  for (int st = 0; st < STAT__COUNT; st++) {
+    float v = st == STAT_LIFETIME ? w->max_life[i] : w->stat[i][st];
+    printf("%s\"%s\":", st ? "," : "", data_str(stats, st, "value", ""));
+    if (isfinite(v)) printf("%.8g", (double)v); else printf("null");
+  }
+  printf("},\"slots\":[");
+  bool sc = false;
+  for (int si = w->slot_head[i]; si >= 0; si = w->slots[si].next) {
+    const Slot *s = &w->slots[si];
+    printf("%s{\"cooldown\":%.8g,\"actions\":[", sc ? "," : "", (double)slot_cooldown(w, s));
+    sc = true;
+    bool ac = false;
+    for (int k = 0; k < s->n; k++) if (CARDS[s->cards[k]].type == CARD_TYPE_ACTION) {
+      printf("%s\"%s\"", ac ? "," : "", CARDS[s->cards[k]].id); ac = true;
+    }
+    printf("]}");
+  }
+  printf("]}");
+}
+
+static void probe(World *w) {
+  w->stage = 0;   // JS 생성자 기본값과 같은 체력·피해 배율 1
+  Ctx c = { .w = w, .actor = ent_index(w, w->player), .owner = ent_index(w, w->player), .rule = RULE_NONE };
+  bool comma = false;
+  printf("[");
+  probe_entity(w, w->player, "player", "player", &comma);
+  const DataTable *enemies = data_table("enemy_types");
+  for (int r = 0; r < enemies->nrows; r++)
+    probe_entity(w, spawn_enemy(w, r, 1000, 1000), "enemy", data_str(enemies, r, "_key", ""), &comma);
+  static const char *const allies[] = { "medic", "knight", "archer", "clone" };
+  for (int k = 0; k < 4; k++) probe_entity(w, spawn_ally(&c, k, (Vec2){ 0, 0 }), "ally", allies[k], &comma);
+  static const char *const objects[] = { "orb", "mine", "turret", "decoy", "barrel" };
+  for (int k = 0; k < 5; k++) probe_entity(w, spawn_placed(&c, k, (Vec2){ 0, 0 }, NULL), "object", objects[k], &comma);
+  const DataTable *zones = data_table("zone_kinds");
+  for (int k = 0; k < zones->nrows; k++) probe_entity(w, spawn_zone(&c, k, NULL, (Vec2){ 0, 0 }), "zone", data_str(zones, k, "value", ""), &comma);
+  static const char *const pickups[] = { "gem", "vitalGem", "magnet", "chest" };
+  for (int k = 0; k < 4; k++) probe_entity(w, spawn_pickup(w, k, 0, 0, 1), "pickup", pickups[k], &comma);
+  probe_entity(w, spawn_shot(&c, 0, 0, 420, 0, 5, 10, 100, 1, 1.4f, 0xFFFFFFFFu, SHAPE_DOT), "shot", "bolt", &comma);
+  Handle curse = spawn_hazard(w, c.actor, 0, 0, 190, 0, 7, 6, 3.5f, 0xFFFFFFFFu);
+  configure_curse_shot(w, curse);
+  probe_entity(w, curse, "shot", "curseBolt", &comma);
+  printf("]\n");
+}
+
 int main(int argc, char **argv) {
 #ifdef _WIN32
   SetConsoleOutputCP(CP_UTF8);   // 한글 출력
 #endif
   long ticks = 600;
   unsigned long long seed = 1;
-  bool circle = false, god = false;
+  bool circle = false, god = false, probing = false;
   const char *deck = NULL;
   SimInput in = { { 0, 0 } };
   for (int i = 1; i < argc; i++) {
@@ -27,6 +77,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(argv[i], "--move") && i + 1 < argc) { float x = 0, y = 0; sscanf(argv[++i], "%f,%f", &x, &y); in.move = (Vec2){ x, y }; }
     else if (!strcmp(argv[i], "--circle")) circle = true;
     else if (!strcmp(argv[i], "--god")) god = true;   // 쓰러지지 않는다 (단계 진행 확인용)
+    else if (!strcmp(argv[i], "--probe")) probing = true;
     else if (!strcmp(argv[i], "--deck") && i + 1 < argc) deck = argv[++i];
     else { fprintf(stderr, "사용: %s [--ticks N] [--seed S] [--move X,Y] [--circle]\n", argv[0]); return 2; }
   }
@@ -36,6 +87,7 @@ int main(int argc, char **argv) {
   World *w = world_create(seed);
   if (!w) return 1;
   game_new(w);
+  if (probing) { probe(w); world_destroy(w); return 0; }
   if (deck) {   // 이동 슬롯 뒤 슬롯들을 바꾼다
     char buf[512], *slot_save = NULL;
     snprintf(buf, sizeof buf, "%s", deck);

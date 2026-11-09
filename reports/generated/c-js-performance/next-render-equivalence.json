@@ -1,0 +1,374 @@
+[
+  {
+    "scene": "idle",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "075d01b207ce08efe32d9924bf870964c3b62e03f44193449f2a82ef772de4cf",
+      "075d01b207ce08efe32d9924bf870964c3b62e03f44193449f2a82ef772de4cf"
+    ]
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "1a9a0663d3bc0560c8dc4c2a7455652d53e9e14cf07372abcb5f252c31b90ab7",
+      "1a9a0663d3bc0560c8dc4c2a7455652d53e9e14cf07372abcb5f252c31b90ab7"
+    ]
+  },
+  {
+    "scene": "crowd3000",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "27c37c079a6e6fa552d8d20b4ba89dcb34891d1147094443576389d13ca55357",
+      "27c37c079a6e6fa552d8d20b4ba89dcb34891d1147094443576389d13ca55357"
+    ]
+  },
+  {
+    "scene": "shots",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "5c6e8ce7f24c7d328a43dacf2f78202069d2cb8268944523e51208e7e6a3b5e5",
+      "5c6e8ce7f24c7d328a43dacf2f78202069d2cb8268944523e51208e7e6a3b5e5"
+    ]
+  },
+  {
+    "scene": "offscreen10000",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "075d01b207ce08efe32d9924bf870964c3b62e03f44193449f2a82ef772de4cf",
+      "075d01b207ce08efe32d9924bf870964c3b62e03f44193449f2a82ef772de4cf"
+    ]
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "e303bae1306cb507a74632e3fb3a661211de341e3514b3f898bf9f3f7cd9293a",
+      "e303bae1306cb507a74632e3fb3a661211de341e3514b3f898bf9f3f7cd9293a"
+    ]
+  },
+  {
+    "scene": "title",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "55940338f990e58d892ad306dfd9b01003b46f863dfcbcd6150aa78c51209fa1",
+      "55940338f990e58d892ad306dfd9b01003b46f863dfcbcd6150aa78c51209fa1"
+    ]
+  },
+  {
+    "scene": "editor",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "30eb128748f3ae08355160424aa6777a4f7cab7e9e4bb284c605f39685c89d4f",
+      "30eb128748f3ae08355160424aa6777a4f7cab7e9e4bb284c605f39685c89d4f"
+    ]
+  },
+  {
+    "scene": "codex",
+    "dpr": 1,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "217fd79aac7f60bafe726b54e43cc142da5ad7b8a45d52c8a904eeac988252eb",
+      "217fd79aac7f60bafe726b54e43cc142da5ad7b8a45d52c8a904eeac988252eb"
+    ]
+  },
+  {
+    "scene": "idle",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "9c36c581a758b17fb804fee872f9e03ddc87a1e213324c433ed27e7ce1f4dc3e",
+      "9c36c581a758b17fb804fee872f9e03ddc87a1e213324c433ed27e7ce1f4dc3e"
+    ]
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "cff5cf277b6c9e605c85407cc943a4597066a34b991b604aa986a3ebb75f9ec5",
+      "cff5cf277b6c9e605c85407cc943a4597066a34b991b604aa986a3ebb75f9ec5"
+    ]
+  },
+  {
+    "scene": "crowd3000",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "7cb3bc362b3a1f40104404a1619454a2bcaaedb7f206026a9b05b5ba0cfaa273",
+      "7cb3bc362b3a1f40104404a1619454a2bcaaedb7f206026a9b05b5ba0cfaa273"
+    ]
+  },
+  {
+    "scene": "shots",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "4c96fec9605c3afc6fe5655a92d579c1f4da07603fd40863467d579ec251df3b",
+      "4c96fec9605c3afc6fe5655a92d579c1f4da07603fd40863467d579ec251df3b"
+    ]
+  },
+  {
+    "scene": "offscreen10000",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "9c36c581a758b17fb804fee872f9e03ddc87a1e213324c433ed27e7ce1f4dc3e",
+      "9c36c581a758b17fb804fee872f9e03ddc87a1e213324c433ed27e7ce1f4dc3e"
+    ]
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "ff432947f76316b85cf9e3e7cf782e3fda694cdf06f27e19ed979ff771cd6f49",
+      "ff432947f76316b85cf9e3e7cf782e3fda694cdf06f27e19ed979ff771cd6f49"
+    ]
+  },
+  {
+    "scene": "title",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "2876f2e85cae783b75bfac637c927c918a9569d93c420302ca384c39f35e3b1c",
+      "2876f2e85cae783b75bfac637c927c918a9569d93c420302ca384c39f35e3b1c"
+    ]
+  },
+  {
+    "scene": "editor",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "ce9690722c7e5261dc98c0e3a43adb49daeff75b4189b2131ef818a1236164a9",
+      "ce9690722c7e5261dc98c0e3a43adb49daeff75b4189b2131ef818a1236164a9"
+    ]
+  },
+  {
+    "scene": "codex",
+    "dpr": 2,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "46e358ed9dd3352f7561c3c1f1662128a7a9c81f78f43e15c99b30d955072352",
+      "46e358ed9dd3352f7561c3c1f1662128a7a9c81f78f43e15c99b30d955072352"
+    ]
+  },
+  {
+    "scene": "idle",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "6f5c48c4141624bcbefba536f6947dacd2367c3cfd65f0b4effd1863fe0e3170",
+      "6f5c48c4141624bcbefba536f6947dacd2367c3cfd65f0b4effd1863fe0e3170"
+    ]
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "473171a7c8c0709e3c537c59af90819951cef179406dc572dcc65b5aa810f93c",
+      "473171a7c8c0709e3c537c59af90819951cef179406dc572dcc65b5aa810f93c"
+    ]
+  },
+  {
+    "scene": "crowd3000",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "f6933d2fcc516d37c718476e5b870d59018a13d1113e6c051f987cc052de3704",
+      "f6933d2fcc516d37c718476e5b870d59018a13d1113e6c051f987cc052de3704"
+    ]
+  },
+  {
+    "scene": "shots",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "13f78ff75f3fb8f69b0a14aa54b82f59980213ff6149bad99fbeae2c4f7a5d75",
+      "13f78ff75f3fb8f69b0a14aa54b82f59980213ff6149bad99fbeae2c4f7a5d75"
+    ]
+  },
+  {
+    "scene": "offscreen10000",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "6f5c48c4141624bcbefba536f6947dacd2367c3cfd65f0b4effd1863fe0e3170",
+      "6f5c48c4141624bcbefba536f6947dacd2367c3cfd65f0b4effd1863fe0e3170"
+    ]
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "42417b2bbbe53f6e0086ff138ea5f4a9beb0e2c9b6af20721486606dd508570c",
+      "42417b2bbbe53f6e0086ff138ea5f4a9beb0e2c9b6af20721486606dd508570c"
+    ]
+  },
+  {
+    "scene": "title",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "bdd711cd28d73c8d74c36ad0da9765d3bef7d0f5be7d3fb8f80bfb56ad1dc33e",
+      "bdd711cd28d73c8d74c36ad0da9765d3bef7d0f5be7d3fb8f80bfb56ad1dc33e"
+    ]
+  },
+  {
+    "scene": "editor",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "e77bbd771c2914d1f034acde86366f400727e652f9966dc9ab50444e40c4e08f",
+      "e77bbd771c2914d1f034acde86366f400727e652f9966dc9ab50444e40c4e08f"
+    ]
+  },
+  {
+    "scene": "codex",
+    "dpr": 1.25,
+    "pose": false,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "9c3393156ae0e5108923db3966d5b72a9e3eee693413d88c5004d666a03d682d",
+      "9c3393156ae0e5108923db3966d5b72a9e3eee693413d88c5004d666a03d682d"
+    ]
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1,
+    "pose": true,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "3b89a1a34ddfd8e6bdbb8e0b29bb8564cca478dd6e544c832ed17ca1db77c00f",
+      "3b89a1a34ddfd8e6bdbb8e0b29bb8564cca478dd6e544c832ed17ca1db77c00f"
+    ]
+  },
+  {
+    "scene": "shots",
+    "dpr": 1,
+    "pose": true,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "dea21efd993088336a48b6948abc63612da64ce82dd75c34293ba57ae55de090",
+      "dea21efd993088336a48b6948abc63612da64ce82dd75c34293ba57ae55de090"
+    ]
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 2,
+    "pose": true,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "4ecf8a89145ac57e728e09dade78e9070b30282a189240095ba7e148e05a09a3",
+      "4ecf8a89145ac57e728e09dade78e9070b30282a189240095ba7e148e05a09a3"
+    ]
+  },
+  {
+    "scene": "shots",
+    "dpr": 2,
+    "pose": true,
+    "maxChannelDelta": 0,
+    "changedPixels": 0,
+    "pixelsOver2": 0,
+    "hashes": [
+      "4eb6bf425c1b5caf53bd241d080c657df7a78741288ee9fa33b0be4a4cb5c53d",
+      "4eb6bf425c1b5caf53bd241d080c657df7a78741288ee9fa33b0be4a4cb5c53d"
+    ]
+  }
+]

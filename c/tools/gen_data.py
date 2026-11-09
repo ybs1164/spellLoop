@@ -16,6 +16,9 @@ import os
 import re
 import sys
 
+C_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # c/
+LANG_EN = os.path.join(C_ROOT, 'data', 'lang_en.csv')                 # 화면 문구 영어 사전 (data/ 는 JS 가 만드는 폴더라 c/ 에 둔다)
+
 # 키 enum 을 만들 표: 표 → (접두사, 키를 읽을 열; None 이면 _key)
 ENUMS = {
     'cards': ('CARD', None),
@@ -141,8 +144,9 @@ class Gen:
         # 화면 문구 표 (_tables.csv 밖, tools/export-csv.cjs 가 UI 함수를 돌려 만든다): 이름·설명은 문자열, 나머지는 수
         ui = read_csv(os.path.join(data_dir, 'card_ui.csv'))
         self.tables.append({'table': 'card_ui', 'shape': 'map', 'row': 'obj', 'parent': ''})
-        self.cols['card_ui'] = ['_key', 'name', 'desc', 'stats', 'cdop', 'reward', 'weight']
-        self.rows['card_ui'] = [{c: (('str', r[c]) if c in ('_key', 'name', 'desc', 'cdop') else ('num', float(r[c]))) for c in self.cols['card_ui']} for r in ui]
+        self.cols['card_ui'] = list(ui[0])
+        numeric_ui = {'stats', 'codex', 'reward', 'weight', 'ui_type', 'ui_icon'}
+        self.rows['card_ui'] = [{c: (('num', float(r[c])) if c in numeric_ui else ('str', r[c])) for c in self.cols['card_ui']} for r in ui]
         self.errors = []
 
     # ---------- 무결성 ----------
@@ -257,6 +261,25 @@ class Gen:
         dt = {'str': 'DT_STR', 'fn': 'DT_FN', 'sprite': 'DT_SPRITE'}[t]
         return f'{{{dt}, 0, 0, {c_str(x)}, 0}}'
 
+    def lang(self):
+        """c/data/lang_en.csv → (ko, en) 목록. {n} 틀은 글자가 많은(구체적인) 것부터 뒤에 붙인다"""
+        if not os.path.exists(LANG_EN):
+            return []
+        exact, pats, seen = [], [], set()
+        for r in read_csv(LANG_EN):
+            ko, en = r['ko'], r['en']
+            if ko in seen:
+                raise SystemExit(f'lang_en.csv: 겹친 항목 {ko!r}')
+            seen.add(ko)
+            holes = set(re.findall(r'\{\d\}', ko))
+            if not set(re.findall(r'\{\d\}', en)) <= holes:
+                raise SystemExit(f'lang_en.csv: {ko!r} 에 없는 자리를 쓴다: {en!r}')
+            if re.search(r'\{\d\}\{\d\}', ko):
+                raise SystemExit(f'lang_en.csv: 붙은 두 자리는 나눌 수 없다: {ko!r}')
+            (pats if holes else exact).append((ko, en))
+        pats.sort(key=lambda p: -len(re.sub(r'\{\d\}', '', p[0])))
+        return exact + pats
+
     def write(self, out_dir):
         os.makedirs(out_dir, exist_ok=True)
         names = [t['table'] for t in self.tables]
@@ -279,6 +302,10 @@ class Gen:
             '/* constants.csv */',
             self.constants(),
             '',
+            '/* c/data/lang_en.csv: 화면 문구 → 영어 */',
+            f'#define LANG_EN_COUNT {len(self.lang())}',
+            'extern const char *const LANG_EN_KO[LANG_EN_COUNT + 1], *const LANG_EN_EN[LANG_EN_COUNT + 1];',
+            '',
         ]
         c = ['/* 생성 파일: c/tools/gen_data.py 가 data 폴더의 CSV 에서 만든다. 직접 고치지 않는다. */', '#include "data_gen.h"', '']
         defs = []
@@ -298,6 +325,9 @@ class Gen:
         c.append('const DataTable DATA_TABLES[DATA_TABLE_COUNT] = {')
         c += defs
         c.append('};')
+        words = self.lang()
+        c.append('const char *const LANG_EN_KO[LANG_EN_COUNT + 1] = {' + ''.join(c_str(k) + ', ' for k, _ in words) + '0};')
+        c.append('const char *const LANG_EN_EN[LANG_EN_COUNT + 1] = {' + ''.join(c_str(e) + ', ' for _, e in words) + '0};')
         write_if_changed(os.path.join(out_dir, 'data_gen.h'), '\n'.join(h) + '\n')
         write_if_changed(os.path.join(out_dir, 'data_gen.c'), '\n'.join(c) + '\n')
 

@@ -9,10 +9,6 @@ UI.init(game);
 if (SimBridge.supported()) SimBridge.attach(game);   // ?worker=1 (http/https): 시뮬레이션을 워커에서 돌린다
 UI.showTitle();
 
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) game.pause();
-});
-
 // F3: 성능 오버레이 (업데이트·렌더 시간과 개체 수)
 const perf = { on: false, update: 0, render: 0 };
 function drawPerf() {

@@ -106,8 +106,17 @@ function entityMovementDirection(owner, move, game) {
   const target = move?.targets?.[0];
   const selected = target ? game.targetObj(target) : owner;
   if (selected !== owner) {
-    const dx = selected.x - owner.x, dy = selected.y - owner.y, length = Math.hypot(dx, dy);
+    const dx = selected.x - owner.x, dy = selected.y - owner.y, length = simHypot(dx, dy);
     return length ? { x: dx / length, y: dy / length } : { x: 0, y: 0 };
+  }
+  // 방향 벡터 → atan2 → sin/cos 왕복을 생략한다. 영벡터·특수값은 원래 경로로.
+  if (SIM_FAST_MATH) {
+    const f = owner.facing;
+    const x = f ? f.x : owner.vx, y = f ? f.y : owner.vy;
+    if (f || Number.isFinite(owner.vx) && (x || y)) {
+      const length = simHypot(x, y);
+      if (length > 0 && Number.isFinite(length)) return { x: x / length, y: y / length };
+    }
   }
   const angle = owner.facing ? Math.atan2(owner.facing.y, owner.facing.x)
     : Number.isFinite(owner.vx) && (owner.vx || owner.vy) ? Math.atan2(owner.vy, owner.vx)

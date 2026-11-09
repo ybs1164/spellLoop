@@ -11,13 +11,12 @@ const CARD_TYPES = {
 };
 
 // 플레이어 슬롯은 한 줄로 이어지며, 처음 놓은 카드를 기준으로 대상 → 행동 → 연쇄 → 대상 … 순서가 반복된다.
-// 연쇄 카드는 앞 행동의 결과(타격 등)를 이어받아, 바로 뒤의 대상 카드에 뒤따르는 행동 카드를 실행시킨다.
+// 행동 뒤 구간은 생성된 개체의 독립 슬롯이 되고, 연쇄 카드는 바로 뒤 대상에 적용한다.
 const SLOT_CYCLE = ['target', 'action', 'artifact'];
 const MAX_SLOT_CARDS = 9;
 // 개체 슬롯 정렬용 (연쇄 스택이 아닌 슬롯은 연쇄 → 대상 → 행동 칸 순서로 정렬된다).
 const SLOT_SECTION_ORDER = { artifact: 0, target: 1, action: 2 };
 function slotSectionOf(id) { return SLOT_SECTION_ORDER[CARDS[id]?.type] ?? 2; }
-
 /** 행동 카드 뒤에 연쇄 카드가 이어지는, 순환 순서를 지킨 스택인가 (이 경우 놓인 순서가 곧 실행 순서다). */
 function isChainStack(cards) {
   let acted = false, chained = false;
@@ -55,17 +54,15 @@ function slotCycleError(cards) {
   return slotOrderError(cards) || (cards.length > MAX_SLOT_CARDS ? `슬롯에는 카드를 ${MAX_SLOT_CARDS}장까지만 놓을 수 있습니다` : null) || slotDeadError(cards);
 }
 /**
- * 절대 실행되지 않는 모양이면 사유: 앞 행동이 없는 첫 칸의 타격 시, 앞에 발동 연쇄 카드가 없는 이벤트 상대,
+ * 절대 실행되지 않는 모양이면 사유: 명시적인 이벤트가 없는 이벤트 상대,
  * 행동이 받지 않는 종류(exclude·accepts·필수 속성)의 대상 바로 뒤 행동.
  */
 function slotDeadError(cards) {
-  if (CARDS[cards[0]]?.eventKind === 'hit') return `${CARDS[cards[0]].name}은(는) 앞 행동이 있어야 작동하므로 첫 칸에 놓을 수 없습니다`;
-  // 행동 뒤의 연쇄 카드는 그 행동의 이벤트를 넘기고, 첫 구간의 연쇄 카드는 발동 순간(eventKind)이 있어야 이벤트를 준다.
-  let acted = false, event = false;
+  // 이벤트 상대는 해당 구간에 명시적인 이벤트 카드가 있어야 고를 수 있다.
+  let event = false;
   for (let i = 0; i < cards.length; i++) {
     const card = CARDS[cards[i]], target = CARDS[cards[i - 1]];
-    if (card?.type === 'action') acted = true;
-    else if (card?.type === 'artifact' && (acted || EVENT_NAMES[card.eventKind])) event = true;
+    if (card?.type === 'artifact') event = !!EVENT_NAMES[card.eventKind];
     if (cardBaseId(cards[i]) === 'eventSubject' && !event) return `${card.name}은(는) 앞에 발동 연쇄 카드가 있어야 작동하므로 이 칸에 놓을 수 없습니다`;
     if (card?.type !== 'action' || target?.type !== 'target') continue;
     const features = KIND_FEATURES[target.kind];

@@ -12,6 +12,29 @@
 #define SLOT_EVENT_BUDGET_FRAME 256
 Ctx *g_ctx;
 
+void slots_cache_reset(World *w) {
+  static uint64_t epoch;
+  w->fast.plan_epoch = ++epoch;
+  if (!w->fast.plan_epoch) w->fast.plan_epoch = ++epoch;
+  memset(w->fast.slot_plan, 0, sizeof w->fast.slot_plan);
+  memset(w->fast.slot_watchers, 0, sizeof w->fast.slot_watchers);
+  for (int k = 0; k < (w->slot_hi + 63) / 64; k++) w->fast.slot_dirty[k] = UINT64_MAX;
+  for (int k = 0; k < (w->hi + 63) / 64; k++) w->fast.owner_events_dirty[k] = UINT64_MAX;
+}
+
+/* Mark writable Slot access, including editor/tests, before its contents change.
+ * Cached recipes additionally compare their keys, so pointer edits remain safe. */
+void slot_changed(World *w, int si) {
+  w->fast.slot_dirty[si >> 6] |= UINT64_C(1) << (si & 63);
+  w->target_event_tick = UINT64_MAX;
+  w->fast.slot_serial++;
+  int owner = ent_index(w, w->slots[si].owner);
+  if (owner >= 0) {
+    w->fast.no_after[owner >> 6] &= ~(UINT64_C(1) << (owner & 63));
+    w->fast.owner_events_dirty[owner >> 6] |= UINT64_C(1) << (owner & 63);
+  }
+}
+
 /* ---------- 카드 변형 ---------- */
 int variant_make(World *w, int base, char cd_op, float cd_value, const VarKV *kv, int nkv) {
   for (int v = 1; v < w->nvars; v++) {
@@ -46,6 +69,9 @@ bool var_has(const World *w, int var, const char *key) { return var_kv(w, var, k
 
 /* ---------- 슬롯 저장 ---------- */
 static int slot_alloc(World *w, int owner_i) {
+  w->target_event_tick = UINT64_MAX;
+  w->fast.slot_serial++;
+  w->fast.no_after[owner_i>>6]&=~(UINT64_C(1)<<(owner_i&63));
   int s;
   if (w->slot_free >= 0) { s = w->slot_free; w->slot_free = w->slots[s].next; }
   else if (w->slot_hi < MAX_SLOT_POOL) s = w->slot_hi++;
@@ -54,6 +80,7 @@ static int slot_alloc(World *w, int owner_i) {
   memset(sl, 0, sizeof *sl);
   sl->owner = ent_handle(w, owner_i);
   sl->next = -1;
+  slot_changed(w, s);
   if (w->slot_tail[owner_i] >= 0) w->slots[w->slot_tail[owner_i]].next = s;
   else w->slot_head[owner_i] = s;
   w->slot_tail[owner_i] = s;
@@ -116,8 +143,31 @@ Slot *slot_of(World *w, Handle owner, int k) {
   int i = ent_index(w, owner);
   if (i < 0) return NULL;
   for (int s = w->slot_head[i]; s >= 0; s = w->slots[s].next)
-    if (!w->slots[s].linked && k-- == 0) return &w->slots[s];
+    if (!w->slots[s].linked && k-- == 0) { slot_changed(w, s); return &w->slots[s]; }
   return NULL;
+}
+
+void slots_inherit(World *w, int source, int target) {
+  for (int s = w->slot_head[target]; s >= 0;) {
+    int next = w->slots[s].next;
+    slot_changed(w, s);
+    w->slots[s].owner = HANDLE_NONE;
+    w->slots[s].next = w->slot_free; w->slot_free = s; s = next;
+  }
+  w->slot_head[target] = w->slot_tail[target] = -1;
+  Handle h = ent_handle(w, target);
+  for (int s = w->slot_head[source]; s >= 0; s = w->slots[s].next) {
+    Slot original = w->slots[s];
+    int ns = slot_alloc(w, target);
+    if (ns < 0) break;
+    w->slots[ns] = original;
+    w->slots[ns].owner = h;
+    w->slots[ns].next = -1;
+    w->slots[ns].nenter = w->slots[ns].enter_any = 0;
+    if (original.link_actor == ent_handle(w, source)) w->slots[ns].link_actor = h;
+    if (w->kind[source] == TK_SELF) for (int k = 0; k < original.n; k++)
+      if (w->slots[ns].cards[k] == CARD_SELF) w->slots[ns].cards[k] = CARD_ENTITY_SELF;
+  }
 }
 
 /* ---------- 쿨타임·구성 ---------- */
@@ -128,19 +178,21 @@ static void card_cd(const World *w, int card, int var, char *op, float *value) {
   *value = CARDS[card].cd_value;
 }
 
-float slot_cooldown(const World *w, const Slot *s) {
-  float v = BASE_COOLDOWN;
+/* 쿨타임: 기본 BASE_COOLDOWN(1초)에서 시작해 카드 연산(+ − × =)을 배치 순서대로 그 자리에서 적용한다.
+ * 곱(×, 붕괴 위험 카드)은 그때까지의 값에만 곱하고, '='는 앞의 값을 지운다(개체 주기). */
+static float calculate_cooldown(const World *w, const Slot *s) {
+  float cd = BASE_COOLDOWN;
   for (int i = 0; i < s->n; i++) {
     char op; float value;
     card_cd(w, s->cards[i], s->vars[i], &op, &value);
     switch (op) {
-      case '+': v += value; break;
-      case '-': v -= value; break;
-      case '*': v *= value; break;
-      case '=': v = value; break;
+      case '+': cd += value; break;
+      case '-': cd -= value; break;
+      case '*': cd *= value; break;
+      case '=': cd = value; break;
     }
   }
-  return maxf((float)FRAME_COOLDOWN, v);
+  return maxf((float)FRAME_COOLDOWN, cd);
 }
 
 static bool is_move_card(int id) {
@@ -148,19 +200,14 @@ static bool is_move_card(int id) {
 }
 
 int slot_rule_error(const uint16_t *cards, int n) {
-  int actions = 0, targets = 0;
-  bool move = false;
-  for (int i = 0; i < n; i++) {
-    int t = CARDS[cards[i]].type;
-    actions += t == CARD_TYPE_ACTION;
-    targets += t == CARD_TYPE_TARGET;
-    move |= is_move_card(cards[i]);
-  }
   for (int i = 0; i < n; i++) {
     switch (cards[i]) {
-      case CARD_ARTIFACT_BOOTS: if (!move) return cards[i]; break;
-      case CARD_ARTIFACT_RING: if (actions > 3) return cards[i]; break;
-      case CARD_ARTIFACT_SEAL: if (actions > 2 || targets > 2) return cards[i]; break;
+      case CARD_ARTIFACT_BOOTS: {
+        int next = i + 1;
+        while (next < n && CARDS[cards[next]].type != CARD_TYPE_ACTION) next++;
+        if (next < n && !is_move_card(cards[next])) return cards[i];
+        break;
+      }
       default: break;
     }
   }
@@ -182,8 +229,12 @@ static int event_kind_of(const char *s) {
 }
 /** 카드의 발동 이벤트 (조건·규칙 카드는 0) */
 static int card_trigger(int card) {
-  if (CARDS[card].type != CARD_TYPE_ARTIFACT) return EV_NONE;
-  return event_kind_of(CARDS[card].event_kind);
+  static uint8_t cached[CARD__COUNT];static bool ready;
+  if(!ready) {
+    for(int k=0;k<CARD__COUNT;k++)cached[k]=CARDS[k].type==CARD_TYPE_ARTIFACT?(uint8_t)event_kind_of(CARDS[k].event_kind):EV_NONE;
+    ready=true;
+  }
+  return cached[card];
 }
 static bool card_condition(int card) { return CARDS[card].type == CARD_TYPE_ARTIFACT && CARDS[card].event_kind && strcmp(CARDS[card].event_kind, "state") == 0; }
 static int card_hit_rule(int card) {
@@ -193,42 +244,19 @@ static int card_hit_rule(int card) {
   }
 }
 
-/** 행동의 기본 연쇄 이벤트 (js actionLinkEvent) */
-static int action_link_event(int base) {
-  switch (base) {
-    case CARD_BOLT: case CARD_SCATTER: case CARD_LANCE: case CARD_HOMING: case CARD_BOOMERANG: case CARD_SLASH: case CARD_EXPLODE: case CARD_SHOCKWAVE:
-    case CARD_LASER: case CARD_CHAIN: case CARD_METEOR: case CARD_BLADES: case CARD_SNIPE: case CARD_DRAIN: case CARD_POISON: case CARD_BURN:
-    case CARD_ENTITY_HIT: case CARD_ORBIT: case CARD_SUMMON: case CARD_ARCHER: case CARD_ORB: case CARD_TURRET:
-      return EV_HIT;
-    case CARD_MINE: return EV_DETONATE;
-    case CARD_DECOY: case CARD_SHIELD: case CARD_ARMOR: return EV_HURT;
-    case CARD_SPAWN_ORB: return EV_COLLECT;
-    case CARD_VORTEX: case CARD_WARD: return EV_MOVED;
-    default: return EV_COMPLETE;
-  }
-}
-static bool is_hit_action(int base) {
-  switch (base) {
-    case CARD_BOLT: case CARD_SCATTER: case CARD_LANCE: case CARD_HOMING: case CARD_BOOMERANG: case CARD_SLASH: case CARD_EXPLODE: case CARD_SHOCKWAVE:
-    case CARD_LASER: case CARD_CHAIN: case CARD_METEOR: case CARD_BLADES: case CARD_SNIPE: case CARD_DRAIN: case CARD_POISON: case CARD_BURN:
-    case CARD_ENTITY_HIT: case CARD_ORBIT: return true;
-    default: return false;
-  }
-}
-static bool is_beneficial(int base) {
-  return base == CARD_HEAL || base == CARD_SHIELD || base == CARD_ARMOR || base == CARD_HASTE || base == CARD_RAGE || base == CARD_FOCUS || base == CARD_AMPLIFY;
-}
-
 /* ---------- 분석 (js slotAnalysis) ---------- */
 typedef struct {
   int stage_n;                 /* 이 슬롯의 몫: cards[0, stage_n) */
   int chain_at, chain_n;       /* 연쇄 나머지 cards[chain_at, chain_at + chain_n) (행동이 있을 때만) */
-  int actions[MAX_SLOT_CARDS], nact;
-  int triggers[MAX_SLOT_CARDS], ntrig;
-  int conditions[MAX_SLOT_CARDS], ncond;
-  int whens[MAX_SLOT_CARDS], nwhen;
+  uint8_t actions[MAX_SLOT_CARDS], nact;
+  uint8_t conditions[MAX_SLOT_CARDS], ncond;
+  uint8_t whens[MAX_SLOT_CARDS], nwhen;
+  uint16_t trigger_mask, all_triggers, targeted;
+  uint8_t ntrig;
   bool enters, every, ok;
   uint8_t rule;
+  bool after, watches, runs_blocked;
+  float cooldown;
 } Analysis;
 
 /** 행동 뒤에 연쇄 카드가 이어지는 스택인가 (js isChainStack) */
@@ -242,11 +270,11 @@ static bool is_chain_stack(const Slot *s) {
   return chained;
 }
 
-static void analyze(const World *w, const Slot *s, Analysis *a) {
+static void analyze_structure(const Slot *s, Analysis *a) {
   memset(a, 0, sizeof *a);
   a->stage_n = s->n;
   a->rule = RULE_NONE;
-  if (!s->linked && is_chain_stack(s)) {
+  if (is_chain_stack(s)) {
     int end = 0;
     while (end < s->n && CARDS[s->cards[end]].type != CARD_TYPE_ACTION) end++;
     end++;
@@ -262,20 +290,85 @@ static void analyze(const World *w, const Slot *s, Analysis *a) {
     if (c->type == CARD_TYPE_ACTION) a->actions[a->nact++] = i;
     else if (c->type == CARD_TYPE_ARTIFACT) {
       int trig = card_trigger(id);
-      if (trig) { a->triggers[a->ntrig++] = trig; if (trig == EV_ENTER) a->enters = true; }
+      if (trig) { a->trigger_mask |= (uint16_t)(1u << trig); a->ntrig++; if (trig == EV_ENTER) a->enters = true; }
       if (card_condition(id) || trig == EV_ENTER) a->conditions[a->ncond++] = i;
       if (c->fn[CF_WHEN].key) a->whens[a->nwhen++] = i;
       int rule = card_hit_rule(id);
       if (rule != RULE_NONE) a->rule = (uint8_t)rule;
     }
   }
-  a->ok = a->nact > 0 && slot_rule_error(s->cards, s->n) < 0;
-  a->every = slot_cooldown(w, s) <= FRAME_COOLDOWN + 1e-6f;
+  a->ok = a->nact > 0 && slot_rule_error(s->cards, a->stage_n) < 0;
+  for (int k = 0; k < s->n; k++) a->all_triggers |= (uint16_t)(1u << card_trigger(s->cards[k]));
+  for (int k = 0; k < a->stage_n; k++) {
+    int id = s->cards[k];
+    if (id == CARD_ARTIFACT_THORNS || id == CARD_ARTIFACT_BELL) {
+      a->watches = true;
+      a->targeted |= (uint16_t)(1u << card_trigger(id));
+    }
+  }
+  if (a->nact) a->runs_blocked = data_num(data_table("cards"), s->cards[a->actions[0]], "runsWhileBlocked", 0) != 0;
 }
 
+typedef struct {
+  uint64_t epoch;
+  uint16_t cards[MAX_SLOT_CARDS], vars[MAX_SLOT_CARDS];
+  uint8_t n, linked;   /* 연쇄 슬롯은 실행 결과 곱 기준이 달라 따로 캐시한다 */
+  Analysis analysis;
+} SlotPlan;
+#define PLAN_COUNT 4096
+static SlotPlan plans[PLAN_COUNT];
+
+static bool plan_matches(const SlotPlan *p, const World *w, const Slot *s) {
+  return p->epoch == w->fast.plan_epoch && p->n == s->n && p->linked == s->linked &&
+    !memcmp(p->cards, s->cards, (size_t)s->n * sizeof *s->cards) &&
+    !memcmp(p->vars, s->vars, (size_t)s->n * sizeof *s->vars);
+}
+
+static const Analysis *structural_analysis(const World *w, const Slot *s) {
+  /* Integer bounds avoid subtracting unrelated pointers for standalone Slots. */
+  uintptr_t at = (uintptr_t)s, base = (uintptr_t)w->slots;
+  bool pooled = at >= base && at - base < (size_t)w->slot_hi * sizeof *s && (at - base) % sizeof *s == 0;
+  uint16_t *ref = pooled ? &((World *)w)->fast.slot_plan[(at - base) / sizeof *s] : NULL;
+  if (ref && *ref && plan_matches(&plans[*ref - 1], w, s)) return &plans[*ref - 1].analysis;
+  unsigned hash = (unsigned)w->fast.plan_epoch ^ s->n ^ (unsigned)s->linked << 7;
+  for (int k = 0; k < s->n; k++) { hash = (hash ^ s->cards[k]) * 16777619u; hash = (hash ^ s->vars[k]) * 16777619u; }
+  unsigned id = hash & (PLAN_COUNT - 1);
+  SlotPlan *p = &plans[id];
+  if (!plan_matches(p, w, s)) {
+    p->epoch = w->fast.plan_epoch; p->n = s->n; p->linked = s->linked;
+    memcpy(p->cards, s->cards, (size_t)s->n * sizeof *s->cards);
+    memcpy(p->vars, s->vars, (size_t)s->n * sizeof *s->vars);
+    analyze_structure(s, &p->analysis);
+    p->analysis.cooldown = calculate_cooldown(w, s);
+    p->analysis.every = p->analysis.cooldown <= FRAME_COOLDOWN + 1e-6f;
+    if (p->analysis.nact) p->analysis.after = var_num(w, s->vars[p->analysis.actions[0]], "afterMovement", 0) != 0;
+  }
+  if (ref) *ref = (uint16_t)(id + 1);
+  return &p->analysis;
+}
+
+float slot_cooldown(const World *w, const Slot *s) { return structural_analysis(w, s)->cooldown; }
+static void analyze(const World *w, const Slot *s, Analysis *a) { *a = *structural_analysis(w, s); }
+
 static bool has_trigger(const Analysis *a, int kind) {
-  for (int k = 0; k < a->ntrig; k++) if (a->triggers[k] == kind) return true;
-  return false;
+  return (a->trigger_mask & (1u << kind)) != 0;
+}
+
+#define OWNER_LINKED_HIT (1u << 15)
+static unsigned owner_events(const World *world, int i) {
+  World *w = (World *)world;
+  uint64_t bit = UINT64_C(1) << (i & 63);
+  if (w->fast.owner_events_dirty[i >> 6] & bit) {
+    unsigned mask = 0;
+    for (int si = w->slot_head[i]; si >= 0; si = w->slots[si].next) {
+      const Slot *s = &w->slots[si];
+      mask |= structural_analysis(w, s)->all_triggers;
+      if (s->linked && s->n && card_trigger(s->cards[0]) == EV_HIT) mask |= OWNER_LINKED_HIT;
+    }
+    w->fast.owner_events[i] = (uint16_t)mask;
+    w->fast.owner_events_dirty[i >> 6] &= ~bit;
+  }
+  return w->fast.owner_events[i];
 }
 
 /* ---------- 대상 선택 (js selectSlotTargets) ---------- */
@@ -305,25 +398,20 @@ static int select_targets(Ctx *c, const Slot *s, const Analysis *a, Target *out,
 }
 
 /* ---------- 실행 (js executeLinkedAction) ---------- */
-typedef struct { int i; float hp, x, y, life; bool dead; } Before;
-
-/** 연쇄 슬롯 카드: 연쇄 카드가 있으면 [연쇄 …] 그대로, 없으면 [on_이벤트, 이벤트 상대/행동 주체, 뒤 행동 …] */
-static int link_cards(const Slot *s, const int *tail, int ntail, int chain_at, int chain_n, int kind, uint16_t *cards, uint16_t *vars) {
-  static const int ON[EV__COUNT] = { 0, CARD_ON_HIT, CARD_ON_HURT, CARD_ON_DEATH, CARD_ON_SPAWN, CARD_ON_COMPLETE, CARD_ON_COLLECT, CARD_ON_MOVED, CARD_ON_DETONATE, 0 };
+static int link_cards(const Slot *s, const int *tail, int ntail, int chain_at, int chain_n, uint16_t *cards, uint16_t *vars) {
   int n = 0;
   if (chain_n) {
-    if (!card_trigger(s->cards[chain_at]) && ON[kind]) { cards[n] = (uint16_t)ON[kind]; vars[n++] = 0; }
     for (int k = 0; k < chain_n && n < MAX_SLOT_CARDS; k++) { cards[n] = s->cards[chain_at + k]; vars[n++] = s->vars[chain_at + k]; }
-    return n;
+  } else {
+    cards[n] = CARD_ENTITY_SELF; vars[n++] = 0;
+    for (int k = 0; k < ntail && n < MAX_SLOT_CARDS; k++) { cards[n] = s->cards[tail[k]]; vars[n++] = s->vars[tail[k]]; }
   }
-  if (ON[kind]) { cards[n] = (uint16_t)ON[kind]; vars[n++] = 0; }
-  cards[n] = (uint16_t)(is_beneficial(s->cards[tail[0]]) ? CARD_EVENT_OWNER : CARD_EVENT_SUBJECT);
-  vars[n++] = 0;
-  for (int k = 0; k < ntail && n < MAX_SLOT_CARDS; k++) { cards[n] = s->cards[tail[k]]; vars[n++] = s->vars[tail[k]]; }
   return n;
 }
 
-static int add_link(World *w, int owner_i, const uint16_t *cards, const uint16_t *vars, int n, Handle actor, float expires) {
+/* order: 한 번의 행동이 새로 설치한 순번. 한 틱에 수백 개가 함께 설치돼 같은 틱에 모두 터지지 않도록
+ * 첫 쿨타임을 쿨타임 × order / LINK_HOST_FREE 로 나눠 건다 (쿨타임마다 LINK_HOST_FREE 개씩 첫 작동). */
+static int add_link(World *w, int owner_i, const uint16_t *cards, const uint16_t *vars, int n, Handle actor, float expires, int *order) {
   // 같은 카드의 연쇄 슬롯이 이미 있으면 수명만 늘린다
   for (int s = w->slot_head[owner_i]; s >= 0; s = w->slots[s].next) {
     Slot *x = &w->slots[s];
@@ -337,6 +425,7 @@ static int add_link(World *w, int owner_i, const uint16_t *cards, const uint16_t
   w->slots[s].linked = 1;
   w->slots[s].link_actor = actor;
   w->slots[s].link_expires = expires;
+  w->slots[s].cd = slot_cooldown(w, &w->slots[s]) * (float)(*order)++ / (float)LINK_HOST_FREE;
   return s;
 }
 
@@ -346,24 +435,15 @@ bool g_record_created;
 
 static void queue_event(World *w, Handle owner, int kind, Handle subject, float x, float y, float damage, int depth, int exclude);
 
-static void execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *targets, int n) {
+/** 행동을 실행하고 연쇄를 설치한다. 생성 개체 수를 돌려준다 (쿨타임 생성 수 곱: 연쇄 슬롯은 탄환까지, 그 밖은 탄환 제외) */
+static int execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *targets, int n) {
   World *w = c->w;
   int si = (int)(s - w->slots);
-  const int *acts = a->actions;
+  const uint8_t *acts = a->actions;
   int id = s->cards[acts[0]], var = s->vars[acts[0]], ntail = a->nact - 1;
   bool chain = ntail == 0 && a->chain_n > 0, follows = ntail > 0 || chain;
-  int native = id == CARD_SPLIT ? EV_SPAWN : action_link_event(id);
-  int link_kind = chain && card_trigger(s->cards[a->chain_at]) ? card_trigger(s->cards[a->chain_at]) : native;
-  static Before before[MAX_TARGETS];
-  int nb = 0;
-  if (follows)
-    for (int k = 0; k < n && nb < MAX_TARGETS; k++) {
-      int i = target_index(w, &targets[k]);
-      if (i >= 0) before[nb++] = (Before){ i, w->hp[i], w->x[i], w->y[i], w->life[i], !ent_live(w, i) };
-    }
   Ctx *prev = g_ctx;
   c->card = id; c->var = var; c->rule = a->rule;
-  c->hits = c->applied = 0;
   g_ctx = c;
   int ncreated0 = g_ncreated;
   bool rec0 = g_record_created;
@@ -376,10 +456,8 @@ static void execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *tar
   g_ncreated = ncreated0;
   if (!rec0) g_ncreated = 0;
   // 연쇄 「타격 시」를 가진 소환체가 쏜 탄은 적중을 소환체에게도 알린다 (js attackEventOwner)
-  if (!s->linked) {
-    bool listens_hit = false;
-    for (int q = w->slot_head[c->owner]; q >= 0 && !listens_hit; q = w->slots[q].next)
-      listens_hit = w->slots[q].linked && w->slots[q].n && card_trigger(w->slots[q].cards[0]) == EV_HIT;
+  {
+    bool listens_hit = (owner_events(w, c->owner) & OWNER_LINKED_HIT) != 0;
     if (listens_hit) for (int k = 0; k < ncreated; k++) if (w->kind[created[k]] == TK_SHOT) w->attack_owner[created[k]] = ent_handle(w, c->owner);
   }
 
@@ -387,50 +465,22 @@ static void execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *tar
     uint16_t cards[MAX_SLOT_CARDS], vars[MAX_SLOT_CARDS];
     int tail[MAX_SLOT_CARDS];
     for (int k = 0; k < ntail; k++) tail[k] = acts[1 + k];
-    int ln = link_cards(s, tail, ntail, a->chain_at, a->chain_n, link_kind, cards, vars);
+    int ln = link_cards(s, tail, ntail, a->chain_at, a->chain_n, cards, vars);
     Handle actor = ent_handle(w, c->actor);
-    if (CARDS[id].mechanic) {
-      add_link(w, c->owner, cards, vars, ln, actor, (float)w->time + 0.1f);
-    } else if (ncreated) {
+    int order = 0;
+    if (ncreated) {
       for (int k = 0; k < ncreated; k++) {
         int ch = created[k];
         if (!ent_live(w, ch)) continue;
         int kind = w->kind[ch];
         Handle exec = kind == TK_ALLY || kind == TK_ENEMY || kind == TK_OBJECT ? ent_handle(w, ch) : actor;
-        add_link(w, ch, cards, vars, ln, exec, 0);
+        add_link(w, ch, cards, vars, ln, exec, 0, &order);
       }
-    } else if (link_kind == EV_HURT) {
-      for (int k = 0; k < nb; k++) add_link(w, before[k].i, cards, vars, ln, actor, (float)w->time + (id == CARD_SHIELD || id == CARD_ARMOR ? 6 : 3));
     } else {
-      // 즉발 효과: 보이지 않는 이펙트 개체가 연쇄 슬롯을 들고 이벤트를 받는다
-      float ox = c->has_origin ? c->ox : w->x[c->owner], oy = c->has_origin ? c->oy : w->y[c->owner];
-      Handle eh = ent_spawn(w, TK_POINT, (Team)w->team[c->actor], ox, oy, 0);
-      int e = ent_index(w, eh);
-      if (e >= 0) {
-        memcpy(w->stat[e], w->stat[c->actor], sizeof w->stat[e]);
-        w->life[e] = w->max_life[e] = 1;
-        add_link(w, e, cards, vars, ln, actor, 0);
-        int depth = c->depth;
-        if (is_hit_action(id)) {
-          for (int k = 0; k < c->hits; k++)
-            queue_event(w, eh, link_kind == EV_COMPLETE ? EV_COMPLETE : EV_HIT, c->hit_list[k].h, c->hit_list[k].x, c->hit_list[k].y, c->hit_dmg[k], depth, -1);
-        } else if (id == CARD_FROST || id == CARD_ROOT || id == CARD_MARK || id == CARD_FEAR || id == CARD_SPREAD) {
-          for (int k = 0; k < c->applied; k++) {
-            bool dup = false;
-            for (int q = 0; q < k && !dup; q++) dup = c->applied_list[q] == c->applied_list[k];
-            int i = ent_index(w, c->applied_list[k]);
-            if (!dup && i >= 0) queue_event(w, eh, EV_COMPLETE, c->applied_list[k], w->x[i], w->y[i], 0, depth, -1);
-          }
-        } else {
-          for (int k = 0; k < nb; k++) {
-            int i = before[k].i;
-            bool ok = true;
-            if (id == CARD_HEAL) ok = w->hp[i] > before[k].hp;
-            else if (id == CARD_BLINK || id == CARD_DASH || id == CARD_PULL || id == CARD_SWAP) ok = w->x[i] != before[k].x || w->y[i] != before[k].y;
-            else if (id == CARD_ABSORB || id == CARD_DISAPPEAR) ok = !before[k].dead && !ent_live(w, i);
-            if (ok) queue_event(w, eh, EV_COMPLETE, ent_handle(w, i), w->x[i], w->y[i], 0, depth, -1);
-          }
-        }
+      for (int k = 0; k < n; k++) {
+        int recipient = target_index(w, &targets[k]);
+        if (recipient < 0) recipient = c->owner;
+        add_link(w, recipient, cards, vars, ln, actor, 0, &order);
       }
     }
   }
@@ -442,17 +492,95 @@ static void execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *tar
   Handle subj = t0 >= 0 ? ent_handle(w, t0) : HANDLE_NONE;
   // 같은 개체의 다른 슬롯이 「행동 완료 시」를 듣는다 (공명의 종)
   float x = t0 >= 0 ? w->x[t0] : n ? targets[0].x : w->x[c->owner], y = t0 >= 0 ? w->y[t0] : n ? targets[0].y : w->y[c->owner];
-  queue_event(w, ent_handle(w, c->owner), EV_COMPLETE, subj, x, y, 0, c->depth, si);
+  if (!a->every) queue_event(w, ent_handle(w, c->owner), EV_COMPLETE, subj, x, y, 0, c->depth, si);
+  int spawned = 0;
+  for (int k = 0; k < ncreated; k++) spawned += s->linked || w->kind[created[k]] != TK_SHOT;
+  return spawned;
+}
+
+/* ---------- 실행 결과 곱 (붕괴 방지) ----------
+ * 한 번 실행한 슬롯의 쿨타임을 실제 개수로 늘린다.
+ *  생성: 탄환이 아닌 생성 개체가 LINK_SPAWN_FREE 를 넘으면 그 비율 (모든 슬롯)
+ *  대상: 연쇄 슬롯이 고른 대상이 LINK_TARGET_FREE 를 넘으면 그 비율
+ *  호스트: 같은 카드·행동 주체의 연쇄 슬롯이 LINK_HOST_FREE 를 넘으면 그 비율
+ * 생성과 대상은 큰 쪽 하나만 쓴다(소환은 대상마다 하나를 만들어 둘이 같은 양을 센다). */
+static unsigned link_group(const Slot *s) {
+  unsigned h = 2166136261u ^ s->link_actor;
+  for (int k = 0; k < s->n; k++) { h = (h ^ s->cards[k]) * 16777619u; h = (h ^ s->vars[k]) * 16777619u; }
+  return h & (LINK_GROUPS - 1);
+}
+
+static unsigned link_hosts(World *w, const Slot *s) {
+  if (w->fast.link_hosts_tick != w->tick + 1) {   // 틱마다 처음 쓸 때 센다 (저장본 복원 뒤에도 같은 값)
+    memset(w->fast.link_hosts, 0, sizeof w->fast.link_hosts);
+    for (int si = 0; si < w->slot_hi; si++) {
+      const Slot *x = &w->slots[si];
+      if (x->linked && x->owner && ent_index(w, x->owner) >= 0) w->fast.link_hosts[link_group(x)]++;
+    }
+    w->fast.link_hosts_tick = w->tick + 1;
+  }
+  return w->fast.link_hosts[link_group(s)];
+}
+
+static float result_multiplier(World *w, const Slot *s, int targets, int spawned) {
+  float f = maxf(1, (float)spawned / (float)LINK_SPAWN_FREE);
+  if (s->linked) {
+    f = maxf(f, (float)targets / (float)LINK_TARGET_FREE);
+    f *= maxf(1, (float)link_hosts(w, s) / (float)LINK_HOST_FREE);
+  }
+  return f;
 }
 
 /** 슬롯 하나를 실행한다. 행동이 작동했으면 true (js runEventSlot) */
+static int run_simple_mechanic(World *w, Slot *s, int oi, const SimInput *in) {
+  /* Compile the common one-target/one-mechanic stack. The original target,
+   * applicability and action implementations still define all behavior. */
+  if (s->linked || s->link_actor || (s->n != 2 && s->n != 3)) return -1;
+  int target_at=0,last=s->n-1,action=s->cards[last];
+  if(s->n==3) {
+    if(action!=CARD_ENTITY_HIT)return -1;
+    if(s->cards[0]==CARD_ENTITY_HIT_TEAM_OPPOSING)target_at=1;
+    else if(s->cards[1]!=CARD_ENTITY_HIT_TEAM_OPPOSING)return -1;
+  }
+  int target=s->cards[target_at];
+  if (target!=CARD_SELF && target!=CARD_ENTITY_SELF) return -1;
+  switch(action) {
+    case CARD_ENTITY_MOVE: case CARD_ENTITY_KEEP: case CARD_ENTITY_HIT: case CARD_ENTITY_DECOY:
+    case CARD_ENTITY_RESISTANCE: case CARD_ENTITY_AFFINITY: case CARD_ENTITY_GUARD: case CARD_ENTITY_FOLLOW: break;
+    default: return -1;
+  }
+  char op;float cd;
+  card_cd(w,action,s->vars[last],&op,&cd);
+  if (op!='=' || !(cd<=FRAME_COOLDOWN+1e-6f) || !can_act(w,oi)) return -1;
+  if (!ent_live(w,oi)) return 0;
+  if((action==CARD_ENTITY_MOVE || action==CARD_ENTITY_HIT) && action_accepts_any_position(action)) {
+    Target t;
+    if(!resolve_mechanic_target(w,oi,target,&t)||!ent_live(w,target_index(w,&t)))return 0;
+    if(action==CARD_ENTITY_MOVE)mechanic_move(w,oi,action,&t);
+    else mechanic_hit(w,oi,action,s->vars[last],s->n==3?RULE_OPPOSING:RULE_NONE);
+    return 1;
+  }
+  Ctx c={0};c.w=w;c.owner=c.actor=oi;c.in=in;c.dt=SIM_DT;c.depth=1;
+  c.rule=s->n==3?RULE_OPPOSING:RULE_NONE;
+  Target t;
+  if (card_resolve(target,&c,&t,1)!=1 || !ent_live(w,target_index(w,&t)) || !action_applies(action,&c,&t)) return 0;
+  c.card=action;c.var=s->vars[last];
+  Ctx *previous=g_ctx;g_ctx=&c;
+  card_run(action,&c,&t,1);
+  g_ctx=previous;
+  return 1;
+}
+
 static bool run_slot(World *w, int si, int oi, const SimInput *in, const Event *ev) {
   Slot *s = &w->slots[si];
+  if (!ev) { int result=run_simple_mechanic(w,s,oi,in); if(result>=0)return result!=0; }
+  const Analysis *structure=structural_analysis(w,s);
+  if (!structure->ok || (!ev && structure->ntrig && !structure->enters) || (ev && !has_trigger(structure,ev->kind))) return false;
   Analysis a;
-  analyze(w, s, &a);
+  a=*structure;
   if (!a.ok) return false;
   if (!ev && !ent_live(w, oi)) return false;
-  if (!ev && !a.ntrig && !s->linked && !a.every && s->cd > 1e-8f) return false;
+  if (!ev && !a.ntrig && !a.every && s->cd > 1e-8f) return false;
   if (ev ? !has_trigger(&a, ev->kind) : (a.ntrig && !a.enters)) return false;
 
   Ctx c = { 0 };
@@ -463,7 +591,7 @@ static bool run_slot(World *w, int si, int oi, const SimInput *in, const Event *
   c.linked = s->linked;
   c.depth = (ev ? ev->depth : 0) + 1;
   if (ev) { c.has_origin = true; c.ox = ev->x; c.oy = ev->y; }
-  bool cooled = !s->linked && !c.death && !a.every;
+  bool cooled = !c.death && !a.every;
 
   static Target targets[MAX_TARGETS];
   int n = -1;
@@ -486,71 +614,171 @@ static bool run_slot(World *w, int si, int oi, const SimInput *in, const Event *
     n = m;
   }
   if (cooled && s->cd > 1e-8f) return false;
-  for (int k = 0; k < a.nwhen; k++) if (!card_when(s->cards[a.whens[k]], &c)) return false;
+  // 행동할 수 없으면 대상을 고르기 전에 끝낸다 (결과는 같다: 아래 조건 검사는 상태를 바꾸지 않는다)
+  if (!can_act(w, oi) && !c.death && !a.runs_blocked) return false;
+  if (a.nwhen) {
+    if (n < 0) n = select_targets(&c, s, &a, targets, MAX_TARGETS);
+    int kept = 0;
+    for (int j = 0; j < n; j++) {
+      Ctx selected = c;
+      int ti = target_index(w, &targets[j]);
+      bool ok = true;
+      if (ti >= 0) selected.owner = ti;
+      for (int k = 0; k < a.nwhen && ok; k++) {
+        int id = s->cards[a.whens[k]];
+        ok = ti >= 0 ? card_when(id, &selected) : id == CARD_ARTIFACT_HOURGLASS || (id == CARD_ARTIFACT_HORN && enemies_at_least(w, targets[j].x, targets[j].y, 180, 3));
+      }
+      if (ok) targets[kept++] = targets[j];
+    }
+    n = kept;
+    if (!n) return false;
+  }
   if (a.ncond) {
     if (n < 0) n = select_targets(&c, s, &a, targets, MAX_TARGETS);
     for (int k = 0; k < a.ncond && n > 0; k++) {
       int id = s->cards[a.conditions[k]];
       if (card_trigger(id) == EV_ENTER) continue;
+      c.var = s->vars[a.conditions[k]];
       n = card_filter(id, &c, targets, n);
     }
     if (n <= 0) return false;
   }
   int first = s->cards[a.actions[0]];
-  bool runs_blocked = data_num(data_table("cards"), first, "runsWhileBlocked", 0) != 0;
-  if (!can_act(w, oi) && !c.death && !runs_blocked) return false;
   if (n < 0) n = select_targets(&c, s, &a, targets, MAX_TARGETS);
+  if (ev) {
+    if (a.targeted & (1u << ev->kind)) {
+      int kept = 0;
+      for (int k = 0; k < n; k++) if (targets[k].h == ev->emitter) targets[kept++] = targets[k];
+      n = kept;
+    }
+  }
   int m = 0;
   for (int k = 0; k < n; k++) if (action_applies(first, &c, &targets[k])) targets[m++] = targets[k];
+  if (!m) {
+    // 헛발동: 고른 대상이 있지만 행동이 하나도 받지 않았다. 짧은 재시도 쿨타임을 걸어
+    // 사건마다 같은 선택을 되풀이하지 않게 한다 (조건 카드가 거른 경우·대상이 없는 경우는 쿨타임 없음)
+    if (cooled && n > 0) s->cd = maxf(s->cd, (float)RETRY_COOLDOWN);
+    return false;
+  }
   n = m;
-  if (!n) return false;
   // 실행 전에 쿨타임을 건다. 넘친 시간은 다음 쿨타임에서 뺀다.
-  if (cooled) s->cd = maxf(0, minf(0, s->cd) + slot_cooldown(w, s));
-  execute_linked(&c, s, &a, targets, n);
+  if (cooled) s->cd = maxf(0, minf(0, s->cd) + a.cooldown);
+  Handle owner = s->owner;
+  int spawned = execute_linked(&c, s, &a, targets, n);
+  s = &w->slots[si];
+  if (cooled && s->owner == owner) {
+    float f = result_multiplier(w, s, n, spawned);
+    if (f > 1) s->cd += a.cooldown * (f - 1);
+  }
   if (oi == ent_index(w, w->player))
     for (int k = 0; k < n; k++) if (targets[k].kind == TK_ENEMY) w->last_enemy = targets[k].h;
   return true;
 }
 
-void slots_update(World *w, int i, const SimInput *in) {
+static void slots_update_phase(World *w, int i, const SimInput *in, int phase) {
   float rate = w->cooldown_rate[i];
-  for (int si = w->slot_head[i]; si >= 0;) {
+  uint64_t serial=w->fast.slot_serial;
+  bool any_after=false;
+  for (int si = w->slot_head[i], prev = -1; si >= 0;) {
     int next = w->slots[si].next;
     Slot *s = &w->slots[si];
+    /* Two/three-card mechanic stacks bypass the general executor; inspecting
+     * their first action is cheaper than probing the shared recipe cache. */
+    bool after = false;
+    if (s->n <= 3) {
+      for (int k = 0; k < s->n; k++) if (CARDS[s->cards[k]].type == CARD_TYPE_ACTION) {
+        after = var_num(w, s->vars[k], "afterMovement", 0) != 0;
+        break;
+      }
+    } else after = structural_analysis(w, s)->after;
+    any_after|=after;
+    if (phase >= 0 && after != (phase == 1)) { prev = si; si = next; continue; }
     if (s->linked) {
       if (s->link_expires > 0 && s->link_expires <= w->time) {   // 수명이 다한 연쇄 슬롯
         // 목록에서 뺀다
-        int prev = -1;
-        for (int q = w->slot_head[i]; q >= 0 && q != si; q = w->slots[q].next) prev = q;
         if (prev >= 0) w->slots[prev].next = next; else w->slot_head[i] = next;
         if (w->slot_tail[i] == si) w->slot_tail[i] = prev;
+        slot_changed(w, si);
         s->owner = HANDLE_NONE;
         s->next = w->slot_free;
         w->slot_free = si;
+        si = next;
+        continue;
       }
-      si = next;
-      continue;
     }
     if (s->cd > 0) s->cd -= SIM_DT * rate;
     run_slot(w, si, i, in, NULL);
     if (!ent_live(w, i)) break;
+    prev = si;
     si = next;
   }
+  if(phase==0) {
+    uint64_t bit=UINT64_C(1)<<(i&63);
+    w->fast.before_tick[i]=w->tick;
+    if(!any_after && serial==w->fast.slot_serial)w->fast.no_after[i>>6]|=bit;
+    else w->fast.no_after[i>>6]&=~bit;
+  }
+}
+
+void slots_update(World *w, int i, const SimInput *in) { slots_update_phase(w, i, in, -1); }
+void slots_update_before(World *w, int i, const SimInput *in) { slots_update_phase(w, i, in, 0); }
+void slots_update_after(World *w, int i, const SimInput *in) {
+  /* The before pass already inspected these stacks. Allocation invalidates
+   * this proof, including linked stacks appended while another card runs. */
+  if(w->fast.before_tick[i]==w->tick && (w->fast.no_after[i>>6]&(UINT64_C(1)<<(i&63))))return;
+  slots_update_phase(w,i,in,1);
 }
 
 /* ---------- 이벤트 ---------- */
 static bool listens(const World *w, int i, int kind) {
-  for (int s = w->slot_head[i]; s >= 0; s = w->slots[s].next) {
-    const Slot *x = &w->slots[s];
-    for (int k = 0; k < x->n; k++) if (card_trigger(x->cards[k]) == kind) return true;
+  return (owner_events(w, i) & (1u << kind)) != 0;
+}
+
+static void sync_watchers(World *w) {
+  for (int si = index_next(w->fast.slot_dirty, 0, w->slot_hi); si < w->slot_hi;
+       si = index_next(w->fast.slot_dirty, si + 1, w->slot_hi)) {
+    uint64_t bit = UINT64_C(1) << (si & 63);
+    w->fast.slot_dirty[si >> 6] &= ~bit;
+    const Slot *s = &w->slots[si];
+    bool watches = ent_index(w, s->owner) >= 0 && structural_analysis(w, s)->watches;
+    if (watches) w->fast.slot_watchers[si >> 6] |= bit;
+    else w->fast.slot_watchers[si >> 6] &= ~bit;
   }
-  return false;
 }
 
 static void queue_event(World *w, Handle owner, int kind, Handle subject, float x, float y, float damage, int depth, int exclude) {
   int i = ent_index(w, owner);
-  if (i < 0 || !listens(w, i, kind) || w->nevents >= MAX_EVENTS) return;
-  w->events[w->nevents++] = (Event){ (uint8_t)kind, (uint8_t)mini(depth, 255), owner, subject, x, y, damage, exclude };
+  if (i < 0 || w->nevents >= MAX_EVENTS) return;
+  if (listens(w, i, kind)) w->events[w->nevents++] = (Event){ (uint8_t)kind, (uint8_t)mini(depth, 255), owner, subject, x, y, damage, exclude, owner, -1 };
+  if (kind != EV_HURT && kind != EV_COMPLETE) return;
+  sync_watchers(w);
+  // 순간 조건을 가진 슬롯만 모아 둔다. 다른 개체의 슬롯도 선택한 대상의 순간을 받는다.
+  if (w->target_event_tick != w->tick) {
+    w->ntarget_event_slots = 0;
+    for (int si = index_next(w->fast.slot_watchers, 0, w->slot_hi); si < w->slot_hi;
+         si = index_next(w->fast.slot_watchers, si + 1, w->slot_hi)) {
+      const Slot *s = &w->slots[si];
+      if (ent_index(w, s->owner) < 0) continue;
+      w->target_event_slots[w->ntarget_event_slots++] = si;
+    }
+    w->target_event_tick = w->tick;
+  }
+  static Target watched[MAX_TARGETS];
+  for (int k = 0; k < w->ntarget_event_slots && w->nevents < MAX_EVENTS; k++) {
+    int si = w->target_event_slots[k];
+    const Slot *s = &w->slots[si];
+    int oi = ent_index(w, s->owner);
+    if (oi < 0 || oi == i || !ent_live(w, oi) || si == exclude) continue;
+    // 이번 틱 안에 쿨타임이 끝날 수 없는 슬롯은 실행해도 거절되므로 대상을 고르지 않는다 (틱당 감소는 SIM_DT × 쿨타임 속도 이하)
+    if (s->cd > SIM_DT * w->cooldown_rate[oi] + 1e-6f) continue;
+    Analysis a; analyze(w, s, &a);
+    if (!a.ok || !has_trigger(&a, kind)) continue;
+    Ctx c = { 0 }; c.w = w; c.owner = c.actor = oi;
+    int n = select_targets(&c, s, &a, watched, MAX_TARGETS);
+    for (int j = 0; j < n; j++) if (watched[j].h == owner) {
+      w->events[w->nevents++] = (Event){ (uint8_t)kind, (uint8_t)mini(depth, 255), s->owner, subject, x, y, damage, exclude, owner, si }; break;
+    }
+  }
 }
 
 void emit_event(World *w, Handle owner, int kind, Handle subject, float x, float y, float damage) {
@@ -567,6 +795,7 @@ void flush_events(World *w, const SimInput *in) {
     if (oi < 0) continue;
     for (int si = w->slot_head[oi]; si >= 0; si = w->slots[si].next) {
       const Slot *s = &w->slots[si];
+      if (ev.only_slot >= 0 && si != ev.only_slot) continue;
       if (si == ev.exclude || (s->link_expires > 0 && s->link_expires <= w->time)) continue;
       run_slot(w, si, oi, in, &ev);
     }
@@ -578,6 +807,6 @@ void flush_events(World *w, const SimInput *in) {
 /** 사망: 「사망 시」 슬롯을 바로 실행한다 (js EntitySlots.onDeath) */
 void slots_on_death(World *w, int i, const SimInput *in) {
   if (!listens(w, i, EV_DEATH)) return;
-  Event ev = { EV_DEATH, 0, ent_handle(w, i), ent_handle(w, i), w->x[i], w->y[i], 0, -1 };
+  Event ev = { EV_DEATH, 0, ent_handle(w, i), ent_handle(w, i), w->x[i], w->y[i], 0, -1, ent_handle(w, i), -1 };
   for (int si = w->slot_head[i]; si >= 0; si = w->slots[si].next) run_slot(w, si, i, in, &ev);
 }

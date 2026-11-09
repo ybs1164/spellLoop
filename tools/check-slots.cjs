@@ -37,15 +37,18 @@ const aRuns = get("hits.filter(h => h === 'A').length"), bRuns = get("hits.filte
 assert.ok(Math.abs(bRuns - 101) <= 1, '1s slot runs once per second: ' + bRuns);
 assert.ok(Math.abs(aRuns - 21) <= 1, '5s slot runs once per five seconds: ' + aRuns);
 // 쿨타임 연산은 놓인 순서대로 적용된다.
-assert.ok(Math.abs(get(`slotCooldown({ cards: [cooldownCard('artifactRing', '+1'), 'self', cooldownCard('bolt', '×0.5')] }) - (BASE_COOLDOWN + 1) * 0.5`)) < 1e-9, '+1 then ×0.5');
-assert.ok(Math.abs(get(`slotCooldown({ cards: ['self', cooldownCard('summon', '×3'), cooldownCard('bolt', '+1')] }) - (BASE_COOLDOWN * 3 + 1)`)) < 1e-9, 'base × 3 + 1');
+assert.ok(Math.abs(get(`slotCooldown({ cards: [cooldownCard('artifactHorn', '+1'), 'self', cooldownCard('bolt', '×0.5')] }) - (BASE_COOLDOWN + 1) * 0.5`)) < 1e-9, '+1 then ×0.5');
+assert.ok(Math.abs(get(`slotCooldown({ cards: [cooldownCard('artifactHorn', '×3'), 'self', cooldownCard('bolt', '+1')] }) - (BASE_COOLDOWN * 3 + 1)`)) < 1e-9, 'base × 3 + 1');
+assert.ok(Math.abs(get(`slotCooldown({ cards: ['ahead', 'orb', 'artifactHourglass', 'self', 'heal', 'artifactChalice', 'self', 'shield'] })`) - 3.766) < 1e-9, 'all cards across multiple chains add cooldown');
+assert.ok(Math.abs(get(`slotCooldown({ cards: ['ahead', 'orb', cooldownCard('artifactHourglass', '×2'), 'self', 'heal'] })`) - 1.432) < 1e-9, 'operations after the first action preserve placement order');
 assert.equal(get(`slotCooldown({ cards: ['artifactBoots', 'self', 'inputMove'] })`), 0.016, 'boots set the slot to every frame');
 assert.equal(get(`slotEveryFrame({ cards: ['artifactBoots', 'self', 'inputMove'] })`), true);
-assert.equal(get(`slotCooldown({ cards: ['artifactSeal', 'self', 'bolt', 'bolt'] }) >= FRAME_COOLDOWN`), true, 'never shorter than a frame');
+assert.equal(get(`slotCooldown({ cards: ['artifactBoots', 'self', 'inputMove', cooldownCard('bolt', '×0.5')] }) >= FRAME_COOLDOWN`), true, 'never shorter than a frame');
 // 연쇄 카드의 구성 제약은 편집에서 거부된다.
 get(`deck.slots = Array.from({ length: 6 }, () => ({ cards: [], cd: 0, cast: null })); deck.slots[0].cards = ['self', 'inputMove']; deck.slots[1].cards = ['nearestEnemy', 'bolt']; deck.inventory = ['artifactBoots', 'artifactBoots']`);
-assert.match(get(`deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 1 })`), /이동 카드/, 'boots rejected without a movement card');
-assert.equal(get('JSON.stringify(deck.slots[1].cards)'), JSON.stringify(['nearestEnemy', 'bolt']), 'rejected card stays put');
+assert.equal(get(`deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 1 })`), null, 'an unfinished trailing artifact does not constrain the earlier action');
+assert.equal(get('JSON.stringify(deck.slots[1].cards)'), JSON.stringify(['nearestEnemy', 'bolt', 'artifactBoots']));
+assert.match(get(`slotRuleError(['artifactBoots', 'self', 'bolt'])`), /이동 카드/, 'boots require the following action to move');
 assert.equal(get(`deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0 })`), null);
 assert.equal(get('JSON.stringify(deck.slots[0].cards)'), JSON.stringify(['self', 'inputMove', 'artifactBoots']), 'boots take the next (chain) cell');
 // 중간 카드를 빼면 뒤따르던 카드도 보관함으로 돌아가므로 장화만 남는 슬롯은 생기지 않는다.

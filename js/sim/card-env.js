@@ -96,7 +96,7 @@ class GameCardEnv {
       zones: () => g.zones.filter((z) => !z.dead).map((z) => ({ kind: 'zone', z })),
       /** 시야 r 안의 탄 — 내 투사체와 적 탄을 함께, 가까운 순 */
       shots: (r) => g.inRange([...g.projectiles, ...g.hazards], r).map((s) => ({ kind: 'shot', s })),
-      gems: (r) => g.inRange(g.pickups.filter((pk) => pk.kind === 'gem'), r).map((gem) => ({ kind: 'gem', g: gem })),
+      gems: () => g.pickups.filter(pk => !pk.dead && pk.kind === 'gem').map(gem => ({ kind: 'gem', g: gem })),
       pickups: (r) => g.inRange(g.pickups.filter(pk => pk.kind !== 'gem'), r).map(pk => ({ kind: 'pickup', g: pk })),
       /** 시야 r 안에서 반경 near 안에 다른 적이 가장 많은 적의 위치 */
       clusterPoint: (r, near) => {
@@ -205,10 +205,8 @@ class GameCardEnv {
   actionValue(id, field, owner = this.actionActor || this.player) {
     const card = this.actionCard && cardBaseIdOfCard(this.actionCard) === id ? this.actionCard : CARDS[id];
     const reference = card.effect?.statRatios?.[field] ?? card.statRatios?.[field];
-    const value = reference ? entityStats(owner)[reference.stat] * reference.ratio
+    return reference ? entityStats(owner)[reference.stat] * reference.ratio
       : card.effect?.[field] ?? card.fixedValues?.[field] ?? (field === 'speed' ? card.projectileSpeed || 0 : 0);
-    // 슬롯 효과량 배율(외길의 인장)은 탄속에는 걸지 않는다
-    return field === 'speed' || !this.actionPower ? value : value * this.actionPower;
   }
 
   actionDamage(id, field = 'damage') {

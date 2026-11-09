@@ -4,7 +4,7 @@
 #include "gfx.h"
 #include "sim/world.h"
 
-typedef enum { SCREEN_TITLE, SCREEN_PLAY, SCREEN_PAUSE, SCREEN_EDITOR } Screen;
+typedef enum { SCREEN_TITLE, SCREEN_PLAY, SCREEN_PAUSE, SCREEN_EDITOR, SCREEN_CODEX, SCREEN_INSPECTOR } Screen;
 
 typedef enum {
   UI_NONE, UI_START, UI_RESUME, UI_TITLE, UI_EDITOR, UI_EDITOR_CLOSE, UI_CODEX, UI_DISCORD,
@@ -16,6 +16,8 @@ typedef enum {
   UI_INV_ZONE,                           /* 보관함 드롭 영역 */
   UI_SCROLL_SLOTS, UI_SCROLL_INV,        /* 스크롤 영역 */
   UI_BLOCK,                              /* 패널 바탕: 아래 화면으로 넘기지 않는다 */
+  UI_VIEW_CLOSE, UI_CODEX_TAB, UI_CODEX_FILTER, UI_ENTITY_PAGE, UI_ENTITY_TOGGLE, UI_CODEX_ENTITY_TOGGLE,
+  UI_LANG,                               /* 화면 언어 바꾸기 (한국어 ↔ English) */
 } UiAction;
 
 typedef struct { SDL_FRect r; int action, a, b; } UiHit;
@@ -24,6 +26,10 @@ typedef struct { SDL_FRect r; int action, a, b; } UiHit;
 
 typedef struct {
   Screen screen;
+  Screen view_back, inspector_back;
+  int codex_tab, codex_filter, entity_page;
+  bool entity_open[MAX_ENTITIES];
+  bool codex_open[128];
   bool reward_open;                      /* 보상 고르기 창 (게임이 멈춘다) */
   int edit_sel;                          /* 편집기에서 고른 슬롯 */
   char edit_msg[192];
@@ -42,6 +48,9 @@ typedef struct {
 
 /** 화면 크기 w × h (점) 위에 UI 를 그리고 누를 영역을 모은다 */
 void ui_draw(UiState *ui, const World *w, float sw, float sh);
+void ui_clear_cache(void);
+/** 다음 ui_draw 에서 정적 화면을 다시 그린다 (화면 언어처럼 UiState·World 밖의 것이 바뀌었을 때) */
+void ui_invalidate(void);
 /** 끌고 있는 카드를 지금 놓을 자리 (마지막 ui_draw 기준). inv 면 보관함 */
 bool ui_drop(const UiState *ui, int *slot, int *idx, bool *inv);
 /** 점 (x, y) 의 맨 위 영역, 없으면 NULL */

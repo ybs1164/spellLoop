@@ -249,7 +249,7 @@ class EntitySlots extends EntitySlot {
   captureFixed(game) {
     const owner = this.owner, slots = this.slots, n = slots.length;
     this._captureStructural = false;
-    if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length) return null;
+    if (!n || owner.slots !== slots || owner.targetFeatures || owner.dead || owner.effectSlots?.length || owner._slotTargetListeners?.size) return null;
     const analyses = [], stats = [], refs = [], cver = this.version;
     let needsRedirect = false, cool = null, deferred = false, condIdx = null, condTargets = null, condMask = null;
     // 빠른 판정(진입 슬롯·조건/해석 대상 계획·막힌 준비 슬롯)은 예전에 표본을 만들 수 없던 슬롯(진입 슬롯, 조건·해석 대상이 있는 매 프레임 슬롯)이 있는 개체에만 쓴다.
@@ -261,6 +261,7 @@ class EntitySlots extends EntitySlot {
     }
     for (let i = 0; i < n; i++) {
       const slot = slots[i], analysis = slotAnalysis(slot);
+      if (analysis.triggers.some(c => c.targetEvent)) return null;
       // 쿨타임 중인 조건 슬롯은 쿨타임이 끝나기 전까지 쿨타임만 깎고 아무 일도 하지 않는다 (runEventSlot 의 조기 종료와 같다).
       if (isCoolingSlot(slot, analysis)) { (cool ||= [])[i] = 1; analyses.push(analysis); continue; }
       if (isBlockedSlot(slot, analysis, game)) { (cool ||= [])[i] = 2; analyses.push(analysis); continue; }
@@ -558,7 +559,7 @@ function onlyKnownKeys(o, known) {
 }
 // 생애 중에 붙어 슬롯을 다시 쓸 수 없게 하는 필드 (연계 슬롯·연쇄·유인 범위). 평소에는 이것만 보고, POOL_VERIFY=1 이면 모든 필드가 위 목록 안인지 확인한다 (밖이면 예외).
 function slotReusable(s) {
-  return s.linked === undefined && s.linkActor === undefined && s.linkExpires === undefined && s.chainKey === undefined && (!POOL_VERIFY || onlyKnownKeys(s, REUSABLE_SLOT_KEYS));
+  return s.linked === undefined && s.linkActor === undefined && s.linkExpires === undefined && s.chainKey === undefined && s._targetSubscriptions === undefined && s._tailSource === undefined && (!POOL_VERIFY || onlyKnownKeys(s, REUSABLE_SLOT_KEYS));
 }
 /**
  * 재사용 껍데기의 슬롯 묶음(group)을 새 생애에 붙인다. 틀(template: 슬롯별 { cards, defaults })과 카드 배열이 그대로이고 알려진 필드만 가진 묶음이어야 한다.

@@ -1,0 +1,42 @@
+[
+  {
+    "scene": "crowd3000",
+    "mode": "simulation",
+    "pairedCostIncreaseMedianPct": 2.099280056893682,
+    "rangePct": [
+      1.9324778823054611,
+      2.8243963076357126
+    ],
+    "stateEqual": true
+  },
+  {
+    "scene": "crowd3000",
+    "mode": "frame",
+    "pairedCostIncreaseMedianPct": 3.1711711074080995,
+    "rangePct": [
+      0.2534352462498113,
+      3.712086924817859
+    ],
+    "stateEqual": true
+  },
+  {
+    "scene": "shots",
+    "mode": "simulation",
+    "pairedCostIncreaseMedianPct": 3.6883203971078915,
+    "rangePct": [
+      2.7637782879679884,
+      4.8975956498681805
+    ],
+    "stateEqual": true
+  },
+  {
+    "scene": "shots",
+    "mode": "frame",
+    "pairedCostIncreaseMedianPct": 2.6202613381696604,
+    "rangePct": [
+      2.0501688959021935,
+      4.3937917281620775
+    ],
+    "stateEqual": true
+  }
+]

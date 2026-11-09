@@ -70,7 +70,11 @@ Object.assign(UI, {
           <span><kbd>Esc</kbd> 일시정지</span>
           <span><kbd>R</kbd> 보상 카드 선택</span>
         </div>
-        <p class="sub" style="margin-bottom:18px">3단계를 돌파하세요. 단계마다 테마 스테이지가 무작위로 정해지고, 보스를 쓰러뜨리면 다음 단계로 넘어갑니다.</p>
+        <div class="title-card-types">
+          <p><b style="color:${CARD_TYPES.target.color}">대상 카드</b> — 행동을 적용할 개체나 지점을 고릅니다.</p>
+          <p><b style="color:${CARD_TYPES.action.color}">행동 카드</b> — 선택한 대상에게 공격·회복·소환 등의 행동을 실행합니다.</p>
+          <p><b style="color:${CARD_TYPES.artifact.color}">연쇄 카드</b> — 앞 행동의 결과를 다음 행동으로 잇거나 발동 조건·제약을 정합니다.</p>
+        </div>
         <button class="btn primary" data-act="start">${this.iconHtml('uiPlay', 16)}시작하기 <kbd>Enter</kbd></button>
         <button class="btn" data-act="codex">${this.iconHtml('uiCodex', 16)}도감</button>
       </div>`, 'title');

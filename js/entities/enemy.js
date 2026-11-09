@@ -32,6 +32,7 @@ class Enemy {
     this.team = undefined; this.max = undefined; this.range = undefined; this._keepDistance = undefined; this.shotSpeed = undefined; this.shotCount = undefined;
     this.summonCount = undefined; this._pierceLimit = undefined; this.combatStats = undefined; this._slots = undefined; this._slot = undefined; this._slotSpawned = undefined;
     this._effectSlots = undefined; this._burnEventEffects = undefined; this.splitBorn = undefined; this.hp = undefined; this.facing = undefined; this.vx = undefined; this.vy = undefined;
+    this._slotTargetListeners = undefined;
     ESoA.napOn[this._si] = 0; ESoA.buffy[this._si] = 0;
     const def = ENEMY_TYPES[type];
     this.type = type;
@@ -207,15 +208,16 @@ class Enemy {
 
     const direction = entityMovementDirection(this, move, game);
     let dx = chase.x - this.x, dy = chase.y - this.y;
-    const d = Math.hypot(dx, dy) || 1;
-    if (move && (direction.x || direction.y)) this.ang = Math.atan2(direction.y, direction.x);
+    const turn = !SIM_FAST_MATH || this.facing || Number.isFinite(this.vx) || move?.targets?.length && chase !== this;
+    if (turn && move && (direction.x || direction.y)) this.ang = simAtan2(direction.y, direction.x);
     let mx = direction.x, my = direction.y;
     if (this.fearT > 0) {
-      const fx = this.x - player.x, fy = this.y - player.y, fd = Math.hypot(fx, fy) || 1;
+      const fx = this.x - player.x, fy = this.y - player.y, fd = simHypot(fx, fy) || 1;
       mx = fx / fd; my = fy / fd;
-      this.ang = Math.atan2(my, mx);   // 도망칠 땐 등을 보인다
+      this.ang = simAtan2(my, mx);   // 도망칠 땐 등을 보인다
     } else if (this.slot.has('entityKeep')) {
       // 사거리 유지: 너무 가까우면 물러나고, 적당하면 옆으로 돈다
+      const d = simHypot(dx, dy) || 1;
       const k = this.slot.effect('entityKeep').distance;
       const radial = d < k * 0.8 ? -1 : d > k * 1.15 ? 1 : 0;
       mx = (dx / d) * radial - (dy / d) * this.strafe * 0.6;

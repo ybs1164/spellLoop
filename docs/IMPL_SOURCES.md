@@ -66,7 +66,7 @@
 ## cards/gems/resolve
 
 ```js
-(env) => env.gems(900)
+(env) => env.gems()
 ```
 
 ## cards/prey/resolve
@@ -93,6 +93,12 @@ env => env.allTargets()
 env => env.owner
       ? env.game.nearestEnemies(env.owner.x, env.owner.y, 1, 600)
       : env.byDist(env.enemiesInSight(600)).slice(0, 1)
+```
+
+## cards/nearestEnemy/fixedResolve
+
+```js
+(owner, game) => game.nearestEnemies(owner.x, owner.y, 1, 600)[0] || null
 ```
 
 ## cards/woundedEnemies/resolve
@@ -224,7 +230,7 @@ env => env.enemiesInSight(600).filter(t => t.e.hp <= t.e.maxHp * 0.5)
 ## cards/snipe/run
 
 ```js
-(ts, env) => ts.forEach(t => env.directAction(id, t))
+(ts, env) => ts.forEach(t => env.directAction('snipe', t, 1 / ts.length))
 ```
 
 ## cards/split/run
@@ -313,6 +319,15 @@ env => {
   }
 ```
 
+## cards/ifPlayerContact/enterQuick
+
+```js
+(owner, game) => {
+    const p = game.player;
+    return owner !== p && dist2(owner.x, owner.y, p.x, p.y) < ((owner.radius || owner.r || 0) + p.radius) ** 2;
+  }
+```
+
 ## cards/entityMovementTarget/resolve
 
 ```js
@@ -320,6 +335,12 @@ env => {
     const enemy = env.game.nearestEnemies(env.owner.x, env.owner.y, 1, entityStats(env.owner).sight)[0];
     return [enemy || env.playerTarget()];
   }
+```
+
+## cards/entityMovementTarget/fixedResolve
+
+```js
+(owner, game, slot) => game.nearestEnemies(owner.x, owner.y, 1, entityStats(owner).sight)[0] || slotPlayerTarget(slot, owner, game)
 ```
 
 ## cards/entityMovementDistance/test
@@ -330,6 +351,12 @@ env => {
     const stop = t.playerSelection ? 60 : entityStats(env.owner).keepDistance + (target.radius || 0);
     return Math.hypot(target.x - env.owner.x, target.y - env.owner.y) > stop;
   }
+```
+
+## cards/entityMovementDistance/quickTest
+
+```js
+(owner, o, t) => Math.hypot(o.x - owner.x, o.y - owner.y) > (t.playerSelection ? 60 : entityStats(owner).keepDistance + (o.radius || 0))
 ```
 
 ## cards/entityInSight/test
@@ -378,6 +405,12 @@ env => {
     const owner = env.owner, x = owner.x, y = owner.y, base = entityStats(owner).reach;
     return withCull(o => dist2(x, y, o.x, o.y) <= (base + (o.radius || o.r || 0)) ** 2, x, y, base, true);
   }
+```
+
+## cards/entityInReach/quickTest
+
+```js
+(owner, o) => dist2(owner.x, owner.y, o.x, o.y) <= (entityStats(owner).reach + (o.radius || o.r || 0)) ** 2
 ```
 
 ## cards/entityInArea/test
@@ -434,40 +467,28 @@ env => { const team = entityTeam(env.owner); return o => team !== entityTeam(o);
 cards => cards.some(isMoveCard) ? null : '「바람의 장화」는 이동 카드가 포함된 슬롯에만 넣을 수 있습니다'
 ```
 
-## cards/artifactRing/rule
-
-```js
-cards => countType(cards, 'action') <= 3 ? null : '「절제의 반지」 슬롯은 행동 카드를 3장 이하로 써야 합니다'
-```
-
-## cards/artifactSeal/rule
-
-```js
-cards => countType(cards, 'action') <= 2 && countType(cards, 'target') <= 2 ? null : '「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다'
-```
-
 ## cards/artifactFeather/when
 
 ```js
-env => ownerMoving(env)
+(env, t) => targetMoving(env, t)
 ```
 
 ## cards/artifactHourglass/when
 
 ```js
-env => !ownerMoving(env)
+(env, t) => !targetMoving(env, t)
 ```
 
 ## cards/artifactChalice/when
 
 ```js
-env => { const o = env.owner, max = o.stats?.maxHp ?? o.maxHp; return Number.isFinite(o.hp) && o.hp <= max * 0.5; }
+(env, t) => { const o = env.at(t), max = o.stats?.maxHp ?? o.maxHp; return Number.isFinite(o.hp) && o.hp <= max * 0.5; }
 ```
 
 ## cards/artifactHorn/when
 
 ```js
-env => env.game.countNearEnemies(env.owner.x, env.owner.y, 180, null) >= 3
+(env, t) => { const o = env.at(t); return env.game.countNearEnemies(o.x, o.y, 180, null) >= 3; }
 ```
 
 ## cards/eventSubject/resolve

@@ -1,0 +1,10 @@
+nearestEnemy,bolt
+self,heal
+enemies,blades
+all,orb
+enemies,turret
+enemies,mark,on_complete,nearestEnemy,bolt
+enemies,mark,artifactBell,enemies,mark
+enemies,mark,on_hit,all,explode
+enemies,mark,artifactChalice,nearestEnemy,explode
+enemies,mark,artifactFeather,ahead,poison

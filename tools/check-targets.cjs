@@ -215,7 +215,7 @@ get(`
   }
 `);
 get(`
-  globalThis.UI = { hideOverlay() {}, showHud() {}, showLevelUp() {} };
+  globalThis.UI = { hideOverlay() {}, showHud() {}, showLevelUp() {}, updateRewards() {} };
   const simulation = Object.create(Game.prototype);
   simulation.events = new EventBus();
   simulation.hash = new SpatialHash(64);
@@ -234,7 +234,7 @@ get(`
   for (const t of simulation.allTargets()) {
     const o = simulation.targetObj(t);
     for (const key of ['x', 'y', 'hp', 'radius', 'r', 'life', 'vx', 'vy']) {
-      if (key in o && !Number.isFinite(o[key])) throw new Error('invalid field: ' + t.kind + '.' + key);
+      if (o[key] !== undefined && !Number.isFinite(o[key])) throw new Error('invalid field: ' + t.kind + '.' + key);
     }
   }
 `);

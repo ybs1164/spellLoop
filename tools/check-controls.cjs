@@ -29,8 +29,8 @@ assert.equal(get("Object.values(CARDS).some(c => c.type === 'filter' || c.type =
 get("run(['group','record'])");
 assert.equal(get('hits.length'), 3, 'a ready slot runs on all targets');
 get("run(['group','record','record'])");
-assert.equal(get('hits.length'), 6, 'the second action runs as the continuation of each completed target');
-get("deck.slots = [{ cards: ['artifactRing', 'artifactHourglass', 'group', 'record'], cd: 0 }]");
+assert.equal(get('hits.length'), 3, 'a subsequent action installs a slot instead of executing on an invented event');
+get("deck.slots = [{ cards: ['artifactFeather', 'artifactHourglass', 'group', 'record'], cd: 0 }]");
 assert.equal(get('SkillDeck.runnable(deck.slots[0])'), true, 'several artifacts share one slot');
 get("run(['group','record'])");
 get('hits.length = 0; deck.update(0.01, game, {})');

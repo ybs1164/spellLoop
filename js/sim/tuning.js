@@ -33,7 +33,7 @@ const ENEMY_QUEUE_MAX = 20000;
 const CARD_EVENT_BUDGET = 400;
 const CARD_EVENT_BUDGET_CROWD = 300;   // 과밀(적이 ENEMY_UPDATE_BUDGET 또는 투사체가 SHOT_UPDATE_BUDGET 보다 많을 때)
 // 연쇄 실행 상한: 연쇄 카드로 이어진 스택 하나(시전한 개체 기준)가 초당 이어서 실행되는 횟수. 프레임마다 dt 만큼 나눠 주고 넘친 이벤트는 버린다.
-// 연쇄 슬롯은 쿨타임 없이 앞 행동이 맞힐 때마다 작동해, 광역 다단 히트에 붙이면 초당 수천 번까지 불어난다.
+// 생성된 슬롯도 각자 쿨타임을 따르며, 이 예산은 여러 개체의 슬롯이 한꺼번에 실행되는 작업량을 제한한다.
 const CHAIN_RUN_RATE = 300;
 // 투사체 충돌은 따로 센다 (장판·슬롯 실행이 예산을 먼저 다 써서 탄이 적을 뚫고 지나가지 않게)
 const SHOT_HIT_BUDGET = 600;

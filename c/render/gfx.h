@@ -26,8 +26,20 @@ SDL_FColor rgba8(uint32_t rgba, float alpha);
 static inline SDL_FColor fcolor(float r, float g, float b, float a) { return (SDL_FColor){ r, g, b, a }; }
 
 /* 도트 도형 (Px) */
-static inline float px_snap(float v) { return SDL_roundf(v / PX_G) * PX_G; }
+static inline float gfx_roundf(float v) {
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+  /* WebAssembly has truncation but no ties-away rounding instruction. Keep
+   * SDL's rule without a libm call or the error from adding 0.5 in float. */
+  float t=__builtin_truncf(v);
+  return __builtin_fabsf(v-t)>=0.5f ? t+__builtin_copysignf(1.0f,v) : t;
+#else
+  return SDL_roundf(v);
+#endif
+}
+static inline float px_snap(float v) { return gfx_roundf(v / PX_G) * PX_G; }
 void gfx_rect(float x, float y, float w, float h, SDL_FColor c);
+/** Equivalent pixel-grid circle layers in one quad when supported; false uses the row-span fallback. */
+bool gfx_circle(float x, float y, float r, int style, float fill, SDL_FColor c);
 void px_band(float x, float y, float r0, float r1, SDL_FColor c, float g);
 static inline void px_disc(float x, float y, float r, SDL_FColor c) { px_band(x, y, 0, r, c, PX_G); }
 void px_ellipse(float x, float y, float rx, float ry, SDL_FColor c);
@@ -46,6 +58,8 @@ void px_shadow(float x, float y, float rx);
 
 /* 스프라이트: (x, y) 중심에 idx 타일을 scale 배로. silhouette 면 타일 모양을 색 c 로 칠한다 (색조·섬광) */
 void gfx_sprite(Sheet sheet, int idx, float x, float y, float scale, bool flip, SDL_FColor c, bool silhouette);
+/** Share instance data for a TD sprite and shadow, retaining their original primitive order. */
+bool gfx_sprite_with_shadow(int idx,float x,float y,float scale,bool flip,float shadow_y,float radius,float alpha);
 /** 아이콘을 왼쪽 위 (x, y), 한 변 size 점으로 */
 void gfx_icon(int idx, float x, float y, float size, SDL_FColor c);
 /** 텍스처 영역을 그대로 (바닥 패턴 등). tex 가 NULL 이면 단색 */
@@ -69,6 +83,10 @@ void gfx_tabular_nums(bool on);
 void gfx_clip(const SDL_FRect *r);
 /** 글꼴에 이 글자가 있는가 (그림 글자 대체용) */
 bool gfx_has_glyph(Font f, int cp);
+bool gfx_accelerated(void);
+SDL_Texture *gfx_layer_create(float w, float h);
+bool gfx_layer_begin(SDL_Texture *texture);
+void gfx_layer_end(void);
 /** 체크무늬 칠 (2x2 칸 중 오른쪽 위·왼쪽 아래, 칸 한 변 cell 점) */
 void gfx_dither(float x, float y, float w, float h, float cell, SDL_FColor c);
 /** 그림자(오프셋 d, 검정)를 깐 글자 */

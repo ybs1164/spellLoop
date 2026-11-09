@@ -55,7 +55,7 @@ vm.runInContext(`
   player.hp = player.stats.maxHp / 3; deck.update(1/60, game, player); assert.equal(casts, 1, 'gate met');
   player.hp = player.stats.maxHp;
 
-  // A bolt does not run lightning at cast time; every real projectile hit does.
+  // Consecutive actions install ordinary slots; no collision is needed.
   let lightning = 0, explosions = 0;
   const originalChain = game.chain, originalExplosion = game.explode;
   game.chain = function(...args) { lightning++; return originalChain.apply(this,args); };
@@ -65,15 +65,15 @@ vm.runInContext(`
   game.enemies = [enemy, enemy2]; game.rebuildHash();
   slot.cards = ['nearestEnemy','bolt','chain','explode']; slot.cd = 0;
   deck.update(1/60, game, player);
-  assert.equal(lightning, 0, 'continuation waits for hit');
+  assert.equal(lightning, 0, 'a newly installed slot starts on its own update');
   const shot = game.projectiles.at(-1);
   assert.ok(shot.slots.some(s => s.cards.includes('chain')));
   slot.cards=['self','testAction']; deck.changed();
   assert.ok(shot.slots.some(s => s.cards.includes('chain')),'editing leaves existing projectile snapshot intact');
-  shot.x = enemy.x; shot.y = enemy.y; shot.update(0,game); game.collideShot(shot); flushSlotEvents(game);
-  assert.equal(lightning, 2, 'each of two pierced targets triggers lightning (linked slots have no cooldown)');
-  assert.equal(explosions, 4, 'each lightning hit triggers next action exactly once');
-  game.collideShot(shot); flushSlotEvents(game); assert.equal(lightning, 2, 'same projectile target is deduplicated');
+  shot.update(0.016,game); flushSlotEvents(game);
+  assert.equal(lightning, 1, 'a projectile continuation runs before any collision');
+  shot.update(0.01,game); flushSlotEvents(game);
+  assert.equal(lightning, 1, 'a continuation respects its own cooldown');
 
   // Native movement, attacks and copied cooldowns survive migration.
   const knight = new Ally('knight', player.x + 10, player.y);
@@ -103,13 +103,13 @@ vm.runInContext(`
   const period = slotCooldown(attackSlot);
   const beforeKnight = lightning;
   summoned.update(period,game); flushSlotEvents(game);
-  assert.equal(lightning, beforeKnight + 1, 'summon native hit triggers exactly one continuation');
+  assert.equal(lightning, beforeKnight + 1, 'a summon continuation runs on its own clock');
 
   slot.cards = ['nearestEnemy','burn','testAction']; slot.cd = 0;
   casts = 0; deck.update(1/60,game,player);
-  assert.equal(casts,0,'burn waits for its damage tick');
-  game.updateStatuses(0.5); flushSlotEvents(game);
-  assert.equal(casts,2,'each burned target emits its own actual damage event');
+  assert.equal(casts,0,'an instant-action continuation starts on its next update');
+  enemy.update(0.016, player, game); flushSlotEvents(game);
+  assert.equal(casts,1,'an instant-action continuation runs on the affected entity without a damage event');
 
   const reward = new Pickup('gem',0,0,1);
   reward.slots.push(new EntitySlot(reward,'pickup',['on_collect','self','testAction'])); reward.slot.syncSlots();
@@ -132,7 +132,7 @@ vm.runInContext(`
   subjects = []; struck.slots = [new EntitySlot(struck, 'enemy', ['on_hit', 'eventSubject', 'subjectProbe'])];
   reportSlotHit(game, struck, player, 1); flushSlotEvents(game);
   assert.deepEqual(subjects, [player], 'enemy hit event subject is the struck player');
-  subjects = []; game.enemyShoot(struck, { n: 1, speed: 100, damage: 1 }, player);
+  struck.slots[0].cd = 0; subjects = []; game.enemyShoot(struck, { n: 1, speed: 100, damage: 1 }, player);
   const fired = [...game.hazards, ...game.projectiles].find(s => s.attackEventOwner === struck);
   assert.ok(fired, 'a projectile fired by an entity that listens for hits forwards its hits');
   reportSlotHit(game, fired, player, 1); flushSlotEvents(game);
@@ -141,7 +141,7 @@ vm.runInContext(`
   UI.open = function(html,mode) { this.html=html; this.mode=mode; };
   UI.overlay = {querySelector:()=>null};
   game.player.deck = new SkillDeck(); UI.showEditor(game);
-  assert.ok(UI.html.includes('data-section="artifact"'));
+  assert.ok(UI.html.includes('data-type="artifact"'));
   assert.ok(UI.html.includes('쿨타임'));
   assert.ok(UI.html.includes('=0.016'), 'boots show the frame cooldown');
   assert.ok(!UI.html.includes('코스트'), 'no cost is shown');

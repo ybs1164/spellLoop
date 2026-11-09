@@ -1,6 +1,6 @@
 # 오늘도 평화로운 마법 생활 C 판
 
-JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_REWRITE_PLAN.md](../docs/C_REWRITE_PLAN.md) 에 있다. 게임 데이터의 원본은 [data/*.csv](../data) 이고, 빌드할 때 `tools/gen_data.py` 가 C 소스로 바꾼다.
+JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_REWRITE_PLAN.md](../docs/C_REWRITE_PLAN.md), 현재 JS와의 비교·검증 결과 및 남은 차이는 [docs/C_JS_PARITY.md](../docs/C_JS_PARITY.md)에 있다. 게임 데이터의 원본은 [data/*.csv](../data) 이고, 빌드할 때 `tools/gen_data.py` 가 C 소스로 바꾼다.
 
 ## 빌드
 
@@ -12,6 +12,8 @@ JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_R
 | `python c/tools/build.py desktop --run` | `c/build/desktop/amagos(.exe)` | 위와 같음 |
 | `python c/tools/build.py web` | `c/build/web/amagos.html` (http 로 연다: `python -m http.server 8130 --directory c/build/web`) | emsdk (`EMSDK`, `~/emsdk`, 또는 `N:/Tools/emsdk`) |
 | `python c/tools/build.py android` | `c/android/app/build/outputs/apk/debug/app-debug.apk` (미룸: 아직 빌드를 확인하지 않았다) | `ANDROID_HOME`, NDK 29, JDK 17+ |
+
+웹 빌드는 `profiles/web.proftext`의 실행 기록으로 PGO를 적용한다. 부동소수점 근사 옵션은 사용하지 않는다. 대조 빌드는 `python c/tools/build.py web --no-pgo`, 기록 재수집은 `python c/tools/train_web_pgo.py`로 실행한다(Chrome·Playwright 및 최초 실행 시 LLVM 런타임 다운로드 필요). 성능 측정은 일반 웹 빌드 후 `python c/tools/bench_web.py --test`, `node tools/bench-c-js.cjs` 순서로 실행하며 `PERF_REAL=1`로 실제 게임 루프도 포함한다.
 
 ## 구조
 
@@ -31,6 +33,7 @@ JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_R
 ## 확인 도구
 
 - `c/build/desktop/amagos_cli --ticks 36000 --circle [--god] [--deck "nearestEnemy,frost|self,heal"]`: 화면 없이 원을 그리며 달리는 판 하나. 생존 시간·단계·레벨·처치 수를 JSON 한 줄로, 살아 있는 보스는 stderr 로 (덱은 이동 슬롯 뒤 슬롯들, `--god` 은 쓰러지지 않는다)
+- `c/build/desktop/amagos_gimmick_bench [--secs S] [--limit MS] [--trace] < decks.txt`: 고정 장면(적 200·무적)에서 덱마다 틱 시간·개체·연쇄 슬롯·이벤트 적체를 JSON 한 줄로. 전수조사는 `python c/tools/gimmick_census.py`, 집계는 `gimmick_report.py` ([보고서](../reports/gimmick-perf-census.md))
 - `c/build/desktop/amagos --shot out.png --ticks 3800 --circle [--stage mossGarden] [--deck ...] [--ui pause|editor|reward|levelup|gameover|victory|title]`: 같은 자동 진행 뒤 (그 화면을 열고) 한 프레임을 PNG 로 저장 (저장본은 건드리지 않는다, 화면 배율 1)
 - `NODE_PATH=$(npm root -g) node tools/shot-js.cjs js.png 3800 mossGarden [덱]`: JS 판을 같은 조건으로 찍어 나란히 비교. `SHOT_UI=pause` 처럼 화면을 열고, `SHOT_DUMP="#overlay, #rewards"` 면 요소 위치·글자 크기를 `js.txt` 로
 
@@ -41,5 +44,10 @@ JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_R
 - 일시정지: Esc·P (터치 화면은 오른쪽 위 버튼). 계속하기·카드 편집·타이틀로
 - 보상: 우측 상단 목록을 누르거나 R 로 열고(게임이 멈춘다) 카드를 누르거나 1~5
 - 카드 편집: E·Tab (일시정지 화면에서도). 보관함 카드를 누르면 고른 슬롯 끝에, 슬롯 카드를 누르면 보관함으로. 끌어서 원하는 칸·같은 종류 자리·보관함에 놓는다. 휠·끌기로 스크롤. Esc·E 로 닫는다
-- 앱이 백그라운드로 가거나 창이 포커스를 잃으면 일시정지하고 저장한다. 다음 실행은 저장본의 일시정지 화면에서 시작한다
+- 성능 측정: F3로 FPS·프레임 시간·업데이트/렌더 시간·개체 수 표시를 켜고 끈다
+- 앱이 백그라운드로 가거나 창이 포커스를 잃으면 저장하며, 웹에서는 자동 일시정지하지 않는다. 다음 실행은 저장본의 일시정지 화면에서 시작한다
 - 쓰러짐·승리: 다시 하기 또는 Enter, 타이틀로
+- 도감: 타이틀·일시정지의 도감 버튼. 카드·개체 탭과 개체 분류 필터, Esc 또는 닫기로 복귀
+- 개체 조회: I로 열고 닫기. 좌우 키·분류 버튼으로 이동, 카드 슬롯을 눌러 펼치기
+
+`python c/tools/build.py web --site c/build/site/c`로 정적 배포 파일을 모을 수 있다. Pages 워크플로는 기존 JS를 루트, C 웹 버전을 `/c/`에 배포한다.

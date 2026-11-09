@@ -40,6 +40,12 @@
 
 모든 개체는 스탯과 슬롯(연쇄 → 대상 → 행동 카드 스택)으로 행동이 정의된다. 슬롯 실행은 `cards/slot-runtime.js`(대상 선택·고정 계획·이벤트 슬롯), 연계 행동은 `cards/slot-events.js`, 쿨타임은 `cards/cooldown.js`.
 
+## 이동 수학
+
+`core/util.js` 의 `simHypot`·`simAtan2`·`simAngDiff` 와 `native/sim_core.c` 의 이동 전용 수학이 부동소수점으로 거리·방향을 계산한다. 기본은 근사 최적화이고, Node 도구의 `SIM_MATH=exact` 또는 브라우저의 `?math=exact` 로 원래 계산을 선택한다 (워커에도 같은 모드를 전달한다). 피해량·쿨타임·충돌 거리 판정식은 그대로지만, 위치·방향의 오차로 명중·처치 결과와 상태 지문은 달라질 수 있다. 기존 `v8math.h`·`m_*` 정밀 수학 검사는 유지한다.
+
+오차 검사는 `node tools/check-sim-math.cjs --stats`, 성능 비교는 `node tools/bench-sim-math.cjs` 이다. 결과와 적용 범위는 [이동 수학 최적화 분석](../reports/sim-math-optimization.md) 에 기록한다.
+
 ## 최적화 캐시와 무효화
 
 규칙은 바꾸지 않고 비용만 줄이는 캐시들이다. 소스를 바꿀 때 아래 무효화 조건을 지켜야 한다.

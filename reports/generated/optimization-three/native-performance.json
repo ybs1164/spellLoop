@@ -1,0 +1,202 @@
+[
+  {
+    "scene": "crowd3000",
+    "round": 1,
+    "ticks": 600,
+    "beforeMs": 1765.0,
+    "afterMs": 1714.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "crowd3000",
+    "round": 2,
+    "ticks": 600,
+    "beforeMs": 1555.0,
+    "afterMs": 1367.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "crowd3000",
+    "round": 3,
+    "ticks": 600,
+    "beforeMs": 1660.0,
+    "afterMs": 1674.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "crowd3000",
+    "round": 4,
+    "ticks": 600,
+    "beforeMs": 1953.0,
+    "afterMs": 2054.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "crowd3000",
+    "round": 5,
+    "ticks": 600,
+    "beforeMs": 1297.0,
+    "afterMs": 1372.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "sparse16000",
+    "round": 1,
+    "ticks": 1800,
+    "beforeMs": 369.0,
+    "afterMs": 193.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "sparse16000",
+    "round": 2,
+    "ticks": 1800,
+    "beforeMs": 399.0,
+    "afterMs": 179.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "sparse16000",
+    "round": 3,
+    "ticks": 1800,
+    "beforeMs": 386.0,
+    "afterMs": 184.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "sparse16000",
+    "round": 4,
+    "ticks": 1800,
+    "beforeMs": 385.0,
+    "afterMs": 189.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "sparse16000",
+    "round": 5,
+    "ticks": 1800,
+    "beforeMs": 400.0,
+    "afterMs": 205.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "events",
+    "round": 1,
+    "ticks": 600,
+    "beforeMs": 174.0,
+    "afterMs": 193.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "events",
+    "round": 2,
+    "ticks": 600,
+    "beforeMs": 173.0,
+    "afterMs": 184.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "events",
+    "round": 3,
+    "ticks": 600,
+    "beforeMs": 193.0,
+    "afterMs": 180.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "events",
+    "round": 4,
+    "ticks": 600,
+    "beforeMs": 177.0,
+    "afterMs": 176.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "events",
+    "round": 5,
+    "ticks": 600,
+    "beforeMs": 187.0,
+    "afterMs": 192.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "statuses",
+    "round": 1,
+    "ticks": 240,
+    "beforeMs": 89.0,
+    "afterMs": 88.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "statuses",
+    "round": 2,
+    "ticks": 240,
+    "beforeMs": 86.0,
+    "afterMs": 109.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "statuses",
+    "round": 3,
+    "ticks": 240,
+    "beforeMs": 86.0,
+    "afterMs": 88.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "statuses",
+    "round": 4,
+    "ticks": 240,
+    "beforeMs": 92.0,
+    "afterMs": 80.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "statuses",
+    "round": 5,
+    "ticks": 240,
+    "beforeMs": 92.0,
+    "afterMs": 91.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "retiredSlots60000",
+    "round": 1,
+    "ticks": 600,
+    "beforeMs": 259.0,
+    "afterMs": 207.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "retiredSlots60000",
+    "round": 2,
+    "ticks": 600,
+    "beforeMs": 284.0,
+    "afterMs": 198.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "retiredSlots60000",
+    "round": 3,
+    "ticks": 600,
+    "beforeMs": 258.0,
+    "afterMs": 194.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "retiredSlots60000",
+    "round": 4,
+    "ticks": 600,
+    "beforeMs": 261.0,
+    "afterMs": 198.0,
+    "stateEqual": true
+  },
+  {
+    "scene": "retiredSlots60000",
+    "round": 5,
+    "ticks": 600,
+    "beforeMs": 297.0,
+    "afterMs": 218.0,
+    "stateEqual": true
+  }
+]

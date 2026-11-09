@@ -49,7 +49,8 @@ function cooldownOpText(card) {
 /** 슬롯 쿨타임: 기본 BASE_COOLDOWN 에 카드 연산을 배치 순서대로 적용한다 (매 프레임보다 짧아지지 않는다). */
 function slotCooldown(slot) {
   let v = BASE_COOLDOWN;
-  for (const id of slot.cards) if (CARDS[id]) v = applyCooldownOp(v, cooldownOp(CARDS[id]));
+  const cards = slot.cards;
+  for (let i = 0; i < cards.length; i++) if (CARDS[cards[i]]) v = applyCooldownOp(v, cooldownOp(CARDS[cards[i]]));
   return Math.max(FRAME_COOLDOWN, v);
 }
 function slotEveryFrame(slot) { return slotCooldown(slot) <= FRAME_COOLDOWN + 1e-9; }

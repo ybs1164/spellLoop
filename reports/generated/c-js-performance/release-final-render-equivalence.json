@@ -1,0 +1,222 @@
+[
+  {
+    "scene": "idle",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "shots",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effects",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "title",
+    "dpr": 1,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.009123263888888889,
+    "changedPixelPct": 2.869249131944444,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "pause",
+    "dpr": 1,
+    "maxChannelDelta": 2,
+    "meanChannelDelta": 0.16351671006944443,
+    "changedPixelPct": 44.14637586805556,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "editor",
+    "dpr": 1,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.06455973307291667,
+    "changedPixelPct": 17.609266493055557,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "codex",
+    "dpr": 1,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.008434516059027777,
+    "changedPixelPct": 2.4254557291666665,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "idle",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "shots",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effects",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "title",
+    "dpr": 2,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.009123263888888889,
+    "changedPixelPct": 2.869249131944444,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "pause",
+    "dpr": 2,
+    "maxChannelDelta": 2,
+    "meanChannelDelta": 0.16349921332465278,
+    "changedPixelPct": 44.14805772569444,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "editor",
+    "dpr": 2,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.06452677408854167,
+    "changedPixelPct": 17.60991753472222,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "codex",
+    "dpr": 2,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.008434516059027777,
+    "changedPixelPct": 2.4254557291666665,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 1,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.01198974609375,
+    "changedPixelPct": 4.397894965277778,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 2,
+    "maxChannelDelta": 1,
+    "meanChannelDelta": 0.011978759765625,
+    "changedPixelPct": 4.392795138888888,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "idle",
+    "dpr": 1.25,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1.25,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "shots",
+    "dpr": 1.25,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effects",
+    "dpr": 1.25,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "effectMatrix",
+    "dpr": 1.25,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0,
+    "variant": "status-and-flip"
+  },
+  {
+    "scene": "shots",
+    "dpr": 1,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0,
+    "variant": "status-and-flip"
+  },
+  {
+    "scene": "crowd400",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0,
+    "variant": "status-and-flip"
+  },
+  {
+    "scene": "shots",
+    "dpr": 2,
+    "maxChannelDelta": 0,
+    "meanChannelDelta": 0.0,
+    "changedPixelPct": 0.0,
+    "over2PixelPct": 0.0,
+    "variant": "status-and-flip"
+  }
+]

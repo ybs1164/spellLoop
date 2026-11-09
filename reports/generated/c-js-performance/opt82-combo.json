@@ -1,0 +1,2093 @@
+{
+  "date": "2026-11-03T03:40:59.149Z",
+  "browser": "156.0.8078.80",
+  "args": [],
+  "frames": 180,
+  "rows": [
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 0,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterSim": {
+        "enemies": 3000,
+        "shots": 5,
+        "gems": 0,
+        "particles": 0,
+        "fx": 1,
+        "texts": 144,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterLive": {
+        "enemies": 3000,
+        "shots": 4,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 142,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "worldBytes": 0,
+      "renderSubmit": {
+        "avg": 8.948888888789547,
+        "p50": 8.899999976158142,
+        "p95": 11.199999988079071,
+        "max": 12.100000023841858,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 9.009999999403954,
+        "p50": 8.800000011920929,
+        "p95": 10.599999994039536,
+        "max": 11.099999994039536,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 22.01731843575419,
+        "p50": 18,
+        "p95": 18.5,
+        "max": 469.9000000000001,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 3.5172222220235403,
+        "p50": 3.300000011920929,
+        "p95": 5.199999988079071,
+        "max": 7.0999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": null,
+      "live": {
+        "avg": 9.697777778738075,
+        "p50": 8.900000005960464,
+        "p95": 15.100000023841858,
+        "max": 19.400000005960464,
+        "over16": 4,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.96,
+        "p50": 18,
+        "p95": 18.299999999999272,
+        "max": 18.600000000000364,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 10.553333334624767,
+          "p50": 10.400000005960464,
+          "p95": 12.5,
+          "max": 19.299999982118607,
+          "over16": 1,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.937777777777782,
+          "p50": 18,
+          "p95": 18.200000000000728,
+          "max": 18.900000000001455,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "enemies": 3000,
+          "shots": 4,
+          "gems": 0,
+          "particles": 0,
+          "fx": 1,
+          "texts": 140,
+          "wasm": true,
+          "gl": true,
+          "pendingShots": 0
+        }
+      },
+      "interpolation": null,
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bufferData": 1,
+        "uploadBytes": 144336,
+        "bindTexture": 1,
+        "drawArraysInstanced": 1
+      },
+      "wasmBytes": 70123520,
+      "jsHeapBytes": 28361617,
+      "heapBytes": 28361617,
+      "version": "JS",
+      "dpr": 1,
+      "loadMs": 480
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 0,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterSim": {
+        "enemies": 1000,
+        "shots": 2005,
+        "gems": 0,
+        "particles": 0,
+        "fx": 1,
+        "texts": 67,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterLive": {
+        "enemies": 1000,
+        "shots": 2004,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 150,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "worldBytes": 0,
+      "renderSubmit": {
+        "avg": 3.660000000066227,
+        "p50": 3.300000011920929,
+        "p95": 5.5,
+        "max": 9.400000005960464,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 3.453333334624767,
+        "p50": 3.300000011920929,
+        "p95": 4.5,
+        "max": 4.800000011920929,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.415642458100567,
+        "p50": 17.900000000001455,
+        "p95": 18.299999999999272,
+        "max": 91.39999999999964,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 2.003333333134651,
+        "p50": 1.800000011920929,
+        "p95": 3.7000000178813934,
+        "max": 5,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": null,
+      "live": {
+        "avg": 7.363333333532015,
+        "p50": 7.399999976158142,
+        "p95": 9.900000005960464,
+        "max": 15.300000011920929,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.808333333333334,
+        "p50": 17.900000000001455,
+        "p95": 18.200000000000728,
+        "max": 18.299999999999272,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 7.4049999993708395,
+          "p50": 7.300000011920929,
+          "p95": 11,
+          "max": 13.599999994039536,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.806111111111104,
+          "p50": 17.900000000001455,
+          "p95": 18.299999999999272,
+          "max": 18.400000000001455,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "enemies": 1000,
+          "shots": 2005,
+          "gems": 0,
+          "particles": 0,
+          "fx": 1,
+          "texts": 117,
+          "wasm": true,
+          "gl": true,
+          "pendingShots": 0
+        }
+      },
+      "interpolation": null,
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bufferData": 1,
+        "uploadBytes": 481296,
+        "bindTexture": 1,
+        "drawArraysInstanced": 1
+      },
+      "wasmBytes": 70123520,
+      "jsHeapBytes": 40345081,
+      "heapBytes": 40345081,
+      "version": "JS",
+      "dpr": 1,
+      "loadMs": 480
+    },
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 9006,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 1,
+        "texts": 9,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 6,
+        "particles": 0
+      },
+      "worldBytes": 60022352,
+      "renderSubmit": {
+        "avg": 1.2955555553237597,
+        "p50": 1.2000000178813934,
+        "p95": 1.9000000059604645,
+        "max": 2.100000023841858,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.2600000003973644,
+        "p50": 1.2000000178813934,
+        "p95": 1.5999999940395355,
+        "max": 1.600000023841858,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 19.27541899441341,
+        "p50": 17.700000000000273,
+        "p95": 18.40000000000009,
+        "max": 213.89999999999998,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 2.7066666664348706,
+        "p50": 2.5999999940395355,
+        "p95": 3.699999988079071,
+        "max": 5.5,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 5.5716666658719385,
+        "p50": 5.4000000059604645,
+        "p95": 7.199999988079071,
+        "max": 8.400000005960464,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.852777777777778,
+        "p50": 18,
+        "p95": 18.399999999999636,
+        "max": 19.099999999999454,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 5.876111110879315,
+          "p50": 5.5,
+          "p95": 9,
+          "max": 13.600000023841858,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.805,
+          "p50": 17.899999999999636,
+          "p95": 18.299999999999272,
+          "max": 18.69999999999891,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 3001,
+          "hi": 3002,
+          "slots": 9008,
+          "enemies": 3000,
+          "shots": 0,
+          "gems": 0,
+          "fx": 1,
+          "texts": 10,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.022799999992052716,
+        "p50": 0.02199999988079071,
+        "p95": 0.03199999988079071,
+        "max": 0.07199999988079071,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 205696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 14192650,
+      "heapBytes": 80543744,
+      "version": "C-combo",
+      "dpr": 1,
+      "loadMs": 468
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 7006,
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 1,
+        "texts": 28,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 0,
+        "texts": 38,
+        "particles": 0
+      },
+      "worldBytes": 60022352,
+      "renderSubmit": {
+        "avg": 1.3683333333995606,
+        "p50": 1.300000011920929,
+        "p95": 1.9000000059604645,
+        "max": 2.5999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.2183333362142246,
+        "p50": 1.2000000178813934,
+        "p95": 1.600000023841858,
+        "max": 1.800000011920929,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.10446927374302,
+        "p50": 17.700000000000728,
+        "p95": 18.299999999999272,
+        "max": 70.60000000000036,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 1.586111111111111,
+        "p50": 1.5,
+        "p95": 2.4000000059604645,
+        "max": 3.2000000178813934,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 2.6261111135284105,
+        "p50": 2.5,
+        "p95": 4,
+        "max": 5.300000011920929,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.728888888888893,
+        "p50": 17.600000000002183,
+        "p95": 18.399999999997817,
+        "max": 18.799999999999272,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 3.988333333697584,
+          "p50": 3.699999988079071,
+          "p95": 6.0999999940395355,
+          "max": 8.799999982118607,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.715000000000003,
+          "p50": 17.700000000000728,
+          "p95": 18.299999999999272,
+          "max": 18.700000000000728,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 2010,
+          "hi": 3002,
+          "slots": 7008,
+          "enemies": 1000,
+          "shots": 1009,
+          "gems": 0,
+          "fx": 1,
+          "texts": 25,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.016933333337306972,
+        "p50": 0.014000000357627869,
+        "p95": 0.02600000023841858,
+        "max": 0.02799999952316284,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 717696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 15131839,
+      "heapBytes": 80543744,
+      "version": "C-combo",
+      "dpr": 1,
+      "loadMs": 468
+    },
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 9006,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 1,
+        "texts": 9,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 6,
+        "particles": 0
+      },
+      "worldBytes": 60018064,
+      "renderSubmit": {
+        "avg": 1.4427777801950772,
+        "p50": 1.300000011920929,
+        "p95": 2,
+        "max": 4.199999988079071,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.38833333303531,
+        "p50": 1.300000011920929,
+        "p95": 2,
+        "max": 2.2000000178813934,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 19.28100558659218,
+        "p50": 17.800000000000068,
+        "p95": 18.300000000000182,
+        "max": 179.2,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 3.1422222221891087,
+        "p50": 3,
+        "p95": 4.0999999940395355,
+        "max": 5.600000023841858,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 5.774444444477558,
+        "p50": 5.700000017881393,
+        "p95": 7.300000011920929,
+        "max": 8.699999988079071,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.778888888888893,
+        "p50": 17.899999999999636,
+        "p95": 18.300000000000182,
+        "max": 18.5,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 6.546666668686602,
+          "p50": 6.199999988079071,
+          "p95": 10.400000005960464,
+          "max": 13.699999988079071,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.865000000000006,
+          "p50": 18,
+          "p95": 18.399999999999636,
+          "max": 19,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 3001,
+          "hi": 3002,
+          "slots": 9008,
+          "enemies": 3000,
+          "shots": 0,
+          "gems": 0,
+          "fx": 1,
+          "texts": 10,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.022466666658719388,
+        "p50": 0.02,
+        "p95": 0.03800000011920929,
+        "max": 0.05,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 205696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 14192117,
+      "heapBytes": 80543744,
+      "version": "C-base",
+      "dpr": 1,
+      "loadMs": 319
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 7006,
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 1,
+        "texts": 28,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 0,
+        "texts": 38,
+        "particles": 0
+      },
+      "worldBytes": 60018064,
+      "renderSubmit": {
+        "avg": 1.2677777787049611,
+        "p50": 1.199999988079071,
+        "p95": 2,
+        "max": 3.2999999821186066,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.1700000002980233,
+        "p50": 1.0999999940395355,
+        "p95": 1.7999999821186066,
+        "max": 1.7999999821186066,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.200000000000006,
+        "p50": 17.799999999999272,
+        "p95": 18.200000000000728,
+        "max": 72,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 1.8388888887233203,
+        "p50": 1.5999999940395355,
+        "p95": 2.7999999821186066,
+        "max": 4,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 4.339444445404742,
+        "p50": 4.199999988079071,
+        "p95": 5.9000000059604645,
+        "max": 7.5999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.737777777777772,
+        "p50": 17.69999999999709,
+        "p95": 18.299999999999272,
+        "max": 18.899999999997817,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 4.46611111164093,
+          "p50": 4.0999999940395355,
+          "p95": 6.4000000059604645,
+          "max": 10.199999988079071,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.725555555555566,
+          "p50": 17.600000000002183,
+          "p95": 18.299999999999272,
+          "max": 18.399999999997817,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 2010,
+          "hi": 3002,
+          "slots": 7008,
+          "enemies": 1000,
+          "shots": 1009,
+          "gems": 0,
+          "fx": 1,
+          "texts": 25,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.018666666666666665,
+        "p50": 0.01800000011920929,
+        "p95": 0.02800000011920929,
+        "max": 0.03199999988079071,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 717696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 15131418,
+      "heapBytes": 80543744,
+      "version": "C-base",
+      "dpr": 1,
+      "loadMs": 319
+    },
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 0,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterSim": {
+        "enemies": 3000,
+        "shots": 5,
+        "gems": 0,
+        "particles": 0,
+        "fx": 1,
+        "texts": 144,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterLive": {
+        "enemies": 3000,
+        "shots": 4,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 142,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "worldBytes": 0,
+      "renderSubmit": {
+        "avg": 10.657222223116293,
+        "p50": 10.599999994039536,
+        "p95": 13.400000005960464,
+        "max": 15.900000005960464,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 10.630000001688797,
+        "p50": 10.699999988079071,
+        "p95": 12.200000017881393,
+        "max": 12.900000005960464,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 21.98603351955307,
+        "p50": 18,
+        "p95": 35.40000000000009,
+        "max": 340.00000000000006,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 3.5033333333002195,
+        "p50": 3.2999999821186066,
+        "p95": 5.100000023841858,
+        "max": 6.5999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": null,
+      "live": {
+        "avg": 13.217222222685814,
+        "p50": 12.800000011920929,
+        "p95": 17.30000001192093,
+        "max": 22,
+        "over16": 12,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 18.219444444444445,
+        "p50": 18,
+        "p95": 18.600000000000364,
+        "max": 37.20000000000073,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 13.826666666732894,
+          "p50": 13.5,
+          "p95": 16.19999998807907,
+          "max": 21.5,
+          "over16": 6,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 18.10222222222222,
+          "p50": 18,
+          "p95": 18.5,
+          "max": 35.30000000000109,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "enemies": 3000,
+          "shots": 4,
+          "gems": 0,
+          "particles": 0,
+          "fx": 0,
+          "texts": 147,
+          "wasm": true,
+          "gl": true,
+          "pendingShots": 0
+        }
+      },
+      "interpolation": null,
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bufferData": 1,
+        "uploadBytes": 144336,
+        "bindTexture": 1,
+        "drawArraysInstanced": 1
+      },
+      "wasmBytes": 70123520,
+      "jsHeapBytes": 27306494,
+      "heapBytes": 27306494,
+      "version": "JS",
+      "dpr": 2,
+      "loadMs": 394
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 0,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterSim": {
+        "enemies": 1000,
+        "shots": 2005,
+        "gems": 0,
+        "particles": 0,
+        "fx": 1,
+        "texts": 67,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "afterLive": {
+        "enemies": 1000,
+        "shots": 2004,
+        "gems": 0,
+        "particles": 0,
+        "fx": 0,
+        "texts": 150,
+        "wasm": true,
+        "gl": true,
+        "pendingShots": 0
+      },
+      "worldBytes": 0,
+      "renderSubmit": {
+        "avg": 4.247222220732106,
+        "p50": 4,
+        "p95": 5.799999982118607,
+        "max": 7.9000000059604645,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 4.091666667163372,
+        "p50": 4.0999999940395355,
+        "p95": 4.800000011920929,
+        "max": 5.300000011920929,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.61117318435755,
+        "p50": 17.900000000001455,
+        "p95": 18.399999999999636,
+        "max": 134.29999999999927,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 2.0433333335651294,
+        "p50": 1.800000011920929,
+        "p95": 3.9000000059604645,
+        "max": 5.0999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": null,
+      "live": {
+        "avg": 10.54555555532376,
+        "p50": 10.099999994039536,
+        "p95": 15.800000011920929,
+        "max": 21.099999994039536,
+        "over16": 7,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 18.065000000000005,
+        "p50": 18,
+        "p95": 18.299999999999272,
+        "max": 35.400000000001455,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 9.740555555456215,
+          "p50": 9.599999994039536,
+          "p95": 14,
+          "max": 17,
+          "over16": 1,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.978333333333325,
+          "p50": 18,
+          "p95": 18.399999999997817,
+          "max": 19.400000000001455,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "enemies": 1000,
+          "shots": 2004,
+          "gems": 0,
+          "particles": 0,
+          "fx": 1,
+          "texts": 150,
+          "wasm": true,
+          "gl": true,
+          "pendingShots": 0
+        }
+      },
+      "interpolation": null,
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bufferData": 1,
+        "uploadBytes": 481296,
+        "bindTexture": 1,
+        "drawArraysInstanced": 1
+      },
+      "wasmBytes": 70123520,
+      "jsHeapBytes": 37026263,
+      "heapBytes": 37026263,
+      "version": "JS",
+      "dpr": 2,
+      "loadMs": 394
+    },
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 9006,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 1,
+        "texts": 9,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 6,
+        "particles": 0
+      },
+      "worldBytes": 60022352,
+      "renderSubmit": {
+        "avg": 1.675555553370052,
+        "p50": 1.5999999940395355,
+        "p95": 2.5,
+        "max": 3.199999988079071,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.266666665673256,
+        "p50": 1.2999999821186066,
+        "p95": 1.9000000059604645,
+        "max": 2.199999988079071,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 19.086033519553073,
+        "p50": 17.90000000000009,
+        "p95": 18.399999999999636,
+        "max": 179.7,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 2.7366666667991213,
+        "p50": 2.600000023841858,
+        "p95": 4,
+        "max": 5.299999982118607,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 5.467777778373824,
+        "p50": 5.299999982118607,
+        "p95": 6.800000011920929,
+        "max": 8.5,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.849999999999994,
+        "p50": 17.899999999999636,
+        "p95": 18.30000000000109,
+        "max": 18.599999999999454,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 6.106111111243566,
+          "p50": 5.699999988079071,
+          "p95": 9.800000011920929,
+          "max": 12.5,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.875,
+          "p50": 17.900000000001455,
+          "p95": 18.399999999999636,
+          "max": 18.80000000000109,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 3001,
+          "hi": 3002,
+          "slots": 9008,
+          "enemies": 3000,
+          "shots": 0,
+          "gems": 0,
+          "fx": 1,
+          "texts": 10,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.02233333333333333,
+        "p50": 0.02199999988079071,
+        "p95": 0.03400000035762787,
+        "max": 0.06199999988079071,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 205696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 14242077,
+      "heapBytes": 80543744,
+      "version": "C-combo",
+      "dpr": 2,
+      "loadMs": 329
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 7006,
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 1,
+        "texts": 28,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 0,
+        "texts": 38,
+        "particles": 0
+      },
+      "worldBytes": 60022352,
+      "renderSubmit": {
+        "avg": 1.6733333321081267,
+        "p50": 1.5,
+        "p95": 2.4000000059604645,
+        "max": 4.700000017881393,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.4650000010927517,
+        "p50": 1.399999976158142,
+        "p95": 2.0999999940395355,
+        "max": 2.699999988079071,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.27709497206704,
+        "p50": 17.80000000000109,
+        "p95": 18.299999999999272,
+        "max": 106.69999999999891,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 1.859444444378217,
+        "p50": 1.7000000178813934,
+        "p95": 2.800000011920929,
+        "max": 4.699999988079071,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 3.3366666661368476,
+        "p50": 3.199999988079071,
+        "p95": 5.5,
+        "max": 6.0999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.756111111111103,
+        "p50": 17.700000000000728,
+        "p95": 18.30000000000291,
+        "max": 19.099999999998545,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 4.249999999337726,
+          "p50": 4,
+          "p95": 6.199999988079071,
+          "max": 9.400000005960464,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.809999999999995,
+          "p50": 17.80000000000291,
+          "p95": 18.299999999999272,
+          "max": 18.799999999999272,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 2010,
+          "hi": 3002,
+          "slots": 7008,
+          "enemies": 1000,
+          "shots": 1009,
+          "gems": 0,
+          "fx": 1,
+          "texts": 23,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.028799999992052714,
+        "p50": 0.02800000011920929,
+        "p95": 0.04800000011920929,
+        "max": 0.05,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 717696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 15179198,
+      "heapBytes": 80543744,
+      "version": "C-combo",
+      "dpr": 2,
+      "loadMs": 329
+    },
+    {
+      "scene": "crowd3000",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 9006,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 1,
+        "texts": 9,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 3001,
+        "hi": 3002,
+        "slots": 9008,
+        "enemies": 3000,
+        "shots": 0,
+        "gems": 0,
+        "fx": 0,
+        "texts": 6,
+        "particles": 0
+      },
+      "worldBytes": 60018064,
+      "renderSubmit": {
+        "avg": 1.5005555560191473,
+        "p50": 1.4000000059604645,
+        "p95": 2.199999988079071,
+        "max": 2.9000000059604645,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.5083333348234496,
+        "p50": 1.4000000059604645,
+        "p95": 2.0999999940395355,
+        "max": 2.399999976158142,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 19.83463687150838,
+        "p50": 17.899999999999977,
+        "p95": 18.59999999999991,
+        "max": 232.49999999999994,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 3.0677777778771187,
+        "p50": 2.9000000059604645,
+        "p95": 4.4000000059604645,
+        "max": 5.399999976158142,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 5.9122222231494055,
+        "p50": 5.800000011920929,
+        "p95": 7.200000017881393,
+        "max": 7.699999988079071,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.79555555555556,
+        "p50": 17.80000000000109,
+        "p95": 18.300000000000182,
+        "max": 18.399999999999636,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 6.628333334459199,
+          "p50": 6.199999988079071,
+          "p95": 10.100000023841858,
+          "max": 14.5,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.88388888888889,
+          "p50": 18,
+          "p95": 18.30000000000109,
+          "max": 18.80000000000109,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 3001,
+          "hi": 3002,
+          "slots": 9008,
+          "enemies": 3000,
+          "shots": 0,
+          "gems": 0,
+          "fx": 1,
+          "texts": 8,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.024200000007947284,
+        "p50": 0.02399999976158142,
+        "p95": 0.03800000011920929,
+        "max": 0.06400000035762787,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 205696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 14243028,
+      "heapBytes": 80543744,
+      "version": "C-base",
+      "dpr": 2,
+      "loadMs": 330
+    },
+    {
+      "scene": "shots",
+      "simulationSkipped": false,
+      "initial": {
+        "entities": 3001,
+        "hi": 3001,
+        "slots": 7006,
+        "enemies": 1000,
+        "shots": 2000,
+        "gems": 0,
+        "fx": 0,
+        "texts": 0,
+        "particles": 0
+      },
+      "afterSim": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 1,
+        "texts": 28,
+        "particles": 0
+      },
+      "afterLive": {
+        "entities": 2010,
+        "hi": 3002,
+        "slots": 7008,
+        "enemies": 1000,
+        "shots": 1009,
+        "gems": 0,
+        "fx": 0,
+        "texts": 38,
+        "particles": 0
+      },
+      "worldBytes": 60018064,
+      "renderSubmit": {
+        "avg": 1.604444444179535,
+        "p50": 1.5,
+        "p95": 2.300000011920929,
+        "max": 2.800000011920929,
+        "over16": 0,
+        "samples": 180
+      },
+      "renderSync": {
+        "avg": 1.406666667262713,
+        "p50": 1.4000000059604645,
+        "p95": 2.0999999940395355,
+        "max": 2.2000000178813934,
+        "over16": 0,
+        "samples": 60
+      },
+      "renderCadence": {
+        "avg": 18.22290502793295,
+        "p50": 17.700000000000728,
+        "p95": 18.200000000000728,
+        "max": 89.5,
+        "over16": 179,
+        "samples": 179
+      },
+      "simulation": {
+        "avg": 1.8644444444113308,
+        "p50": 1.7000000178813934,
+        "p95": 2.7999999821186066,
+        "max": 3.5999999940395355,
+        "over16": 0,
+        "samples": 180
+      },
+      "phaseMs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "live": {
+        "avg": 3.818333333896266,
+        "p50": 4,
+        "p95": 5.799999982118607,
+        "max": 7,
+        "over16": 0,
+        "samples": 180
+      },
+      "liveCadence": {
+        "avg": 17.822222222222223,
+        "p50": 17.80000000000291,
+        "p95": 18.399999999997817,
+        "max": 18.799999999999272,
+        "over16": 180,
+        "samples": 180
+      },
+      "realtime": {
+        "cpu": {
+          "avg": 4.683333333167765,
+          "p50": 4.5999999940395355,
+          "p95": 6.899999976158142,
+          "max": 9.400000005960464,
+          "over16": 0,
+          "samples": 180
+        },
+        "cadence": {
+          "avg": 17.77555555555555,
+          "p50": 17.799999999999272,
+          "p95": 18.299999999999272,
+          "max": 18.799999999999272,
+          "over16": 180,
+          "samples": 180
+        },
+        "after": {
+          "entities": 2010,
+          "hi": 3002,
+          "slots": 7008,
+          "enemies": 1000,
+          "shots": 1009,
+          "gems": 0,
+          "fx": 1,
+          "texts": 25,
+          "particles": 0
+        }
+      },
+      "interpolation": {
+        "avg": 0.01846666665871938,
+        "p50": 0.02,
+        "p95": 0.02599999964237213,
+        "max": 0.03599999964237213,
+        "over16": 0,
+        "samples": 30
+      },
+      "glInfo": [
+        {
+          "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "attributes": {
+            "alpha": true,
+            "antialias": false,
+            "depth": false,
+            "desynchronized": false,
+            "failIfMajorPerformanceCaveat": false,
+            "powerPreference": "high-performance",
+            "premultipliedAlpha": true,
+            "preserveDrawingBuffer": false,
+            "stencil": false,
+            "xrCompatible": false
+          }
+        }
+      ],
+      "calls": {
+        "bindTexture": 2,
+        "bufferSubData": 2,
+        "uploadBytes": 717696,
+        "drawElementsInstanced": 2
+      },
+      "wasmBytes": 80543744,
+      "jsHeapBytes": 15176897,
+      "heapBytes": 80543744,
+      "version": "C-base",
+      "dpr": 2,
+      "loadMs": 330
+    }
+  ],
+  "errors": []
+}

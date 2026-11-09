@@ -3,15 +3,15 @@
 `node tools/extract-rules.cjs` 가 `tools/check-*.cjs` 의 단언에서 만든다. 서술형 규칙은 [MECHANICS.md](MECHANICS.md), 데이터는 `data/*.csv`.
 C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` 이 원래 검사다. 메시지가 없는 단언은 식을 싣는다.
 
-단언 848개 (메시지 있음 325개), 파일 32개.
+단언 894개 (메시지 있음 357개), 파일 34개.
 
 | 파일 | 항목 |
 | --- | --- |
 | [check-action-target-positions.cjs](../tools/check-action-target-positions.cjs) | 4 |
-| [check-basic-state-inheritance.cjs](../tools/check-basic-state-inheritance.cjs) | 33 |
+| [check-basic-state-inheritance.cjs](../tools/check-basic-state-inheritance.cjs) | 30 |
 | [check-batches.cjs](../tools/check-batches.cjs) | 4 |
 | [check-card-distance-ui.cjs](../tools/check-card-distance-ui.cjs) | 13 |
-| [check-chain-cards.cjs](../tools/check-chain-cards.cjs) | 23 |
+| [check-chain-cards.cjs](../tools/check-chain-cards.cjs) | 40 |
 | [check-common-action-modes.cjs](../tools/check-common-action-modes.cjs) | 19 |
 | [check-common-mechanics.cjs](../tools/check-common-mechanics.cjs) | 43 |
 | [check-controls.cjs](../tools/check-controls.cjs) | 8 |
@@ -22,7 +22,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-entity-gimmicks.cjs](../tools/check-entity-gimmicks.cjs) | 32 |
 | [check-entity-slots.cjs](../tools/check-entity-slots.cjs) | 144 |
 | [check-entity-state-values.cjs](../tools/check-entity-state-values.cjs) | 51 |
-| [check-event-slots.cjs](../tools/check-event-slots.cjs) | 45 |
+| [check-event-slots.cjs](../tools/check-event-slots.cjs) | 44 |
 | [check-event-ui.cjs](../tools/check-event-ui.cjs) | 9 |
 | [check-explicit-actions.cjs](../tools/check-explicit-actions.cjs) | 51 |
 | [check-gimmick-bosses.cjs](../tools/check-gimmick-bosses.cjs) | 31 |
@@ -30,9 +30,11 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 | [check-mine-sequence.cjs](../tools/check-mine-sequence.cjs) | 8 |
 | [check-play-logs.cjs](../tools/check-play-logs.cjs) | 20 |
 | [check-pool.cjs](../tools/check-pool.cjs) | 4 |
+| [check-sim-math.cjs](../tools/check-sim-math.cjs) | 24 |
 | [check-slot-sections.cjs](../tools/check-slot-sections.cjs) | 50 |
-| [check-slots.cjs](../tools/check-slots.cjs) | 24 |
+| [check-slots.cjs](../tools/check-slots.cjs) | 25 |
 | [check-snap-pack.cjs](../tools/check-snap-pack.cjs) | 1 |
+| [check-snipe-distribution.cjs](../tools/check-snipe-distribution.cjs) | 8 |
 | [check-spread.cjs](../tools/check-spread.cjs) | 13 |
 | [check-stage-pressure.cjs](../tools/check-stage-pressure.cjs) | 10 |
 | [check-stat-ratios.cjs](../tools/check-stat-ratios.cjs) | 12 |
@@ -73,15 +75,12 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - `clone.slots.map(s => s.cards), [['entitySelf', 'inputMove'], ['entitySelf', 'heal']]` — [check-basic-state-inheritance.cjs:86](../tools/check-basic-state-inheritance.cjs#L86)
 - `clone.hp > 1` — [check-basic-state-inheritance.cjs:89](../tools/check-basic-state-inheritance.cjs#L89)
 - `clone.max, ALLY_LIFE` — [check-basic-state-inheritance.cjs:90](../tools/check-basic-state-inheritance.cjs#L90)
-- `game.allies.length, 2` — [check-basic-state-inheritance.cjs:97](../tools/check-basic-state-inheritance.cjs#L97)
-- `inheritedCd > 0` — [check-basic-state-inheritance.cjs:100](../tools/check-basic-state-inheritance.cjs#L100)
-- `splitChild.slots[1], splitParent.slots[1]` — [check-basic-state-inheritance.cjs:102](../tools/check-basic-state-inheritance.cjs#L102)
-- a cooling slot stops the inherited split — [check-basic-state-inheritance.cjs:106](../tools/check-basic-state-inheritance.cjs#L106)
-- inherited split runs again after the cooldown — [check-basic-state-inheritance.cjs:108](../tools/check-basic-state-inheritance.cjs#L108)
-- `attachedCopy.follow, victim` — [check-basic-state-inheritance.cjs:114](../tools/check-basic-state-inheritance.cjs#L114)
-- inherited followed zone keeps hitting around its host — [check-basic-state-inheritance.cjs:116](../tools/check-basic-state-inheritance.cjs#L116)
-- `UI.entityStatsHtml(boss, true), /25%/` — [check-basic-state-inheritance.cjs:117](../tools/check-basic-state-inheritance.cjs#L117)
-- `UI.codexSlotsHtml({ cat: 'player', owner: p }), /inputMove|입력 방향 이동/` — [check-basic-state-inheritance.cjs:118](../tools/check-basic-state-inheritance.cjs#L118)
+- a split-born clone cannot split itself again — [check-basic-state-inheritance.cjs:97](../tools/check-basic-state-inheritance.cjs#L97)
+- expired cooldown does not bypass the split-born restriction — [check-basic-state-inheritance.cjs:100](../tools/check-basic-state-inheritance.cjs#L100)
+- `attachedCopy.follow, victim` — [check-basic-state-inheritance.cjs:106](../tools/check-basic-state-inheritance.cjs#L106)
+- inherited followed zone keeps hitting around its host — [check-basic-state-inheritance.cjs:108](../tools/check-basic-state-inheritance.cjs#L108)
+- `UI.entityStatsHtml(boss, true), /25%/` — [check-basic-state-inheritance.cjs:109](../tools/check-basic-state-inheritance.cjs#L109)
+- `UI.codexSlotsHtml({ cat: 'player', owner: p }), /inputMove|입력 방향 이동/` — [check-basic-state-inheritance.cjs:110](../tools/check-basic-state-inheritance.cjs#L110)
 
 ## batches
 
@@ -108,29 +107,46 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 
 ## chain-cards
 
-- `analysis.stage, ['nearestEnemy', 'bolt']` — [check-chain-cards.cjs:28](../tools/check-chain-cards.cjs#L28)
-- `analysis.actions, ['bolt']` — [check-chain-cards.cjs:29](../tools/check-chain-cards.cjs#L29)
-- `analysis.chainRest, ['on_hit', 'eventSubject', 'chain', 'on_hit', 'eventSubject', 'explode']` — [check-chain-cards.cjs:30](../tools/check-chain-cards.cjs#L30)
-- later chain cards do not trigger the first stage — [check-chain-cards.cjs:31](../tools/check-chain-cards.cjs#L31)
-- the chained stage waits for the hit — [check-chain-cards.cjs:35](../tools/check-chain-cards.cjs#L35)
-- the player-placed cards become the linked slot — [check-chain-cards.cjs:38](../tools/check-chain-cards.cjs#L38)
-- `slotAnalysis(continuation).chainRest.join(), 'on_hit,eventSubject,explode'` — [check-chain-cards.cjs:39](../tools/check-chain-cards.cjs#L39)
-- first chain stage runs on the bolt hit — [check-chain-cards.cjs:41](../tools/check-chain-cards.cjs#L41)
-- second chain stage runs on the lightning hit — [check-chain-cards.cjs:42](../tools/check-chain-cards.cjs#L42)
-- on_complete follows an instant action — [check-chain-cards.cjs:48](../tools/check-chain-cards.cjs#L48)
-- on_hit never fires for a heal — [check-chain-cards.cjs:54](../tools/check-chain-cards.cjs#L54)
-- `slotAnalysis(slot).chainRest, null` — [check-chain-cards.cjs:59](../tools/check-chain-cards.cjs#L59)
-- `legacy.slots.some(s => s.cards.includes('explode'))` — [check-chain-cards.cjs:61](../tools/check-chain-cards.cjs#L61)
-- a chain stack stops at the frame cap — [check-chain-cards.cjs:66](../tools/check-chain-cards.cjs#L66)
-- another stack has its own cap — [check-chain-cards.cjs:67](../tools/check-chain-cards.cjs#L67)
-- another caster has its own cap — [check-chain-cards.cjs:68](../tools/check-chain-cards.cjs#L68)
-- `game._chainCap, Math.round(CHAIN_RUN_RATE * 0.05)` — [check-chain-cards.cjs:69](../tools/check-chain-cards.cjs#L69)
-- the cap refills every frame — [check-chain-cards.cjs:69](../tools/check-chain-cards.cjs#L69)
-- on_hit needs a previous action — [check-chain-cards.cjs:72](../tools/check-chain-cards.cjs#L72)
-- on_complete listens to the owner — [check-chain-cards.cjs:73](../tools/check-chain-cards.cjs#L73)
-- swap cannot target the player — [check-chain-cards.cjs:74](../tools/check-chain-cards.cjs#L74)
-- blink cannot target a point — [check-chain-cards.cjs:75](../tools/check-chain-cards.cjs#L75)
-- `slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'chain']), null` — [check-chain-cards.cjs:76](../tools/check-chain-cards.cjs#L76)
+- a trailing hourglass does not block orb creation while moving — [check-chain-cards.cjs:34](../tools/check-chain-cards.cjs#L34)
+- `slotAnalysis(tail).stage, ['ahead', 'orb']` — [check-chain-cards.cjs:35](../tools/check-chain-cards.cjs#L35)
+- trailing cards add to parent cooldown — [check-chain-cards.cjs:36](../tools/check-chain-cards.cjs#L36)
+- an unfinished suffix creates no slot — [check-chain-cards.cjs:37](../tools/check-chain-cards.cjs#L37)
+- a trailing chalice does not gate the previous action — [check-chain-cards.cjs:40](../tools/check-chain-cards.cjs#L40)
+- a trailing event card does not turn the parent into an event slot — [check-chain-cards.cjs:42](../tools/check-chain-cards.cjs#L42)
+- no implicit hit/complete/spawn card is inserted — [check-chain-cards.cjs:48](../tools/check-chain-cards.cjs#L48)
+- parent cooldown includes the full chain — [check-chain-cards.cjs:50](../tools/check-chain-cards.cjs#L50)
+- generated slot has its own cooldown — [check-chain-cards.cjs:50](../tools/check-chain-cards.cjs#L50)
+- stationary target runs without an orb hit — [check-chain-cards.cjs:52](../tools/check-chain-cards.cjs#L52)
+- the generated slot waits for its own cooldown — [check-chain-cards.cjs:53](../tools/check-chain-cards.cjs#L53)
+- the generated slot repeats independently of the parent — [check-chain-cards.cjs:54](../tools/check-chain-cards.cjs#L54)
+- hourglass checks the moving player selected after it, not the stationary orb — [check-chain-cards.cjs:56](../tools/check-chain-cards.cjs#L56)
+- a condition rejecting all targets spends no cooldown — [check-chain-cards.cjs:57](../tools/check-chain-cards.cjs#L57)
+- a valid target runs as soon as the condition permits — [check-chain-cards.cjs:58](../tools/check-chain-cards.cjs#L58)
+- a stationary orb selected after hourglass works even while the player moves — [check-chain-cards.cjs:63](../tools/check-chain-cards.cjs#L63)
+- hourglass filters each following target — [check-chain-cards.cjs:69](../tools/check-chain-cards.cjs#L69)
+- feather filters each following target — [check-chain-cards.cjs:71](../tools/check-chain-cards.cjs#L71)
+- chalice reads selected target health, not full-health caster — [check-chain-cards.cjs:73](../tools/check-chain-cards.cjs#L73)
+- horn counts around each following target — [check-chain-cards.cjs:77](../tools/check-chain-cards.cjs#L77)
+- `hits.length, 1` — [check-chain-cards.cjs:85](../tools/check-chain-cards.cjs#L85)
+- an instant action installs the next slot on its recipient — [check-chain-cards.cjs:86](../tools/check-chain-cards.cjs#L86)
+- `player.effectSlots[0].cards, ['artifactHourglass', 'self', 'probe']` — [check-chain-cards.cjs:87](../tools/check-chain-cards.cjs#L87)
+- next slot runs on its own update — [check-chain-cards.cjs:88](../tools/check-chain-cards.cjs#L88)
+- next slot also observes its cooldown — [check-chain-cards.cjs:89](../tools/check-chain-cards.cjs#L89)
+- reinstallation does not duplicate a slot or reset its cooldown — [check-chain-cards.cjs:91](../tools/check-chain-cards.cjs#L91)
+- hurting the orb does not satisfy thorns targeting the player — [check-chain-cards.cjs:97](../tools/check-chain-cards.cjs#L97)
+- selected player hurt triggers the orb-owned thorns slot, including shielded damage — [check-chain-cards.cjs:99](../tools/check-chain-cards.cjs#L99)
+- generated moment slots respect their own cooldown — [check-chain-cards.cjs:101](../tools/check-chain-cards.cjs#L101)
+- removed slots cannot retain active target subscriptions — [check-chain-cards.cjs:104](../tools/check-chain-cards.cjs#L104)
+- bell ignores the caster when the next target is an object — [check-chain-cards.cjs:109](../tools/check-chain-cards.cjs#L109)
+- bell responds to the following target completing an action — [check-chain-cards.cjs:111](../tools/check-chain-cards.cjs#L111)
+- only an explicitly placed hit card waits for a hit — [check-chain-cards.cjs:117](../tools/check-chain-cards.cjs#L117)
+- `hits, [victim]` — [check-chain-cards.cjs:119](../tools/check-chain-cards.cjs#L119)
+- explicit event slots also keep their cooldown — [check-chain-cards.cjs:121](../tools/check-chain-cards.cjs#L121)
+- `explicit.cd > 0` — [check-chain-cards.cjs:122](../tools/check-chain-cards.cjs#L122)
+- a condition card does not invent an event subject — [check-chain-cards.cjs:123](../tools/check-chain-cards.cjs#L123)
+- explicit event slots can stand alone — [check-chain-cards.cjs:124](../tools/check-chain-cards.cjs#L124)
+- `legacySlot.cards, ['entitySelf', 'probe']` — [check-chain-cards.cjs:129](../tools/check-chain-cards.cjs#L129)
+- consecutive actions no longer imply hits — [check-chain-cards.cjs:130](../tools/check-chain-cards.cjs#L130)
 
 ## common-action-modes
 
@@ -205,7 +221,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - player artifact cards exist — [check-controls.cjs:27](../tools/check-controls.cjs#L27)
 - no filter or event cards remain — [check-controls.cjs:28](../tools/check-controls.cjs#L28)
 - a ready slot runs on all targets — [check-controls.cjs:30](../tools/check-controls.cjs#L30)
-- the second action runs as the continuation of each completed target — [check-controls.cjs:32](../tools/check-controls.cjs#L32)
+- a subsequent action installs a slot instead of executing on an invented event — [check-controls.cjs:32](../tools/check-controls.cjs#L32)
 - several artifacts share one slot — [check-controls.cjs:34](../tools/check-controls.cjs#L34)
 - a cooling slot blocks execution — [check-controls.cjs:37](../tools/check-controls.cjs#L37)
 - input move moves the target card selection — [check-controls.cjs:43](../tools/check-controls.cjs#L43)
@@ -516,12 +532,11 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - a trigger still respects the cooldown — [check-event-slots.cjs:51](../tools/check-event-slots.cjs#L51)
 - gate not met — [check-event-slots.cjs:54](../tools/check-event-slots.cjs#L54)
 - gate met — [check-event-slots.cjs:55](../tools/check-event-slots.cjs#L55)
-- continuation waits for hit — [check-event-slots.cjs:68](../tools/check-event-slots.cjs#L68)
+- a newly installed slot starts on its own update — [check-event-slots.cjs:68](../tools/check-event-slots.cjs#L68)
 - `shot.slots.some(s => s.cards.includes('chain'))` — [check-event-slots.cjs:70](../tools/check-event-slots.cjs#L70)
 - editing leaves existing projectile snapshot intact — [check-event-slots.cjs:72](../tools/check-event-slots.cjs#L72)
-- each of two pierced targets triggers lightning (linked slots have no cooldown) — [check-event-slots.cjs:74](../tools/check-event-slots.cjs#L74)
-- each lightning hit triggers next action exactly once — [check-event-slots.cjs:75](../tools/check-event-slots.cjs#L75)
-- same projectile target is deduplicated — [check-event-slots.cjs:76](../tools/check-event-slots.cjs#L76)
+- a projectile continuation runs before any collision — [check-event-slots.cjs:74](../tools/check-event-slots.cjs#L74)
+- a continuation respects its own cooldown — [check-event-slots.cjs:76](../tools/check-event-slots.cjs#L76)
 - `native.cards.every(id => ['artifact', 'target', 'action'].includes(CARDS[id].type))` — [check-event-slots.cjs:84](../tools/check-event-slots.cjs#L84)
 - turret period is the bolt card cooldown — [check-event-slots.cjs:86](../tools/check-event-slots.cjs#L86)
 - `enemy.slot.has('entityMove')` — [check-event-slots.cjs:88](../tools/check-event-slots.cjs#L88)
@@ -530,9 +545,9 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - `knight.slots[0].cd, 0.42` — [check-event-slots.cjs:92](../tools/check-event-slots.cjs#L92)
 - `explosions, beforeMine+1` — [check-event-slots.cjs:95](../tools/check-event-slots.cjs#L95)
 - `mine.dead, true` — [check-event-slots.cjs:95](../tools/check-event-slots.cjs#L95)
-- summon native hit triggers exactly one continuation — [check-event-slots.cjs:106](../tools/check-event-slots.cjs#L106)
-- burn waits for its damage tick — [check-event-slots.cjs:110](../tools/check-event-slots.cjs#L110)
-- each burned target emits its own actual damage event — [check-event-slots.cjs:112](../tools/check-event-slots.cjs#L112)
+- a summon continuation runs on its own clock — [check-event-slots.cjs:106](../tools/check-event-slots.cjs#L106)
+- an instant-action continuation starts on its next update — [check-event-slots.cjs:110](../tools/check-event-slots.cjs#L110)
+- an instant-action continuation runs on the affected entity without a damage event — [check-event-slots.cjs:112](../tools/check-event-slots.cjs#L112)
 - collection event is exactly once — [check-event-slots.cjs:117](../tools/check-event-slots.cjs#L117)
 - `casts, 1` — [check-event-slots.cjs:120](../tools/check-event-slots.cjs#L120)
 - `casts, 1` — [check-event-slots.cjs:121](../tools/check-event-slots.cjs#L121)
@@ -542,7 +557,7 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - enemy hit event subject is the struck player — [check-event-slots.cjs:134](../tools/check-event-slots.cjs#L134)
 - a projectile fired by an entity that listens for hits forwards its hits — [check-event-slots.cjs:137](../tools/check-event-slots.cjs#L137)
 - entity projectile hit reaches the entity on_hit slot — [check-event-slots.cjs:139](../tools/check-event-slots.cjs#L139)
-- `UI.html.includes('data-section="artifact"')` — [check-event-slots.cjs:144](../tools/check-event-slots.cjs#L144)
+- `UI.html.includes('data-type="artifact"')` — [check-event-slots.cjs:144](../tools/check-event-slots.cjs#L144)
 - `UI.html.includes('쿨타임')` — [check-event-slots.cjs:145](../tools/check-event-slots.cjs#L145)
 - boots show the frame cooldown — [check-event-slots.cjs:146](../tools/check-event-slots.cjs#L146)
 - no cost is shown — [check-event-slots.cjs:147](../tools/check-event-slots.cjs#L147)
@@ -756,6 +771,33 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - projectile shells were reused (' + shotReuse + ') — [check-pool.cjs:36](../tools/check-pool.cjs#L36)
 - enemy shells were reused (' + enemyReuse + ') — [check-pool.cjs:37](../tools/check-pool.cjs#L37)
 
+## sim-math
+
+- `mode({ env: {} }, undefined), true` — [check-sim-math.cjs:9](../tools/check-sim-math.cjs#L9)
+- `mode({ env: { SIM_MATH: 'fast' } }, undefined), true` — [check-sim-math.cjs:10](../tools/check-sim-math.cjs#L10)
+- `mode({ env: { SIM_MATH: 'exact' } }, undefined), false` — [check-sim-math.cjs:11](../tools/check-sim-math.cjs#L11)
+- `mode(undefined, undefined), true` — [check-sim-math.cjs:12](../tools/check-sim-math.cjs#L12)
+- `mode(undefined, { search: '' }), true` — [check-sim-math.cjs:13](../tools/check-sim-math.cjs#L13)
+- `mode(undefined, { search: '?math=fast' }), true` — [check-sim-math.cjs:14](../tools/check-sim-math.cjs#L14)
+- `mode(undefined, { search: '?math=exact' }), false` — [check-sim-math.cjs:15](../tools/check-sim-math.cjs#L15)
+- JS/WASM approximate angle — [check-sim-math.cjs:28](../tools/check-sim-math.cjs#L28)
+- JS/WASM movement length — [check-sim-math.cjs:29](../tools/check-sim-math.cjs#L29)
+- JS/WASM random angle — [check-sim-math.cjs:40](../tools/check-sim-math.cjs#L40)
+- JS/WASM random length — [check-sim-math.cjs:41](../tools/check-sim-math.cjs#L41)
+- `maxAngle < 1.2e-5` — [check-sim-math.cjs:43](../tools/check-sim-math.cjs#L43)
+- `maxLength < 5e-16` — [check-sim-math.cjs:44](../tools/check-sim-math.cjs#L44)
+- `same(h, expected)` — [check-sim-math.cjs:48](../tools/check-sim-math.cjs#L48)
+- `Math.abs(h / expected - 1) < 5e-16` — [check-sim-math.cjs:49](../tools/check-sim-math.cjs#L49)
+- JS/WASM special length — [check-sim-math.cjs:50](../tools/check-sim-math.cjs#L50)
+- JS/WASM special angle — [check-sim-math.cjs:51](../tools/check-sim-math.cjs#L51)
+- `Number.isNaN(b) ? Number.isNaN(a) : angleError(a, b) < 1e-10` — [check-sim-math.cjs:56](../tools/check-sim-math.cjs#L56)
+- `Number.isFinite(delta)` — [check-sim-math.cjs:71](../tools/check-sim-math.cjs#L71)
+- `maxPosition < 0.01` — [check-sim-math.cjs:74](../tools/check-sim-math.cjs#L74)
+- homing speed — [check-sim-math.cjs:88](../tools/check-sim-math.cjs#L88)
+- `maxHomingPosition < 10` — [check-sim-math.cjs:92](../tools/check-sim-math.cjs#L92)
+- `same(ex.m_motion_atan2(y, x), Math.atan2(y, x))` — [check-sim-math.cjs:96](../tools/check-sim-math.cjs#L96)
+- `same(ex.m_motion_hypot(x, y), Math.hypot(x, y))` — [check-sim-math.cjs:97](../tools/check-sim-math.cjs#L97)
+
 ## slot-sections
 
 - `sortSlotCards(['bolt', 'self', 'artifactThorns', 'heal', 'nearestEnemy']), ['artifactThorns', 'self', 'nearestEnemy', 'bolt', 'heal']` — [check-slot-sections.cjs:22](../tools/check-slot-sections.cjs#L22)
@@ -826,19 +868,31 @@ C 판의 규칙 시험은 이 항목들을 옮기고, 항목 옆 `파일:줄` �
 - boots set the slot to every frame — [check-slots.cjs:42](../tools/check-slots.cjs#L42)
 - `get('slotEveryFrame({ cards: ['artifactBoots', 'self', 'inputMove'] })'), true` — [check-slots.cjs:43](../tools/check-slots.cjs#L43)
 - never shorter than a frame — [check-slots.cjs:44](../tools/check-slots.cjs#L44)
-- boots rejected without a movement card — [check-slots.cjs:47](../tools/check-slots.cjs#L47)
-- rejected card stays put — [check-slots.cjs:48](../tools/check-slots.cjs#L48)
-- `get('deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0 })'), null` — [check-slots.cjs:49](../tools/check-slots.cjs#L49)
-- boots take the next (chain) cell — [check-slots.cjs:50](../tools/check-slots.cjs#L50)
-- `get('deck.move({ src: 'slot', slot: 0, idx: 1 }, { dest: 'inv' })'), null` — [check-slots.cjs:52](../tools/check-slots.cjs#L52)
-- `get('JSON.stringify(deck.slots[0].cards)'), JSON.stringify(['self'])` — [check-slots.cjs:53](../tools/check-slots.cjs#L53)
-- `get("deck.inventory.includes('artifactBoots') && deck.inventory.includes('inputMove')"), true` — [check-slots.cjs:54](../tools/check-slots.cjs#L54)
-- `get('deck.notice'), /1장/` — [check-slots.cjs:55](../tools/check-slots.cjs#L55)
-- `get('deck.slots.every(s => s.cast === null)'), true` — [check-slots.cjs:58](../tools/check-slots.cjs#L58)
+- an unfinished trailing artifact does not constrain the earlier action — [check-slots.cjs:47](../tools/check-slots.cjs#L47)
+- `get('JSON.stringify(deck.slots[1].cards)'), JSON.stringify(['nearestEnemy', 'bolt', 'artifactBoots'])` — [check-slots.cjs:48](../tools/check-slots.cjs#L48)
+- boots require the following action to move — [check-slots.cjs:49](../tools/check-slots.cjs#L49)
+- `get('deck.move({ src: 'inv', idx: 0 }, { dest: 'slot', slot: 0 })'), null` — [check-slots.cjs:50](../tools/check-slots.cjs#L50)
+- boots take the next (chain) cell — [check-slots.cjs:51](../tools/check-slots.cjs#L51)
+- `get('deck.move({ src: 'slot', slot: 0, idx: 1 }, { dest: 'inv' })'), null` — [check-slots.cjs:53](../tools/check-slots.cjs#L53)
+- `get('JSON.stringify(deck.slots[0].cards)'), JSON.stringify(['self'])` — [check-slots.cjs:54](../tools/check-slots.cjs#L54)
+- `get("deck.inventory.includes('artifactBoots') && deck.inventory.includes('inputMove')"), true` — [check-slots.cjs:55](../tools/check-slots.cjs#L55)
+- `get('deck.notice'), /1장/` — [check-slots.cjs:56](../tools/check-slots.cjs#L56)
+- `get('deck.slots.every(s => s.cast === null)'), true` — [check-slots.cjs:59](../tools/check-slots.cjs#L59)
 
 ## snap-pack
 
 - `!diff` — [check-snap-pack.cjs:45](../tools/check-snap-pack.cjs#L45)
+
+## snipe-distribution
+
+- equal damage share for ' + count + ' targets — [check-snipe-distribution.cjs:26](../tools/check-snipe-distribution.cjs#L26)
+- dead targets do not receive damage — [check-snipe-distribution.cjs:27](../tools/check-snipe-distribution.cjs#L27)
+- unselected enemies do not receive damage — [check-snipe-distribution.cjs:28](../tools/check-snipe-distribution.cjs#L28)
+- buffed damage is shared across other entity kinds — [check-snipe-distribution.cjs:37](../tools/check-snipe-distribution.cjs#L37)
+- entity strike keeps per-target damage — [check-snipe-distribution.cjs:45](../tools/check-snipe-distribution.cjs#L45)
+- all living gems are selected regardless of distance — [check-snipe-distribution.cjs:51](../tools/check-snipe-distribution.cjs#L51)
+- `gems.some(t => t.g === nearGem) && gems.some(t => t.g === farGem)` — [check-snipe-distribution.cjs:52](../tools/check-snipe-distribution.cjs#L52)
+- other pickups and dead gems are excluded — [check-snipe-distribution.cjs:53](../tools/check-snipe-distribution.cjs#L53)
 
 ## spread
 

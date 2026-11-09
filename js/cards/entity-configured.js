@@ -104,6 +104,8 @@ function buildEntityConfiguredCard(cardId, values, native) {
       : `경험치 ${reward?.value ?? '상태만큼'}을 생성한다.${reward?.magnetChance ? ` 자석 확률 ${entityNumber(reward.magnetChance * 100)}%.` : ''}`;
   }
   if (actionId === 'snipe') {
+    // 개체 전용 타격·지속 피해는 대상마다 적용하고, 저격 카드만 총피해를 나눈다.
+    card.run = (targets, env) => targets.forEach(t => env.directAction('snipe', t));
     card.name = '직접 타격';
     card.group = 'entity';
     card.entityOnly = true;

@@ -1,11 +1,16 @@
 name,type,value,file
 TAU,num,6.283185307179586,js/core/util.js
+SIM_FAST_MATH,bool,true,js/core/util.js
 HASH_SLOTS,num,8192,js/core/util.js
 MAX_SLOTS,num,6,js/data/card-defs.js
 STAGE_LEN,num,300,js/data/stages.js
 STAGE_TIERS,num,3,js/data/stages.js
 REWARD_CHOICES,num,5,js/data/upgrades.js
-BASE_COOLDOWN,num,0.016,js/cards/cooldown.js
+BASE_COOLDOWN,num,1,js/cards/cooldown.js
+LINK_SPAWN_FREE,num,8,c/sim/slots.c
+LINK_TARGET_FREE,num,16,c/sim/slots.c
+LINK_HOST_FREE,num,8,c/sim/slots.c
+RETRY_COOLDOWN,num,0.25,c/sim/slots.c
 SLEEP_AFTER,num,2,js/cards/cooldown.js
 SLEEP_FRAMES,num,6,js/cards/cooldown.js
 SLEEP_FRAMES_CROWD,num,60,js/cards/cooldown.js
@@ -38,6 +43,8 @@ MAX_PARTICLES,num,inf,js/sim/tuning.js
 CROWD_MAX_TEXTS,num,150,js/sim/tuning.js
 CROWD_MAX_FX,num,120,js/sim/tuning.js
 CROWD_MAX_PARTICLES,num,800,js/sim/tuning.js
+FX_DEDUPE_WINDOW,num,0.1,js/sim/tuning.js
+FX_DEDUPE_GRID,num,8,js/sim/tuning.js
 SHOT_SPAWN_BUDGET,num,4096,js/sim/tuning.js
 SHOT_QUEUE_MAX,num,20000,js/sim/tuning.js
 ENEMY_SPAWN_BUDGET,num,1024,js/sim/tuning.js

@@ -1,0 +1,323 @@
+{
+  "browser": "156.0.8078.80",
+  "host": {
+    "cpu": "11th Gen Intel(R) Core(TM) i5-1135G7 @ 2.40GHz",
+    "logicalCores": 8,
+    "baselineBusyPct": 21.99975281176616
+  },
+  "frames": 300,
+  "rounds": 5,
+  "jsReferenceUnchanged": true,
+  "scenes": [
+    {
+      "scene": "crowd3000",
+      "pairs": [
+        {
+          "round": 1,
+          "beforeMs": 12.085000001390775,
+          "afterMs": 6.686000000238419,
+          "jsMs": 19.055666667421658,
+          "beforeOverAfter": 1.80750822628774,
+          "jsOverAfter": 2.850084754224072,
+          "fixedSimBeforeOverAfter": 0.9755503604193876,
+          "beforeTicksPerFrame": 1.0466666666666666,
+          "afterTicksPerFrame": 1,
+          "afterP95": 9
+        },
+        {
+          "round": 2,
+          "beforeMs": 6.001000000933806,
+          "afterMs": 4.728999999761581,
+          "jsMs": 15.542333333790303,
+          "beforeOverAfter": 1.2689786426805572,
+          "jsOverAfter": 3.28660040908731,
+          "fixedSimBeforeOverAfter": 1.0723246288127355,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 6.600000023841858
+        },
+        {
+          "round": 3,
+          "beforeMs": 4.741999999980131,
+          "afterMs": 4.597333333194256,
+          "jsMs": 10.88366666684548,
+          "beforeOverAfter": 1.031467517428274,
+          "jsOverAfter": 2.3673868910617886,
+          "fixedSimBeforeOverAfter": 1.0867807572719348,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 6.800000011920929
+        },
+        {
+          "round": 4,
+          "beforeMs": 7.864000000357628,
+          "afterMs": 5.8476666661103565,
+          "jsMs": 12.375999999543032,
+          "beforeOverAfter": 1.3448098958739827,
+          "jsOverAfter": 2.1163997037086713,
+          "fixedSimBeforeOverAfter": 1.6539476845478334,
+          "beforeTicksPerFrame": 1.0166666666666666,
+          "afterTicksPerFrame": 1.0033333333333334,
+          "afterP95": 7.200000017881393
+        },
+        {
+          "round": 5,
+          "beforeMs": 5.438333333432674,
+          "afterMs": 5.501333333253861,
+          "jsMs": 13.016666666368643,
+          "beforeOverAfter": 0.988548230764282,
+          "jsOverAfter": 2.366093068327075,
+          "fixedSimBeforeOverAfter": 1.4166455856261406,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 8.900000005960464
+        }
+      ],
+      "beforeMs": {
+        "median": 6.001000000933806,
+        "min": 4.741999999980131,
+        "max": 12.085000001390775
+      },
+      "afterMs": {
+        "median": 5.501333333253861,
+        "min": 4.597333333194256,
+        "max": 6.686000000238419
+      },
+      "jsMs": {
+        "median": 13.016666666368643,
+        "min": 10.88366666684548,
+        "max": 19.055666667421658
+      },
+      "beforeOverAfter": {
+        "median": 1.2689786426805572,
+        "min": 0.988548230764282,
+        "max": 1.80750822628774
+      },
+      "jsOverAfter": {
+        "median": 2.3673868910617886,
+        "min": 2.1163997037086713,
+        "max": 3.28660040908731
+      },
+      "fixedSimBeforeOverAfter": {
+        "median": 1.0867807572719348,
+        "min": 0.9755503604193876,
+        "max": 1.6539476845478334
+      },
+      "cpuReductionPct": 21.19646727169291,
+      "fixedSimReductionPct": 7.985120889495145,
+      "maxAfterP95": 9,
+      "worldBytesBefore": 60022352,
+      "worldBytesAfter": 60096120,
+      "wasmBytesBefore": 80543744,
+      "wasmBytesAfter": 80543744
+    },
+    {
+      "scene": "shots",
+      "pairs": [
+        {
+          "round": 1,
+          "beforeMs": 6.073333333830039,
+          "afterMs": 4.4519999996821085,
+          "jsMs": 9.175999999145667,
+          "beforeOverAfter": 1.3641808926917567,
+          "jsOverAfter": 2.0610961365231066,
+          "fixedSimBeforeOverAfter": 1.6031227303981668,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 7.4000000059604645
+        },
+        {
+          "round": 2,
+          "beforeMs": 3.7786666667461395,
+          "afterMs": 2.5340000007549923,
+          "jsMs": 9.348000000417233,
+          "beforeOverAfter": 1.4911865294476343,
+          "jsOverAfter": 3.689029201906884,
+          "fixedSimBeforeOverAfter": 1.1908280255688224,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 4.299999982118607
+        },
+        {
+          "round": 3,
+          "beforeMs": 3.805999999245008,
+          "afterMs": 2.1489999997615814,
+          "jsMs": 6.835999999741714,
+          "beforeOverAfter": 1.7710563051034252,
+          "jsOverAfter": 3.1810144255468247,
+          "fixedSimBeforeOverAfter": 1.3591882125967842,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 3.4000000059604645
+        },
+        {
+          "round": 4,
+          "beforeMs": 6.520000000794728,
+          "afterMs": 2.981333334048589,
+          "jsMs": 6.926333335240682,
+          "beforeOverAfter": 2.1869409657526298,
+          "jsOverAfter": 2.323233452676311,
+          "fixedSimBeforeOverAfter": 2.0088377073445667,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 5.5999999940395355
+        },
+        {
+          "round": 5,
+          "beforeMs": 3.0719999996821086,
+          "afterMs": 2.9439999989668526,
+          "jsMs": 9.059333333075047,
+          "beforeOverAfter": 1.043478261127777,
+          "jsOverAfter": 3.0772192038907162,
+          "fixedSimBeforeOverAfter": 0.8580516175471937,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 6.0999999940395355
+        }
+      ],
+      "beforeMs": {
+        "median": 3.805999999245008,
+        "min": 3.0719999996821086,
+        "max": 6.520000000794728
+      },
+      "afterMs": {
+        "median": 2.9439999989668526,
+        "min": 2.1489999997615814,
+        "max": 4.4519999996821085
+      },
+      "jsMs": {
+        "median": 9.059333333075047,
+        "min": 6.835999999741714,
+        "max": 9.348000000417233
+      },
+      "beforeOverAfter": {
+        "median": 1.4911865294476343,
+        "min": 1.043478261127777,
+        "max": 2.1869409657526298
+      },
+      "jsOverAfter": {
+        "median": 3.0772192038907162,
+        "min": 2.0610961365231066,
+        "max": 3.689029201906884
+      },
+      "fixedSimBeforeOverAfter": {
+        "median": 1.3591882125967842,
+        "min": 0.8580516175471937,
+        "max": 2.0088377073445667
+      },
+      "cpuReductionPct": 32.939308379454026,
+      "fixedSimReductionPct": 26.42667213178229,
+      "maxAfterP95": 7.4000000059604645,
+      "worldBytesBefore": 60022352,
+      "worldBytesAfter": 60096120,
+      "wasmBytesBefore": 80543744,
+      "wasmBytesAfter": 80543744
+    }
+  ],
+  "gpu": [
+    {
+      "renderer": "ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "attributes": {
+        "alpha": true,
+        "antialias": false,
+        "depth": false,
+        "desynchronized": false,
+        "failIfMajorPerformanceCaveat": false,
+        "powerPreference": "high-performance",
+        "premultipliedAlpha": true,
+        "preserveDrawingBuffer": false,
+        "stencil": false,
+        "xrCompatible": false
+      }
+    }
+  ],
+  "dpr2": [
+    {
+      "scene": "crowd3000",
+      "pairs": [
+        {
+          "round": 1,
+          "beforeMs": 5.3083333336313565,
+          "afterMs": 3.96900000055631,
+          "jsMs": 9.525,
+          "beforeOverAfter": 1.3374485595584078,
+          "jsOverAfter": 2.3998488280838854,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 5.199999988079071
+        },
+        {
+          "round": 2,
+          "beforeMs": 3.65733333359162,
+          "afterMs": 4.628666667044163,
+          "jsMs": 10.298333333233993,
+          "beforeOverAfter": 0.7901483508483383,
+          "jsOverAfter": 2.2249027795752774,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1.02,
+          "afterP95": 6.299999982118607
+        },
+        {
+          "round": 3,
+          "beforeMs": 4.370333334505558,
+          "afterMs": 10.408333334724109,
+          "jsMs": 11.042666666607062,
+          "beforeOverAfter": 0.4198879103847803,
+          "jsOverAfter": 1.0609447556571523,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 2.5166666666666666,
+          "afterP95": 32.599999994039536
+        }
+      ],
+      "medianJsOverAfter": 2.2249027795752774,
+      "medianBeforeOverAfter": 0.7901483508483383
+    },
+    {
+      "scene": "shots",
+      "pairs": [
+        {
+          "round": 1,
+          "beforeMs": 3.2650000006953874,
+          "afterMs": 2.2573333326975504,
+          "jsMs": 8.036333333849907,
+          "beforeOverAfter": 1.4463969292446759,
+          "jsOverAfter": 3.5601004146987703,
+          "beforeTicksPerFrame": 1.0033333333333334,
+          "afterTicksPerFrame": 1,
+          "afterP95": 3.5
+        },
+        {
+          "round": 2,
+          "beforeMs": 3.3573333329955735,
+          "afterMs": 2.6836666663487754,
+          "jsMs": 7.70199999888738,
+          "beforeOverAfter": 1.251024717448738,
+          "jsOverAfter": 2.869954042901396,
+          "beforeTicksPerFrame": 1,
+          "afterTicksPerFrame": 1,
+          "afterP95": 4.300000011920929
+        },
+        {
+          "round": 3,
+          "beforeMs": 5.214000000953674,
+          "afterMs": 2.7819999989867212,
+          "jsMs": 5.806666666567326,
+          "beforeOverAfter": 1.8741912303568484,
+          "jsOverAfter": 2.0872274150547336,
+          "beforeTicksPerFrame": 1.59,
+          "afterTicksPerFrame": 1.34,
+          "afterP95": 6.0999999940395355
+        }
+      ],
+      "medianJsOverAfter": 2.869954042901396,
+      "medianBeforeOverAfter": 1.4463969292446759
+    }
+  ],
+  "shippingHashes": {
+    "amagos.wasm": "e23fa2dd4cfdb11b2df637dec0f1fba469364d01eec6a35efcdefcf81562d430",
+    "amagos.js": "7f9798117eae0e0aff5374ded231ba6281f69d00171b37f48725d57d27de1658",
+    "amagos.data": "184bb66ee148fa7072dd6af31ca07bce7c7d8837fddcb89c68f376f0ec0898e2"
+  },
+  "selectedSourcesMatchBuild": true
+}

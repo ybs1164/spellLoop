@@ -102,6 +102,13 @@ static void draw_floor(const RenderView *v) {
 }
 
 static SDL_FColor with_alpha(SDL_FColor c, float a) { c.a *= a; return c; }
+/** 개체 머리·발밑 체력 바: 스프라이트처럼 1px 반올림 위치에 붙인다 (3px 격자에 맞추면 이동 중 스프라이트와 어긋나 흔들림) */
+static void hp_bar(float x, float y, float bw, float h, float ratio, SDL_FColor back, SDL_FColor fill) {
+  float bx = gfx_roundf(x) - SDL_floorf(bw / 2), by = gfx_roundf(y);
+  gfx_rect(bx, by, bw, h, back);
+  float fw = px_snap(bw * SDL_clamp(ratio, 0, 1));
+  if (fw > 0) gfx_rect(bx, by, fw, h, fill);
+}
 
 /* ---------- 개체 ---------- */
 static bool in_view(const RenderView *v, float x, float y, float r) {
@@ -115,19 +122,23 @@ static int ICON(const char *name) { return icon_index(name); }
 
 /** 보석·아이템 (js/entities/pickup.js draw) */
 static void draw_pickup(const World *w, int i) {
-  float t = w->phase[i] + (float)w->time * 4, x = w->x[i], y = w->y[i] + SDL_roundf(SDL_sinf(t) * 2);
+  float t = w->phase[i] + (float)w->time * 4, x = w->x[i], y = w->y[i] + gfx_roundf(SDL_sinf(t) * 2);
   const float G = PX_G;
   switch (w->sub[i]) {
     case PICK_GEM: {
       float val = w->value[i];
-      int n = val <= 6 ? 2 : 3;
-      float gx = SDL_roundf(x / G) * G, gy = SDL_roundf(y / G) * G;
-      SDL_FColor c = C(val <= 1 ? "#ffe45c" : val <= 6 ? "#ffd11a" : "#ffb300");
+      int n = val <= 6 ? 1 : 2;
+      float gx = gfx_roundf(x / G) * G, gy = gfx_roundf(y / G) * G;
+      SDL_FColor c = C(val <= 1 ? "#a89a5a" : val <= 6 ? "#b8a046" : "#c99a3a");
+      c.a = 0.6f;
       for (int j = -n; j <= n; j++) { int k = n - SDL_abs(j); gfx_rect(gx - k * G, gy + j * G, (k * 2 + 1) * G, G, c); }
-      gfx_rect(gx - G, gy - (n - 1) * G, G, G * (n - 1), fcolor(1, 1, 1, 0.6f));
       break;
     }
-    case PICK_HEART: icon_at(ICON("heart"), x, y, 2, 1); break;
+    case PICK_HEART:
+      px_disc(x, y, 9, C("#5be37a"));
+      gfx_rect(px_snap(x - 6), px_snap(y - 2), 12, 4, C("#ffffff"));
+      gfx_rect(px_snap(x - 2), px_snap(y - 6), 4, 12, C("#ffffff"));
+      break;
     case PICK_MAGNET: {
       float mx = px_snap(x), my = px_snap(y);
       SDL_FColor r = C("#ff5a6e"), s = C("#cfd6e6");
@@ -147,18 +158,20 @@ static void draw_enemy(const World *w, int i) {
   const EnemyLook *L = &LOOKS[w->etype[i] >= 0 ? w->etype[i] : 0];
   float x = w->x[i], y = w->y[i], r = w->r[i], time = (float)w->time;
   float wobble = w->phase[i];
-  float bob = w->freeze_t[i] > 0 ? 0 : SDL_roundf(SDL_sinf(wobble) * 1.5f);
+  float bob = w->freeze_t[i] > 0 ? 0 : gfx_roundf(SDL_sinf(wobble) * 1.5f);
   bool flip = w->fx[i] < 0;
   float sy = y - r * 0.15f + bob;
   const float G = PX_G;
-  px_shadow(x, y + r * 0.95f, r * 0.9f);
+  bool combined=w->root_t[i]<=0 && !L->fire &&
+      gfx_sprite_with_shadow(w->sprite[i],x,sy,L->scale,flip,y+r*0.95f,r*0.9f,L->alpha);
+  if(!combined)px_shadow(x, y + r * 0.95f, r * 0.9f);
   if (w->root_t[i] > 0) {   // 속박: 발밑의 덩굴 도트
     px_ellipse_dither(x, y + r * 0.95f, r * 1.1f, SDL_max(G * 2, r * 0.4f), ca("#b5e48c", 0.8f));
     for (int k = -1; k <= 1; k++) gfx_rect(px_snap(x + k * 0.7f * r), px_snap(y + r * 0.95f - G * 3), G, G * 3, C("#b5e48c"));
   }
   if (L->fire) px_disc(x, sy, r + 6, ca("#ff6e28", 0.14f + SDL_sinf(time * 9 + wobble) * 0.06f));
   if (w->sprite[i] >= 0) {
-    gfx_sprite(SHEET_TD, w->sprite[i], x, sy, L->scale, flip, fcolor(1, 1, 1, L->alpha), false);
+    if(!combined)gfx_sprite(SHEET_TD, w->sprite[i], x, sy, L->scale, flip, fcolor(1, 1, 1, L->alpha), false);
     if (L->has_overlay) { SDL_FColor o = L->overlay; o.a = L->overlay_alpha; gfx_sprite(SHEET_TD, w->sprite[i], x, sy, L->scale, flip, o, true); }
     const char *tint = NULL;
     float ta = 0.5f;
@@ -186,9 +199,7 @@ static void draw_enemy(const World *w, int i) {
   }
   float max_hp = w->stat[i][STAT_MAX_HP];
   if (L->boss || ((L->elite || r >= 20) && w->hp[i] < max_hp)) {
-    float bw = px_snap(r * 2), ratio = SDL_max(0, w->hp[i] / max_hp), bx = px_snap(x - bw / 2), by = px_snap(y - r - 18);
-    gfx_rect(bx, by, bw, G * 2, fcolor(0, 0, 0, 0.6f));
-    gfx_rect(bx, by, px_snap(bw * ratio), G * 2, C(L->boss ? "#ffd166" : "#ff6b8b"));
+    hp_bar(x, y - gfx_roundf(r) - 18, px_snap(r * 2), G * 2, w->hp[i] / max_hp, fcolor(0, 0, 0, 0.6f), C(L->boss ? "#ffd166" : "#ff6b8b"));
   }
 }
 
@@ -200,7 +211,7 @@ static void draw_ally(const World *w, int i) {
   const char *carry = w->burn_t[i] > 0 ? "#ff7b2e" : w->freeze_t[i] > 0 ? "#8fd3ff" : w->root_t[i] > 0 ? "#b5e48c" : w->fear_t[i] > 0 ? "#ffd166" : NULL;
   if (carry && (int)SDL_floorf(t) % 2 == 0) px_disc(x, y - r - 14, 4, C(carry));   // 머금은 상태 이상
   float fade = isfinite(w->life[i]) && w->life[i] < 1.5f && (int)SDL_floorf(w->life[i] * 10) % 2 == 0 ? 0.5f : 1;
-  float bob = SDL_roundf(SDL_sinf(t) * 1);
+  float bob = gfx_roundf(SDL_sinf(t) * 1);
   gfx_sprite(SHEET_TD, w->sprite[i], x, y - 4 + bob, 3, w->fx[i] < 0, fcolor(1, 1, 1, fade * (w->sub[i] == ALLY_KIND_CLONE ? 0.55f : 1)), false);
   if (w->swing[i] > 0) { float dir = w->fx[i] < 0 ? 3.14159265f : 0; px_arc(x, y, r + 12, dir - 0.9f, dir + 0.9f, PX_G, fcolor(1, 1, 1, 0.8f)); }
 }
@@ -226,9 +237,8 @@ static void draw_object(const World *w, int i) {
     case OBJ_DECOY: px_shadow(x, y + 16, 14); icon_at(ICON("decoy"), x, y - 4, 3, fade); break;
     case OBJ_BARREL: px_shadow(x, y + 16, 13); gfx_sprite(SHEET_TD, td_index("barrel"), x, y - 4, 3, false, fcolor(1, 1, 1, 1), false); fade = 1; break;
   }
-  float bw = 30, by = y - w->r[i] - 18, ratio = w->hp[i] / w->stat[i][STAT_MAX_HP];
-  gfx_rect(px_snap(x - bw / 2), px_snap(by), bw, 4, ca("#191c29", fade));
-  gfx_rect(px_snap(x - bw / 2), px_snap(by), bw * SDL_max(0, ratio), 4, ca(ratio > 0.3f ? "#7dff9a" : "#ff6464", fade));
+  float ratio = w->hp[i] / w->stat[i][STAT_MAX_HP];
+  hp_bar(x, y - gfx_roundf(w->r[i]) - 18, 30, 4, ratio, ca("#191c29", fade), ca(ratio > 0.3f ? "#7dff9a" : "#ff6464", fade));
 }
 
 /** 장판 (js/render/render.js drawZones) */
@@ -290,14 +300,14 @@ static void draw_zone(const World *w, int i) {
 
 /** 투사체 (js/entities/projectile.js draw) · 적 탄 (render.js drawHazards) */
 static void draw_shot(const World *w, int i) {
-  float x = w->x[i], y = w->y[i], r = SDL_max(3, SDL_roundf(w->r[i]));
+  float x = w->x[i], y = w->y[i], r = SDL_max(3, gfx_roundf(w->r[i]));
   const float G = PX_G;
   SDL_FColor c = rgba8(w->color[i], 1);
   if (w->hazard[i]) {
     float s = w->r[i] + SDL_sinf((float)w->time * 20 + x) * 1.5f;
-    gfx_rect(SDL_roundf(x - s - 3), SDL_roundf(y - s - 3), (s + 3) * 2, (s + 3) * 2, rgba8(w->color[i], 0x55 / 255.0f));
-    gfx_rect(SDL_roundf(x - s), SDL_roundf(y - s), s * 2, s * 2, c);
-    gfx_rect(SDL_roundf(x - s / 2), SDL_roundf(y - s / 2), s, s, C("#fff3c4"));
+    gfx_rect(gfx_roundf(x - s - 3), gfx_roundf(y - s - 3), (s + 3) * 2, (s + 3) * 2, rgba8(w->color[i], 0x55 / 255.0f));
+    gfx_rect(gfx_roundf(x - s), gfx_roundf(y - s), s * 2, s * 2, c);
+    gfx_rect(gfx_roundf(x - s / 2), gfx_roundf(y - s / 2), s, s, C("#fff3c4"));
     return;
   }
   float sp = SDL_sqrtf(w->vx[i] * w->vx[i] + w->vy[i] * w->vy[i]);
@@ -338,7 +348,7 @@ static void draw_player(const World *w, int i) {
   if (w->pbuff[CB_HASTE] > 0)
     for (int k = 1; k <= 3; k++) gfx_rect(px_snap(x - w->fx[i] * (8 + k * 7) - 2), px_snap(y - w->fy[i] * (8 + k * 7) + 6 - k * 3), G, G, ca("#5be37a", 0.35f));
   bool blink = w->invuln[i] > 0 && (int)SDL_floorf(time * 24) % 2 == 0;
-  float bob = w->moving[i] ? SDL_roundf(SDL_sinf(time * 14) * 1.5f) : 0;
+  float bob = w->moving[i] ? gfx_roundf(SDL_sinf(time * 14) * 1.5f) : 0;
   gfx_sprite(SHEET_TD, TD_WIZARD, x, y - 4 + bob, 3, w->fx[i] < 0, fcolor(1, 1, 1, blink ? 0.45f : 1), false);
   if (w->pbuff[CB_ARMOR] > 0) gfx_sprite(SHEET_TD, TD_WIZARD, x, y - 4 + bob, 3, w->fx[i] < 0, ca("#c0c8d8", 0.35f), true);
   if (w->shield[i] > 0) {   // 보호막: 디더 방울 + 도는 반짝이
@@ -346,17 +356,15 @@ static void draw_player(const World *w, int i) {
     for (int k = 0; k < 4; k++) { float a = time * 2 + k * (6.2831853f / 4); gfx_rect(px_snap(x + SDL_cosf(a) * (r + 8)), px_snap(y - 2 + SDL_sinf(a) * (r + 8)), G, G, ca("#c8e1ff", 0.7f + SDL_sinf(time * 6) * 0.2f)); }
   }
   if (w->mark_t[i] > 0) { float mx = px_snap(x), my = px_snap(y - r - 14); gfx_rect(mx, my - G * 2, G, G * 5, C("#ff5c5c")); gfx_rect(mx - G, my - G, G * 3, G * 3, C("#ff5c5c")); }
-  float bw = 36, ratio = w->hp[i] / w->stat[i][STAT_MAX_HP];
-  float bx = px_snap(x - bw / 2), by = px_snap(y + r + 12);
-  gfx_rect(bx, by, bw, G * 2, fcolor(0, 0, 0, 0.6f));
-  gfx_rect(bx, by, px_snap(bw * ratio), G * 2, C(ratio > 0.3f ? "#5be37a" : "#ff5a5a"));
+  float ratio = w->hp[i] / w->stat[i][STAT_MAX_HP];
+  hp_bar(x, y + gfx_roundf(r) + 12, 36, G * 2, ratio, fcolor(0, 0, 0, 0.6f), C(ratio > 0.3f ? "#5be37a" : "#ff5a5a"));
 }
 
 /** 원형 도트 이펙트 (js/core/pixel.js PixelCircle) */
 static void draw_circle_fx(const Fx *f, float t) {
   float r = f->r * (0.35f + 0.65f * SDL_sqrtf(t)), a = SDL_max(0, 1 - t * t), G = r > 90 ? PX_G * 2 : PX_G;
   SDL_FColor c = rgba8(f->color, 1);
-  switch (f->style) {
+  if (!gfx_circle(f->x, f->y, r, f->style, f->fill >= 0 ? f->fill : 0.55f, with_alpha(c, a))) switch (f->style) {
     case CS_WAVE: px_band_dither(f->x, f->y, r * 0.55f, r, with_alpha(c, a), G); px_band(f->x, f->y, r * 0.7f, r * 0.88f, with_alpha(c, a * 0.45f), G); break;
     case CS_PULSE: px_band_dither(f->x, f->y, r * 0.6f, r, with_alpha(c, a * 0.7f), G); break;
     default: px_band_dither(f->x, f->y, 0, r, with_alpha(c, a), G); px_band(f->x, f->y, 0, r * 0.62f, with_alpha(c, a * (f->fill >= 0 ? f->fill : 0.55f)), G); break;
@@ -391,7 +399,7 @@ static void draw_fx(const RenderView *v, const World *w) {
       case FXK_ZAP: {
         float px = f->x, py = f->y;
         for (int k2 = 1; k2 <= 6; k2++) {
-          float kk = k2 / 6.0f, j = k2 == 6 ? 0 : (hash2((int)SDL_roundf(f->x) + k2, (int)SDL_roundf(f->y1)) - 0.5f) * 22;
+          float kk = k2 / 6.0f, j = k2 == 6 ? 0 : (hash2((int)gfx_roundf(f->x) + k2, (int)gfx_roundf(f->y1)) - 0.5f) * 22;
           float nx = f->x + (f->x1 - f->x) * kk + j, ny = f->y + (f->y1 - f->y) * kk - j;
           px_line(px, py, nx, ny, PX_G, ca("#fff27a", a));
           px = nx; py = ny;
@@ -405,17 +413,17 @@ static void draw_fx(const RenderView *v, const World *w) {
 
 static void draw_world(const RenderView *v, const World *w) {
   // 층 순서 (render.js): 장판 → 설치물 → 보석·아이템 → 적 → 아군 → 플레이어 → 투사체 → 적 탄 → 이펙트 → 파티클 → 글자
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ZONE && in_view(v, w->x[i], w->y[i], w->r[i] + 20)) draw_zone(w, i);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_OBJECT && in_view(v, w->x[i], w->y[i], 30)) draw_object(w, i);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && (w->kind[i] == TK_GEM || w->kind[i] == TK_PICKUP) && in_view(v, w->x[i], w->y[i], 24)) draw_pickup(w, i);
-  for (int i = 0; i < w->hi; i++)
-    if (ent_live(w, i) && w->kind[i] == TK_ENEMY && in_view(v, w->x[i], w->y[i], SDL_max(TILE * LOOKS[SDL_max(0, w->etype[i])].scale / 2 + w->r[i] * 0.15f + 2, w->r[i] + 24) + w->shake + 2))
+  for (int i = kind_next(w, TK_ZONE, 0, w->hi); i < w->hi; i = kind_next(w, TK_ZONE, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], w->r[i] + 20)) draw_zone(w, i);
+  for (int i = kind_next(w, TK_OBJECT, 0, w->hi); i < w->hi; i = kind_next(w, TK_OBJECT, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], 30)) draw_object(w, i);
+  for (int i = pickup_next(w, 0, w->hi); i < w->hi; i = pickup_next(w, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], 24)) draw_pickup(w, i);
+  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
+    if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], SDL_max(TILE * LOOKS[SDL_max(0, w->etype[i])].scale / 2 + w->r[i] * 0.15f + 2, w->r[i] + 24) + w->shake + 2))
       draw_enemy(w, i);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ALLY && in_view(v, w->x[i], w->y[i], w->r[i] + 40)) draw_ally(w, i);
+  for (int i = kind_next(w, TK_ALLY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ALLY, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], w->r[i] + 40)) draw_ally(w, i);
   int p = ent_index(w, w->player);
   if (p >= 0 && w->state != GS_GAMEOVER) draw_player(w, p);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_SHOT && !w->hazard[i] && in_view(v, w->x[i], w->y[i], 30)) draw_shot(w, i);
-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_SHOT && w->hazard[i] && in_view(v, w->x[i], w->y[i], 20)) draw_shot(w, i);
+  for (int i = kind_next(w, TK_SHOT, 0, w->hi); i < w->hi; i = kind_next(w, TK_SHOT, i + 1, w->hi)) if (ent_live(w, i) && !w->hazard[i] && in_view(v, w->x[i], w->y[i], 30)) draw_shot(w, i);
+  for (int i = kind_next(w, TK_SHOT, 0, w->hi); i < w->hi; i = kind_next(w, TK_SHOT, i + 1, w->hi)) if (ent_live(w, i) && w->hazard[i] && in_view(v, w->x[i], w->y[i], 20)) draw_shot(w, i);
   draw_fx(v, w);
   for (int k = 0; k < w->nparts; k++) {
     const FxParticle *pt = &w->parts[k];
@@ -427,7 +435,7 @@ static void draw_world(const RenderView *v, const World *w) {
   for (int k = 0; k < w->ntexts; k++) {
     const FxText *t = &w->texts[k];
     if (!in_view(v, t->x, t->y, 200 + w->shake)) continue;
-    float x = SDL_roundf(t->x), y = SDL_roundf(t->y), tw = gfx_text_width(FONT_BOLD, 13, t->text);
+    float x = gfx_roundf(t->x), y = gfx_roundf(t->y), tw = gfx_text_width(FONT_BOLD, 13, t->text);
     gfx_text_shadow(FONT_BOLD, 13, x - tw / 2, y, rgba8(t->color, SDL_min(1, t->life / 0.3f)), 2, t->text);
   }
 }
@@ -448,9 +456,28 @@ static void draw_screen_ui(const RenderView *v, const World *w) {
       gfx_rect(k, k + step, step, bh - step * 2, c); gfx_rect(v->w - k - step, k + step, step, bh - step * 2, c);
     }
   }
+  // 쓰러진 장면: 화면이 점점 어두워지고 가장자리가 붉게
+  bool dying = w->state == GS_GAMEOVER && w->run.death_t < DEATH_SHOW;
+  if (dying) {
+    float t = SDL_clamp(w->run.death_t / DEATH_SHOW, 0, 1);
+    gfx_rect(0, 0, v->w, v->h, fcolor(10 / 255.0f, 2 / 255.0f, 6 / 255.0f, 0.12f + 0.38f * t));
+    const float step = 12;
+    for (int i = 0; i < 5; i++) {
+      float k = i * step, bw = v->w - k * 2, bh = v->h - k * 2;
+      SDL_FColor c = fcolor(1, 0, 40 / 255.0f, (0.3f + 0.15f * t) * (1 - i / 5.0f) * 0.6f);
+      gfx_rect(k, k, bw, step, c); gfx_rect(k, v->h - k - step, bw, step, c);
+      gfx_rect(k, k + step, step, bh - step * 2, c); gfx_rect(v->w - k - step, k + step, step, bh - step * 2, c);
+    }
+    if (w->run.death_t >= 0.6f) {   // 건너뛰기 안내
+      const char *hint = v->touch ? "화면을 누르면 결과 보기" : "Enter · 클릭으로 결과 보기";
+      float a = SDL_min(1, (w->run.death_t - 0.6f) * 3) * (0.55f + 0.25f * SDL_sinf(w->run.death_t * 5));
+      float hw = gfx_text_width(FONT_REGULAR, 13, hint);
+      gfx_text_shadow(FONT_REGULAR, 13, gfx_roundf((v->w - hw) / 2), gfx_roundf(v->h * 0.24f) + 62, fcolor(1, 1, 1, a), 2, hint);
+    }
+  }
   // 화면 밖 보스 방향 표시
-  for (int i = 0; i < w->hi; i++) {
-    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY || w->etype[i] < 0 || !data_num(data_table("enemy_types"), w->etype[i], "boss", 0)) continue;
+  for (int i = 0; i < w->hi && !dying; i++) {
+    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY || w->etype[i] < 0 || !LOOKS[w->etype[i]].boss) continue;
     float sx = w->x[i] - v->cam_x + v->w / 2, sy = w->y[i] - v->cam_y + v->h / 2;
     if (sx >= 0 && sx <= v->w && sy >= 0 && sy <= v->h) continue;
     const float m = 36;
@@ -459,7 +486,7 @@ static void draw_screen_ui(const RenderView *v, const World *w) {
     float pts[6] = { ax + 15 * c, ay + 15 * s, ax - 9 * c + 11 * s, ay - 9 * s - 11 * c, ax - 9 * c - 11 * s, ay - 9 * s + 11 * c };
     px_poly(pts, 3, css_color("#ff3b6b"));
   }
-  if (w->banner) {
+  if (w->banner && !(w->state == GS_GAMEOVER && !dying)) {
     char text[160], sub[320];
     SDL_FColor color;
     sub[0] = 0;
@@ -467,7 +494,7 @@ static void draw_screen_ui(const RenderView *v, const World *w) {
     SDL_snprintf(sub, sizeof sub, "%s", w->banner_sub);
     color = rgba8(w->banner_color, 1);
     float t = w->banner_life / w->banner_max, a = SDL_min(1, SDL_min(t * 3, (1 - t) * 8));
-    float bx = SDL_roundf(v->w / 2), by = SDL_roundf(v->h * 0.24f);
+    float bx = gfx_roundf(v->w / 2), by = gfx_roundf(v->h * 0.24f);
     color.a = a;
     float tw = gfx_text_width(FONT_BOLD, 30, text);
     gfx_text(FONT_BOLD, 30, bx - tw / 2 + 3, by + 3, fcolor(0, 0, 0, a), text);
@@ -526,16 +553,17 @@ static void draw_topinfo(const RenderView *v, const World *w) {
   fmt_time(time, sizeof time, w->time);
   SDL_snprintf(kills, sizeof kills, "%d", w->kills);
   gfx_tabular_nums(true);   // #topinfo: tabular-nums
-  float w_stage = gfx_text_width(FONT_BOLD, 15, stage), w_time = 20 + 6 + gfx_text_width(FONT_BOLD, 22, time), w_kills = 16 + 6 + gfx_text_width(FONT_BOLD, 15, kills);
-  float total = w_stage + w_time + w_kills + 22 * 2, x = SDL_roundf((v->w - total) / 2);
+  float stage_fs = v->w <= 480 ? 12 : 15, gap = v->w <= 480 ? 12 : 22;
+  float w_stage = gfx_text_width(FONT_BOLD, stage_fs, stage), w_time = 20 + 6 + gfx_text_width(FONT_BOLD, 22, time), w_kills = 16 + 6 + gfx_text_width(FONT_BOLD, 15, kills);
+  float total = w_stage + w_time + w_kills + gap * 2, x = gfx_roundf((v->w - total) / 2);
   float lh = SDL_max(gfx_line_normal(FONT_BOLD, 22), 20), top = 18 + 8, mid = top + lh / 2;
-  gfx_text_shadow(FONT_BOLD, 15, x, gfx_baseline(FONT_BOLD, 15, mid - gfx_line_normal(FONT_BOLD, 15) / 2, gfx_line_normal(FONT_BOLD, 15)),
+  gfx_text_shadow(FONT_BOLD, stage_fs, x, gfx_baseline(FONT_BOLD, stage_fs, mid - gfx_line_normal(FONT_BOLD, stage_fs) / 2, gfx_line_normal(FONT_BOLD, stage_fs)),
                   css_color(data_str(st, w->stage, "color", "#ffffff")), 2, stage);
-  x += w_stage + 22;
-  icon_shadow(icon_index("uiTime"), x, SDL_roundf(mid - 10), 20);
+  x += w_stage + gap;
+  icon_shadow(icon_index("uiTime"), x, gfx_roundf(mid - 10), 20);
   gfx_text_shadow(FONT_BOLD, 22, x + 26, gfx_baseline(FONT_BOLD, 22, mid - lh / 2, lh), css_color(C_TEXT), 3, time);
-  x += w_time + 22;
-  icon_shadow(icon_index("uiKill"), x, SDL_roundf(mid - 8), 16);
+  x += w_time + gap;
+  icon_shadow(icon_index("uiKill"), x, gfx_roundf(mid - 8), 16);
   gfx_text_shadow(FONT_BOLD, 15, x + 22, gfx_baseline(FONT_BOLD, 15, mid - gfx_line_normal(FONT_BOLD, 15) / 2, gfx_line_normal(FONT_BOLD, 15)), css_color(C_MUTED), 2, kills);
   gfx_tabular_nums(false);
 }
@@ -583,9 +611,23 @@ static void draw_deck(const RenderView *v, const World *w) {
 
   float total = hint_w + 10 * n;
   for (int k = 0; k < n; k++) total += boxes[k].w;
-  float x = SDL_roundf((v->w - total) / 2), bottom = v->h - 14, row_h = hint_h;
-  for (int k = 0; k < n; k++) row_h = SDL_max(row_h, boxes[k].h);
-  float mid = bottom - row_h / 2;
+  float available = SDL_min(total, v->w - 32), row_w[17] = {0}, row_h[17] = {0}, offset[17], xpos[17], mids[17];
+  int row[17], nr = 0;
+  for (int k = 0; k <= n; k++) {
+    float bw = k == n ? hint_w : boxes[k].w, bh = k == n ? hint_h : boxes[k].h;
+    if (row_w[nr] > 0 && row_w[nr] + 10 + bw > available) nr++;
+    offset[k] = row_w[nr] ? row_w[nr] + 10 : 0;
+    row[k] = nr; row_w[nr] = offset[k] + bw; row_h[nr] = SDL_max(row_h[nr], bh);
+  }
+  float all_h = nr * 10;
+  for (int k = 0; k <= nr; k++) all_h += row_h[k];
+  float row_top[17]; row_top[0] = v->h - 14 - all_h;
+  for (int k = 1; k <= nr; k++) row_top[k] = row_top[k-1] + row_h[k-1] + 10;
+  for (int k = 0; k <= n; k++) {
+    xpos[k] = gfx_roundf((v->w - row_w[row[k]]) / 2 + offset[k]);
+    mids[k] = row_top[row[k]] + row_h[row[k]] / 2;
+  }
+  float x = 0, mid = 0;
 
   SDL_FColor bg = fcolor(15 / 255.0f, 19 / 255.0f, 29 / 255.0f, 0.9f), line = css_color(C_LINE), ink = css_color(C_INK);
   static const char *const TYPE_COLORS[CARD_TYPE__COUNT] = { "#ffd166", "#ff7a8a", "#8fb8ff" };
@@ -594,7 +636,8 @@ static void draw_deck(const RenderView *v, const World *w) {
     const Slot *s = &w->slots[si];
     if (s->linked) continue;
     SlotBox *b = &boxes[k];
-    float op = b->runnable ? 1 : 0.45f, top = SDL_roundf(mid - b->h / 2);
+    x = xpos[k]; mid = mids[k];
+    float op = b->runnable ? 1 : 0.45f, top = gfx_roundf(mid - b->h / 2);
     gfx_rect(x + 3, top + 3, b->w, b->h, fcolor(0, 0, 0, 0.5f * op));
     box(x, top, b->w, b->h, 2, with_alpha(bg, op), with_alpha(line, op));
     float cx = x + 2 + 6, cy = top + b->h / 2;
@@ -603,7 +646,7 @@ static void draw_deck(const RenderView *v, const World *w) {
       float dim = b->cooling ? 0.6f : 1;
       SDL_FColor fill = mix(tc, base, 0.14f), border = with_alpha(tc, 0.7f);
       fill.r *= dim; fill.g *= dim; fill.b *= dim; border.r *= dim; border.g *= dim; border.b *= dim;
-      float my = SDL_roundf(cy - 12);
+      float my = gfx_roundf(cy - 12);
       gfx_rect(cx, my, 24, 24, with_alpha(fill, op));
       gfx_rect(cx, my, 24, 2, with_alpha(border, op)); gfx_rect(cx, my + 22, 24, 2, with_alpha(border, op));
       gfx_rect(cx, my + 2, 2, 20, with_alpha(border, op)); gfx_rect(cx + 22, my + 2, 2, 20, with_alpha(border, op));
@@ -611,7 +654,7 @@ static void draw_deck(const RenderView *v, const World *w) {
       cx += 27;
     }
     cx += 3;
-    gfx_icon(icon_index("uiTime"), cx, SDL_roundf(cy - 6), 12, fcolor(1, 1, 1, op));
+    gfx_icon(icon_index("uiTime"), cx, gfx_roundf(cy - 6), 12, fcolor(1, 1, 1, op));
     gfx_tabular_nums(true);
     gfx_text(FONT_BOLD, dcd_size, cx + 14, gfx_baseline(FONT_BOLD, dcd_size, cy - dcd_line / 2, dcd_line), with_alpha(css_color(b->cooling ? "#8be9ff" : C_TEXT), op), b->cd);
     gfx_tabular_nums(false);
@@ -628,10 +671,11 @@ static void draw_deck(const RenderView *v, const World *w) {
     k++;
   }
   // 편집 안내
-  float top = SDL_roundf(mid - hint_h / 2);
+  x = xpos[n]; mid = mids[n];
+  float top = gfx_roundf(mid - hint_h / 2);
   gfx_rect(x + 3, top + 3, hint_w, hint_h, fcolor(0, 0, 0, 0.5f));
   box(x, top, hint_w, hint_h, 2, bg, line);
-  float hx = x + 2 + 10, hy = SDL_roundf(mid - kbd_h / 2) - 1;
+  float hx = x + 2 + 10, hy = gfx_roundf(mid - kbd_h / 2) - 1;
   gfx_rect(hx, hy, kbd_w, kbd_h, line);
   gfx_rect(hx + 2, hy + 2, kbd_w - 4, kbd_h - 6, css_color("#0f131d"));
   float ew = gfx_text_width(FONT_BOLD, 12, "E");
@@ -640,7 +684,7 @@ static void draw_deck(const RenderView *v, const World *w) {
   gfx_text(FONT_REGULAR, 12, hx, gfx_baseline(FONT_REGULAR, 12, mid - 9, 18), css_color(C_MUTED), " 편집");
   hx += gfx_text_width(FONT_REGULAR, 12, " 편집") + 12;
   if (w->ninv) {
-    gfx_icon(icon_index("chest"), hx, SDL_roundf(mid - 8), 16, fcolor(1, 1, 1, 1));
+    gfx_icon(icon_index("chest"), hx, gfx_roundf(mid - 8), 16, fcolor(1, 1, 1, 1));
     gfx_text(FONT_BOLD, 12, hx + 20, gfx_baseline(FONT_BOLD, 12, mid - 9, 18), css_color(C_GOLD), inv);
   }
 }
@@ -657,7 +701,7 @@ static void draw_buffs(const RenderView *v, const World *w) {
   if (!n) return;
   float widths[6], total = 0;
   for (int k = 0; k < n; k++) { widths[k] = 2 + 4 + 16 + 4 + gfx_text_width(FONT_BOLD, 11, labels[k]) + 6 + 2; total += widths[k] + (k ? 6 : 0); }
-  float x = SDL_roundf((v->w - total) / 2), h = 3 + 16 + 3 + 4, top = v->h - 62 - h;
+  float x = gfx_roundf((v->w - total) / 2), h = 3 + 16 + 3 + 4, top = v->h - 62 - h;
   for (int k = 0; k < n; k++) {
     gfx_rect(x + 2, top + 2, widths[k], h, fcolor(0, 0, 0, 0.5f));
     box(x, top, widths[k], h, 2, fcolor(15 / 255.0f, 19 / 255.0f, 29 / 255.0f, 0.9f), css_color(C_LINE));
@@ -684,17 +728,37 @@ static void draw_controls(const RenderView *v, const World *w) {
   (void)w;
 }
 
+static bool title_screen(const UiState *ui) {
+  return ui && (ui->screen == SCREEN_TITLE || (ui->screen == SCREEN_CODEX && ui->view_back == SCREEN_TITLE));
+}
+
+static void draw_perf(const RenderView *v, const World *w) {
+  int counts[TK__COUNT] = { 0 }, total = 0;
+  for (int i = 0; i < w->hi; i++) if (ent_live(w, i)) { counts[w->kind[i]]++; total++; }
+  char lines[5][128];
+  SDL_snprintf(lines[0], sizeof lines[0], "FPS %.0f  frame %.2f ms", (double)v->fps, v->fps > 0 ? 1000.0 / v->fps : 0);
+  SDL_snprintf(lines[1], sizeof lines[1], "update %.2f ms  render %.2f ms", (double)v->update_ms, (double)v->render_ms);
+  SDL_snprintf(lines[2], sizeof lines[2], "enemies %d  shots %d  pickups %d", counts[TK_ENEMY], counts[TK_SHOT], counts[TK_GEM] + counts[TK_PICKUP]);
+  SDL_snprintf(lines[3], sizeof lines[3], "allies %d  objects %d  zones %d", counts[TK_ALLY], counts[TK_OBJECT], counts[TK_ZONE]);
+  SDL_snprintf(lines[4], sizeof lines[4], "entities %d  fx %d", total, w->nefx + w->ntexts + w->nparts);
+  float width = 0, size = 12, x = v->safe.x + 8, y = v->safe.y + 48;
+  for (int i = 0; i < 5; i++) width = SDL_max(width, gfx_text_width(FONT_REGULAR, size, lines[i]));
+  if (width > v->safe.w - 32) { size *= SDL_max(1.0f, v->safe.w - 32) / width; width = SDL_max(1.0f, v->safe.w - 32); }
+  gfx_rect(x, y, width + 16, 88, fcolor(0, 0, 0, 0.75f));
+  for (int i = 0; i < 5; i++) gfx_text(FONT_REGULAR, size, x + 8, gfx_baseline(FONT_REGULAR, size, y + 4 + i * 16, 16), css_color("#9dffb0"), lines[i]);
+}
+
 void render_frame(const RenderView *v, const World *w) {
   init_looks();
   // 월드: 카메라(정수 점) + 흔들림
   float shx = 0, shy = 0;
-  if (w->state == GS_PLAYING && w->shake > 0) {
+  if ((w->state == GS_PLAYING || (w->state == GS_GAMEOVER && w->run.death_t < DEATH_SHOW)) && w->shake > 0) {
     shx = (SDL_randf() * 2 - 1) * w->shake;
     shy = (SDL_randf() * 2 - 1) * w->shake;
   }
-  gfx_origin(SDL_roundf(v->w / 2 - v->cam_x + shx), SDL_roundf(v->h / 2 - v->cam_y + shy));
+  gfx_origin(gfx_roundf(v->w / 2 - v->cam_x + shx), gfx_roundf(v->h / 2 - v->cam_y + shy));
   draw_floor(v);
-  bool title = v->ui && v->ui->screen == SCREEN_TITLE;
+  bool title = title_screen(v->ui);
   if (!title) draw_world(v, w);
   gfx_origin(0, 0);
   if (!title) {
@@ -706,7 +770,8 @@ void render_frame(const RenderView *v, const World *w) {
     if (v->ui && v->ui->screen == SCREEN_PLAY && w->state == GS_PLAYING) draw_controls(v, w);
   }
   if (v->ui) ui_draw(v->ui, w, v->w, v->h);
+  if (v->show_perf) draw_perf(v, w);
   gfx_flush();
 }
 
-void render_prepare(SDL_Renderer *r, const World *w) { make_floor(r, w->stage); }
+void render_prepare(SDL_Renderer *r, const World *w, const UiState *ui) { make_floor(r, title_screen(ui) ? -1 : w->stage); }

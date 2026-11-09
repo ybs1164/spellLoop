@@ -22,10 +22,40 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check shared data (JS reference, non-blocking)
+        continue-on-error: true
+        run: node tools/export-csv.cjs --check
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
+      - name: Check C rules
+        run: |
+          cmake -S c -B c/build/check -G Ninja -DAMAGOS_APP=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build c/build/check
+          ctest --test-dir c/build/check --output-on-failure
+      - name: Compare C with JS reference (non-blocking)
+        continue-on-error: true
+        run: node tools/compare-c-js.cjs c/build/check/amagos_cli
+      - name: Install C web toolchain
+        run: |
+          python -m pip install fonttools brotli
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install 6.0.11
+          "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.11
+          echo "EMSDK=$RUNNER_TEMP/emsdk" >> "$GITHUB_ENV"
+      - name: Build C web version
+        run: python c/tools/build.py web --site _site/c
       - name: Assemble site
         run: |
-          mkdir _site
           cp -r index.html css js assets _site/
+          mkdir -p _site/native
+          cp native/sim_core.wasm _site/native/
+          touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:
           enablement: true

@@ -35,6 +35,7 @@ const WasmCore = {
   _bind(instance) {
     const ex = instance.exports, buf = ex.memory.buffer, cap = ex.cap();
     this.exports = ex; this.cap = cap;
+    ex.motion_math(SIM_FAST_MATH ? 1 : 0);
     const slots = ex.slots();
     if (ex.nfields() !== ESOA_FIELDS.length) throw new Error('SoA 필드 수 불일치: node tools/build-wasm.cjs 를 다시 실행');
     ESoA.bind(i => new Float64Array(buf, ex.pfield(i), slots), slots);

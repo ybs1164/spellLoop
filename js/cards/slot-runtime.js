@@ -93,18 +93,17 @@ function slotAnalysis(slot) {
     stage = cards.slice(0, end);
     const rest = cards.slice(end);
     if (rest.some(id => CARDS[id]?.type === 'action')) chainRest = rest;
+    // 뒤 대상·행동이 없는 꼬리 연쇄 카드는 실행에 참여하지 않는다.
   }
   const actions = stage.filter(id => CARDS[id]?.type === 'action');
   const artifacts = stage.map(id => CARDS[id]).filter(c => c?.type === 'artifact');
   a = slot._analysis = {
     cards, stage, chainRest, actions, artifacts,
-    ok: !!actions.length && !slotRuleError(cards),
+    ok: !!actions.length && !slotRuleError(stage),
     triggers: artifacts.filter(c => c.eventKind && c.eventKind !== 'state' && c.eventKind !== 'rule'),
     conditions: artifacts.filter(c => c.eventKind === 'state'),
     enters: artifacts.some(c => c.eventKind === 'enter'),
     selector: stage.map(id => CARDS[id]).find(c => c.hitTeamRule || c.summonMode),
-    // 행동 효과량 배율 (외길의 인장): 슬롯 전체 제약 카드라 놓인 자리와 상관없이 슬롯 전체에 건다
-    power: cards.reduce((m, id) => m * (CARDS[id]?.actionPower ?? 1), 1),
     every: slotEveryFrame(slot),
     plan: undefined,
     blockers: undefined,
@@ -360,8 +359,7 @@ function runFixedSlot(slot, plan, owner, game, dt, enabled, effects, shared) {
     }
     effects.set(plan.key, value);
   }
-  shared.listens ??= slotListens(owner.slots, 'complete') || slotListens(owner.effectSlots, 'complete');
-  if (shared.listens) emitSlotEvent(game, owner, 'complete', { subject: game.targetObj(targets[0]), depth: 1, exclude: slot });
+  // 고정 계획은 매 프레임 슬롯뿐이라 「다른 슬롯 작동」(완료) 이벤트를 내지 않는다 (executeLinkedAction 과 같다)
 }
 /** 효과 정의와 참조한 스탯 값이 같으면 매 프레임 다시 계산하지 않는다. */
 function cachedResolvedEffect(slot, owner, id, effect) {
@@ -439,16 +437,17 @@ function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   if (!analysis.ok) return false;
   const { actions, artifacts, triggers, conditions } = analysis;
   // 쿨타임 중인 슬롯은 환경을 만들기 전에 끝낸다 (발동 연쇄 카드가 없을 때만: 진입 상태는 매 프레임 갱신해야 한다).
-  if (!signal && !triggers.length && !slot.linked && !analysis.every && slot.cd > 1e-8) return false;
-  // 발동 연쇄 카드가 진입뿐이 아닌 슬롯은 신호가 올 때만 작동하고, 신호는 맞는 발동 연쇄 카드가 있는 슬롯만 받는다.
-  if (signal ? !hasTriggerKind(triggers, signal.kind) : triggers.length && !analysis.enters) return false;
+  if (!signal && !triggers.length && !analysis.every && slot.cd > 1e-8) return false;
+  if (signal && !hasTriggerKind(triggers, signal.kind)) return false;
   // 공용 환경(수십 개 함수)을 매번 복사하지 않고 프로토타입으로 물려받는다.
   // 실제 게임은 프로토타입이 하나뿐인 새 환경을 주고, 단순한 대역(game)은 개체 환경을 물려받는다.
   const env = game.newCardEnv ? game.newCardEnv(owner) : Object.create(game.cardEnv(owner));
   env.actionExecutor = slot.linkActor || owner; env.slotEvent = signal; env.deathEvent = signal?.kind === 'death' || signal?.kind === 'expired';
   env.ownerTarget = slotTarget(game, owner); env.frameDt = dt;
-  // 연계 슬롯(행동 스택의 뒤 행동)은 부모 슬롯의 쿨타임을 따르고, 사망은 한 번뿐이라 쿨타임을 보지 않는다.
-  const cooled = !slot.linked && !env.deathEvent && !analysis.every;
+  if (!signal && triggers.some(c => c.targetEvent)) { slot._targetGame = game; syncTargetEvents(slot, owner, selectSlotTargets(slot, env)); }
+  if (!signal && triggers.length && !analysis.enters) return false;
+  // 생성된 슬롯도 자기 카드들의 쿨타임을 따른다. 사망은 한 번뿐이라 쿨타임을 보지 않는다.
+  const cooled = !env.deathEvent && !analysis.every;
   let targets;
   // 발동 연쇄 카드는 하나라도 일어나면 작동하고, 조건 연쇄 카드는 모두 만족하는 대상만 남긴다.
   if (signal) {
@@ -473,7 +472,11 @@ function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   // 예산이 없으면 대상을 고르기 전에 미룬다 (쿨타임을 걸지 않아 다음 프레임에 다시 시도). 발동 이벤트는 대기열이 이미 프레임당 수를 막으므로 미루지 않고 대상 수만 줄인다.
   const counted = game._cardBudget !== undefined && !env.deathEvent && !analysis.every && !CARDS[actions[0]].effect?.passive;
   if (counted && !signal && game._cardBudget <= 0) { game._cardDeferred = (game._cardDeferred || 0) + 1; return false; }
-  for (const card of artifacts) if (card.when && !card.when(env)) return false;
+  if (artifacts.some(card => card.when)) {
+    targets ||= selectSlotTargets(slot, env);
+    targets = targets.filter(t => artifacts.every(card => !card.when || card.when(env, t)));
+    if (!targets.length) return false;
+  }
   if (conditions.length) {
     targets ||= selectSlotTargets(slot, env, slotNearFilter(conditions, env));
     for (const card of conditions) targets = slotConditionTargets(card, targets, env);
@@ -481,6 +484,9 @@ function runEventSlot(slot, owner, game, dt, context = NO_SLOT_CONTEXT) {
   }
   if (!ownerCanAct(owner) && !env.deathEvent && !CARDS[actions[0]].runsWhileBlocked) return false;
   targets ||= selectSlotTargets(slot, env);
+  if (signal && triggers.some(c => c.targetEvent && c.eventKind === signal.kind)) {
+    targets = targets.filter(t => env.at(t) === signal.emitter);
+  }
   // 대상 목록은 이 호출에서 새로 만든 배열이라, 모두 통과하면 그대로 쓰고 하나라도 빠질 때만 새 배열을 만든다 (판정은 대상마다 한 번, 순서대로).
   const first = CARDS[actions[0]];
   let applied = null;

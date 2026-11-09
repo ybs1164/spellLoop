@@ -1,0 +1,266 @@
+[
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 1,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "93b9db9a2b411381",
+      "kills": 75,
+      "hi": 44,
+      "slots": 92
+    },
+    "after": {
+      "seed": 1,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "93b9db9a2b411381",
+      "kills": 75,
+      "hi": 44,
+      "slots": 92
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 1,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "b8f27970100f9933",
+      "kills": 33,
+      "hi": 825,
+      "slots": 1404
+    },
+    "after": {
+      "seed": 1,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "b8f27970100f9933",
+      "kills": 33,
+      "hi": 825,
+      "slots": 1404
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 1,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "7969f38ac881b31e",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    },
+    "after": {
+      "seed": 1,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "7969f38ac881b31e",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 1,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "c297ec7fdf9fb0c8",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    },
+    "after": {
+      "seed": 1,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "c297ec7fdf9fb0c8",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 7,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "76b23d1c5e83b1cd",
+      "kills": 74,
+      "hi": 40,
+      "slots": 79
+    },
+    "after": {
+      "seed": 7,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "76b23d1c5e83b1cd",
+      "kills": 74,
+      "hi": 40,
+      "slots": 79
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 7,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "0011301b82756180",
+      "kills": 36,
+      "hi": 880,
+      "slots": 1516
+    },
+    "after": {
+      "seed": 7,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "0011301b82756180",
+      "kills": 36,
+      "hi": 880,
+      "slots": 1516
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 7,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "3e76e7a6c0be9633",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    },
+    "after": {
+      "seed": 7,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "3e76e7a6c0be9633",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 7,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "6187bedb58ffb5b6",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    },
+    "after": {
+      "seed": 7,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "6187bedb58ffb5b6",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 31,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "729d2d5c9944b284",
+      "kills": 99,
+      "hi": 43,
+      "slots": 85
+    },
+    "after": {
+      "seed": 31,
+      "mode": 0,
+      "ticks": 3600,
+      "hash": "729d2d5c9944b284",
+      "kills": 99,
+      "hi": 43,
+      "slots": 85
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 31,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "3d60e6f9a17933c6",
+      "kills": 38,
+      "hi": 767,
+      "slots": 1290
+    },
+    "after": {
+      "seed": 31,
+      "mode": 1,
+      "ticks": 1800,
+      "hash": "3d60e6f9a17933c6",
+      "kills": 38,
+      "hi": 767,
+      "slots": 1290
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 31,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "9d259f8cf1c680b4",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    },
+    "after": {
+      "seed": 31,
+      "mode": 2,
+      "ticks": 90,
+      "hash": "9d259f8cf1c680b4",
+      "kills": 0,
+      "hi": 616,
+      "slots": 1627
+    }
+  },
+  {
+    "equal": true,
+    "baselineSaveLoads": true,
+    "before": {
+      "seed": 31,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "25ffc4e16faba624",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    },
+    "after": {
+      "seed": 31,
+      "mode": 3,
+      "ticks": 90,
+      "hash": "25ffc4e16faba624",
+      "kills": 0,
+      "hi": 3006,
+      "slots": 9012
+    }
+  }
+]

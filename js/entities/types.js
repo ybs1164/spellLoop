@@ -50,21 +50,21 @@ const ENEMY_TYPES = {
   bloomMatriarch: { name: '재생의 모체', hp: 6500, speed: 42, radius: 34, damage: 16, xp: 0, color: '#5be37a', sprites: [TD.slime], scale: 6, boss: true,
     ai: 'keep', keep: 180, summon: { type: 'grunt', n: 4, cd: 9 },
     slotRecipes: [{ cards: ['entityHurt', 'entitySelf', 'heal'], period: 12 }],
-    bossHint: '12초마다 체력 10% 회복 · 표식과 집중 화력으로 회복 사이에 몰아치거나 화상·독으로 압박하세요.' },
+    bossHint: '스스로 재생하며 슬라임을 불러내는 모체.' },
   warMarshal: { name: '군단의 지휘자', hp: 9000, speed: 48, radius: 36, damage: 20, xp: 0, color: '#ffd166', sprites: [TD.darkKnight], scale: 6, boss: true,
     summon: { type: 'runner', n: 4, cd: 10 },
     slotRecipes: [{ cards: ['all', 'rage', 'focus'], team: 'same', range: 160, period: 7 }],
-    bossHint: '주변 군단을 격려 · 광역·연쇄로 부하를 정리하거나 속박으로 지휘자와 군단을 분리하세요.' },
+    bossHint: '부하를 불러내고 군단을 강화하는 지휘자.' },
   bastionWarden: { name: '철벽의 수문장', hp: 15000, speed: 44, radius: 38, damage: 24, xp: 0, color: '#c0c8d8', sprites: [TD.darkKnight], scale: 6, boss: true, traits: ['shielded', 'armored'],
     shoot: { cd: 5, n: 8, speed: 150, damage: 10, ring: true },
-    bossHint: '정면 방패와 갑주 · 빙결로 방패를 멈추거나 소환수·회전 칼날로 측후면을 공격하세요; 화상도 유효합니다.' },
+    bossHint: '방패와 갑주로 무장한 철벽의 수호자.' },
   bindingOracle: { name: '속박의 예언자', hp: 18000, speed: 48, radius: 34, damage: 20, xp: 0, color: '#c49bff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
     ai: 'keep', keep: 240, shoot: { cd: 4, n: 1, speed: 170, damage: 12 },
     slotRecipes: [{ cards: ['all', 'mark', 'root'], team: 'opposing', range: 170, period: 7 }],
-    bossHint: '170 안 표식·속박 · 원거리·설치물로 거리를 유지하거나 보호막·치유를 준비하고 접근하세요.' },
+    bossHint: '표식과 속박으로 적을 옭아매는 예언자.' },
   cinderTyrant: { name: '잿불의 폭군', hp: 30000, speed: 50, radius: 42, damage: 30, xp: 0, color: '#ff7b2e', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire'],
     shoot: { cd: 4, n: 12, speed: 160, damage: 12, ring: true }, summon: { type: 'lavaSpider', n: 3, cd: 12 },
-    bossHint: '화염 탄막과 거미 군단 · 빙결의 화염 약점, 광역 제어와 이동 빌드를 활용하세요.' },
+    bossHint: '화염 탄막과 거미 군단을 이끄는 폭군.' },
   shaman: { name: '회복 주술사', hp: 40, speed: 55, radius: 13, damage: 5, xp: 5, color: '#5be37a', sprites: [TD.cultist], scale: 3, ai: 'keep', keep: 140, gimmick: 'medic' },
   bannerlord: { name: '전투 지휘관', hp: 100, speed: 50, radius: 16, damage: 12, xp: 8, color: '#ffd166', sprites: [TD.darkKnight], scale: 3, elite: true, gimmick: 'command' },
   hexer: { name: '속박 술사', hp: 50, speed: 58, radius: 13, damage: 8, xp: 6, color: '#c49bff', sprites: [TD.cultist], scale: 3, ai: 'keep', keep: 260,
@@ -77,7 +77,7 @@ const ENEMY_TYPES = {
   brute:     { name: '외눈 거인',  hp: 70,   speed: 40,  radius: 22, damage: 16, xp: 6,  color: '#e9b36b', sprites: [TD.cyclops], scale: 4, elite: true },
   slimeKing: { name: '슬라임 왕',  hp: 9000,  speed: 50,  radius: 40, damage: 22, xp: 0,  color: '#6fd08c', sprites: [TD.slime], scale: 7, boss: true,
                split: { type: 'grunt', n: 12 },
-               bossHint: '쓰러지면 슬라임 12마리로 분열 · 폭발·독 장판 같은 광역 공격을 준비해 두세요.' },
+               bossHint: '쓰러지면 작은 슬라임들로 분열하는 왕.' },
 
   /* 2단계 · 망자의 묘역 (언데드) */
   ghost:     { name: '유령',       hp: 16,   speed: 78,  radius: 11, damage: 8,  xp: 2,  color: '#cfd6e6', sprites: [TD.ghost], scale: 3, traits: ['undead'] },
@@ -86,7 +86,7 @@ const ENEMY_TYPES = {
                ai: 'keep', keep: 240, summon: { type: 'ghost', n: 3, cd: 6 } },
   lich:      { name: '망령 군주',  hp: 22000, speed: 46,  radius: 36, damage: 30, xp: 0,  color: '#b39dff', sprites: [TD.cultist], scale: 6, boss: true, traits: ['undead'],
                summon: { type: 'ghost', n: 6, cd: 5 },
-               bossHint: '5초마다 유령 6마리 소환 · 관통·연쇄로 유령을 정리하며 본체에 화력을 모으세요.' },
+               bossHint: '끝없이 유령을 불러내는 망자의 군주.' },
 
   /* 3단계 · 불타는 심연 (화염 · 갑주) */
   imp:       { name: '화염 마귀',  hp: 26,   speed: 100, radius: 12, damage: 10, xp: 2,  color: '#ff7b2e', sprites: [TD.demon], scale: 3, traits: ['fire'] },
@@ -98,7 +98,7 @@ const ENEMY_TYPES = {
   /* 모든 단계 · 한 번씩 나타나 도망친다. 잡으면 보물 상자. */
   overlord:  { name: '심연 군주',  hp: 36000, speed: 52,  radius: 42, damage: 34, xp: 0,  color: '#ff3b6b', sprites: [TD.demon], scale: 7, boss: true, traits: ['fire', 'armored'],
                shoot: { cd: 3, n: 14, speed: 180, damage: 16, ring: true },
-               bossHint: '3초마다 14방향 탄막 · 화염과 갑주 — 빙결의 큰 한 방과 탄막 사이 이동이 핵심입니다.' },
+               bossHint: '갑주를 두르고 사방에 화염 탄막을 펼치는 군주.' },
 };
 const MAX_ENEMY_RADIUS = 64; // 증폭으로 커진 보스의 충돌 범위도 포함
 

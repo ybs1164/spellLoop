@@ -8,71 +8,127 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
 }
 vm.runInContext(`
   UI.hideOverlay = UI.showHud = () => {};
-  const game = Object.create(Game.prototype);
-  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
-  game.w = 1000; game.h = 800; game.clock = 0; game.start();
-  game.burst = game.addText = game.addFx = game.circleFx = game.shake = () => {};
-  const player = game.player, deck = player.deck;
-  deck.slots = []; game.enemies = []; game.objects = [];
-  let lightning = 0, explosions = 0;
-  const originalChain = game.chain, originalExplosion = game.explode;
-  game.chain = function(...args) { lightning++; return originalChain.apply(this, args); };
-  game.explode = function(...args) { explosions++; return originalExplosion.apply(this, args); };
-  game._nearStruct = []; game.structHashes = new Map(); game._structCount = 0;
-  const spawn = (dx) => { const e = new Enemy('grunt', player.x + dx, player.y, 1); e.hp = e.maxHp = 10000; game.enemies.push(e); game.rebuildHash(); return e; };
+  let game, player, deck, hits, axis;
+  CARDS.probe = { type: 'action', actionId: 'probe', accepts: ALL_KINDS, cd: '+0.1', run: (ts, env) => hits.push(...ts.map(t => env.at(t))) };
+  function fresh() {
+    game = Object.create(Game.prototype);
+    game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+    game.w = 1000; game.h = 800; game.clock = 0; game.start();
+    game.burst = game.addText = game.addFx = game.circleFx = game.shake = () => {};
+    game._nearStruct = []; game.structHashes = new Map(); game._structCount = 0;
+    player = game.player; deck = player.deck; deck.slots = [];
+    game.enemies = []; game.objects = []; hits = []; axis = { x: 0, y: 0 };
+    Input.axis = () => axis;
+  }
+  const cast = cards => {
+    const s = { cards, cd: 0 }; deck.slots = [s]; deck.changed(); deck.update(1/60, game, player); return s;
+  };
+  const spawn = (dx, extra = {}) => {
+    const e = new Enemy('grunt', player.x + dx, player.y, 1);
+    e.hp = e.maxHp = 10000; Object.assign(e, extra); game.enemies.push(e); game.rebuildHash(); return e;
+  };
 
-  // 대상 → 행동 → 연쇄 → 대상 → 행동: 연쇄 카드부터가 연쇄 슬롯이 되고, 첫 슬롯은 첫 행동까지만 맡는다.
-  const slot = { cards: ['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'chain', 'on_hit', 'eventSubject', 'explode'], cd: 0 };
-  deck.slots = [slot];
-  const analysis = slotAnalysis(slot);
-  assert.deepEqual(analysis.stage, ['nearestEnemy', 'bolt']);
-  assert.deepEqual(analysis.actions, ['bolt']);
-  assert.deepEqual(analysis.chainRest, ['on_hit', 'eventSubject', 'chain', 'on_hit', 'eventSubject', 'explode']);
-  assert.equal(analysis.triggers.length, 0, 'later chain cards do not trigger the first stage');
+  // Trailing artifacts have no following target/action and cannot gate the parent.
+  fresh(); axis.x = 1;
+  const tail = cast(['ahead', 'orb', 'artifactHourglass']);
+  assert.equal(game.objects.length, 1, 'a trailing hourglass does not block orb creation while moving');
+  assert.deepEqual(slotAnalysis(tail).stage, ['ahead', 'orb']);
+  assert.ok(Math.abs(slotCooldown(tail) - 0.816) < 1e-9, 'trailing cards add to parent cooldown');
+  assert.ok(Math.abs(tail.cd - 0.816) < 1e-9, 'execution uses the cooldown including trailing cards');
+  assert.equal(game.objects[0].slots.some(s => s.linked), false, 'an unfinished suffix creates no slot');
+  fresh(); player.hp = player.stats.maxHp;
+  cast(['self', 'probe', 'artifactChalice']);
+  assert.equal(hits.length, 1, 'a trailing chalice does not gate the previous action');
+  fresh(); cast(['self', 'probe', 'artifactThorns']);
+  assert.equal(hits.length, 1, 'a trailing event card does not turn the parent into an event slot');
 
-  const enemy = spawn(50);
-  deck.update(1 / 60, game, player);
-  assert.equal(lightning, 0, 'the chained stage waits for the hit');
-  const shot = game.projectiles.at(-1);
-  const continuation = shot.slots.find(s => s.linked);
-  assert.deepEqual(continuation.cards, ['on_hit', 'eventSubject', 'chain', 'on_hit', 'eventSubject', 'explode'], 'the player-placed cards become the linked slot');
-  assert.equal(slotAnalysis(continuation).chainRest.join(), 'on_hit,eventSubject,explode');
-  shot.x = enemy.x; shot.y = enemy.y; shot.update(0, game); game.collideShot(shot); flushSlotEvents(game);
-  assert.equal(lightning, 1, 'first chain stage runs on the bolt hit');
-  assert.ok(explosions >= 1, 'second chain stage runs on the lightning hit');
+  // A generated orb slot starts and repeats without any enemies or hits.
+  fresh();
+  const parent = cast(['ahead', 'orb', 'artifactHourglass', 'self', 'probe']);
+  const orb = game.objects[0], linked = orb.slots.find(s => s.linked);
+  assert.deepEqual(linked.cards, ['artifactHourglass', 'self', 'probe'], 'no implicit hit/complete/spawn card is inserted');
+  assert.ok(Math.abs(slotCooldown(parent) - 0.916) < 1e-9, 'parent cooldown includes the full chain');
+  assert.ok(Math.abs(parent.cd - 0.916) < 1e-9, 'parent execution starts the full chain cooldown');
+  assert.ok(Math.abs(slotCooldown(linked) - 0.416) < 1e-9, 'generated slot has its own cooldown');
+  deck.slots = [];
+  orb.update(0.016, game); assert.equal(hits.length, 1, 'stationary target runs without an orb hit');
+  orb.update(0.1, game); assert.equal(hits.length, 1, 'the generated slot waits for its own cooldown');
+  orb.update(0.316, game); assert.equal(hits.length, 2, 'the generated slot repeats independently of the parent');
+  axis.x = 1; orb.update(0.5, game);
+  assert.equal(hits.length, 2, 'hourglass checks the moving player selected after it, not the stationary orb');
+  assert.ok(linked.cd <= 1e-8, 'a condition rejecting all targets spends no cooldown');
+  axis.x = 0; orb.update(0.016, game); assert.equal(hits.length, 3, 'a valid target runs as soon as the condition permits');
 
-  // 연쇄 카드가 정하는 이벤트: 행동 완료 시는 타격이 아닌 행동에도 이어진다.
-  explosions = 0;
-  slot.cards = ['self', 'heal', 'on_complete', 'self', 'explode']; slot.cd = 0; player.hp = player.stats.maxHp / 2;
-  deck.changed(); deck.update(1 / 60, game, player); flushSlotEvents(game);
-  assert.ok(explosions >= 1, 'on_complete follows an instant action');
+  fresh(); axis.x = 1;
+  cast(['ahead', 'orb', 'artifactHourglass', 'objects', 'probe']);
+  const selectedOrb = game.objects[0]; deck.slots = []; selectedOrb.update(0.016, game);
+  assert.deepEqual(hits, [selectedOrb], 'a stationary orb selected after hourglass works even while the player moves');
 
-  // 타격 시 연쇄는 타격한 순간에만 이어진다 (적중이 없으면 실행되지 않는다).
-  explosions = 0; game.enemies = []; game.rebuildHash();
-  slot.cards = ['self', 'heal', 'on_hit', 'self', 'explode']; slot.cd = 0;
-  deck.changed(); deck.update(1 / 60, game, player); flushSlotEvents(game);
-  assert.equal(explosions, 0, 'on_hit never fires for a heal');
+  // Conditions select matching targets individually, irrespective of the caster.
+  fresh(); axis.x = 1;
+  const still = spawn(30), moving = spawn(60, { moving: true });
+  cast(['artifactHourglass', 'enemies', 'probe']);
+  assert.deepEqual(hits, [still], 'hourglass filters each following target');
+  hits = []; cast(['artifactFeather', 'enemies', 'probe']);
+  assert.deepEqual(hits, [moving], 'feather filters each following target');
+  still.hp = 100; hits = []; cast(['artifactChalice', 'enemies', 'probe']);
+  assert.deepEqual(hits, [still], 'chalice reads selected target health, not full-health caster');
+  hits = []; const countNear = game.countNearEnemies;
+  game.countNearEnemies = x => x === moving.x ? 3 : 0;
+  cast(['artifactHorn', 'enemies', 'probe']);
+  assert.deepEqual(hits, [moving], 'horn counts around each following target');
+  game.countNearEnemies = countNear;
 
-  // 기존처럼 연쇄 카드 없이 쌓인 행동 카드도 계속 이어진다.
-  explosions = 0; const enemy2 = spawn(50);
-  slot.cards = ['nearestEnemy', 'bolt', 'explode']; slot.cd = 0; deck.changed(); deck.update(1 / 60, game, player);
-  assert.equal(slotAnalysis(slot).chainRest, null);
-  const legacy = game.projectiles.at(-1);
-  assert.ok(legacy.slots.some(s => s.cards.includes('explode')));
+  // Multi-level suffixes each get a separate clock, with no automatically inferred events.
+  fresh();
+  cast(['ahead', 'orb', 'artifactHourglass', 'self', 'probe', 'artifactHourglass', 'self', 'probe']);
+  const multi = game.objects[0]; deck.slots = [];
+  multi.update(0.016, game);
+  assert.equal(hits.length, 1);
+  assert.equal(player.effectSlots.length, 1, 'an instant action installs the next slot on its recipient');
+  assert.deepEqual(player.effectSlots[0].cards, ['artifactHourglass', 'self', 'probe']);
+  deck.update(0.016, game, player); assert.equal(hits.length, 2, 'next slot runs on its own update');
+  deck.update(0.1, game, player); assert.equal(hits.length, 2, 'next slot also observes its cooldown');
+  multi.update(0.5, game);
+  assert.equal(player.effectSlots.length, 1, 'reinstallation does not duplicate a slot or reset its cooldown');
 
-  // 연쇄 실행 상한: 같은 스택·같은 시전 개체는 프레임마다 CHAIN_RUN_RATE × dt 번까지만 이어진다.
-  const capped = { _chainCap: 2 }, chainA = ['on_hit', 'eventSubject', 'chain'], chainB = chainA.slice();
-  const linkA = { chainKey: chainA, linkActor: player }, linkB = { chainKey: chainB, linkActor: player };
-  assert.deepEqual([1, 2, 3].map(() => takeChainRun(capped, linkA)), [true, true, false], 'a chain stack stops at the frame cap');
-  assert.equal(takeChainRun(capped, linkB), true, 'another stack has its own cap');
-  assert.equal(takeChainRun(capped, { chainKey: chainA, linkActor: {} }), true, 'another caster has its own cap');
-  game.step(0.05); assert.equal(game._chainCap, Math.round(CHAIN_RUN_RATE * 0.05)); assert.equal(takeChainRun(game, linkA), true, 'the cap refills every frame');
+  // Moment cards refer to their following target even when installed on an orb.
+  fresh(); cast(['ahead', 'orb', 'artifactThorns', 'self', 'probe']);
+  const listenerOrb = game.objects[0]; deck.slots = []; listenerOrb.update(0.016, game);
+  emitSlotEvent(game, listenerOrb, 'hurt', { subject: player }); flushSlotEvents(game);
+  assert.equal(hits.length, 0, 'hurting the orb does not satisfy thorns targeting the player');
+  player.shield = 100; player.invuln = 0; player.takeDamage(1, game); flushSlotEvents(game);
+  assert.deepEqual(hits, [player], 'selected player hurt triggers the orb-owned thorns slot, including shielded damage');
+  player.invuln = 0; player.takeDamage(1, game); flushSlotEvents(game);
+  assert.equal(hits.length, 1, 'generated moment slots respect their own cooldown');
+  listenerOrb.slots = listenerOrb.slots.filter(s => !s.linked); listenerOrb.slot.slots = listenerOrb.slots;
+  player.invuln = 0; player.takeDamage(1, game); flushSlotEvents(game);
+  assert.equal(hits.length, 1, 'removed slots cannot retain active target subscriptions');
 
-  // 실행될 수 없는 플레이어 슬롯 모양은 편집에서 거부한다.
-  assert.ok(slotCycleError(['on_hit', 'self', 'bolt']), 'on_hit needs a previous action');
-  assert.equal(slotCycleError(['on_complete', 'self', 'heal']), null, 'on_complete listens to the owner');
-  assert.ok(slotCycleError(['self', 'swap']), 'swap cannot target the player');
-  assert.ok(slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'ahead', 'blink']), 'blink cannot target a point');
-  assert.equal(slotCycleError(['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'chain']), null);
+  fresh(); const watchedOrb = new Placed('orb', player.x + 50, player.y, 1); game.objects.push(watchedOrb);
+  const bell = cast(['artifactBell', 'objects', 'probe']);
+  emitSlotEvent(game, player, 'complete', { subject: player }); flushSlotEvents(game);
+  assert.equal(hits.length, 0, 'bell ignores the caster when the next target is an object');
+  emitSlotEvent(game, watchedOrb, 'complete', { subject: player }); flushSlotEvents(game);
+  assert.deepEqual(hits, [watchedOrb], 'bell responds to the following target completing an action');
+
+  // Explicit event cards still listen to exactly their named event and have cooldowns.
+  fresh(); const victim = spawn(50);
+  cast(['nearestEnemy', 'bolt', 'on_hit', 'eventSubject', 'probe']);
+  const shot = game.projectiles.at(-1), explicit = shot.slots.find(s => s.linked);
+  shot.update(0.016, game); assert.equal(hits.length, 0, 'only an explicitly placed hit card waits for a hit');
+  reportSlotHit(game, shot, victim, 1); flushSlotEvents(game);
+  assert.deepEqual(hits, [victim]);
+  reportSlotHit(game, shot, victim, 1); flushSlotEvents(game);
+  assert.equal(hits.length, 1, 'explicit event slots also keep their cooldown');
+  assert.ok(explicit.cd > 0);
+  assert.ok(slotCycleError(['ahead', 'orb', 'artifactHourglass', 'eventSubject', 'probe']), 'a condition card does not invent an event subject');
+  assert.equal(slotCycleError(['on_hit', 'self', 'probe']), null, 'explicit event slots can stand alone');
+
+  // Legacy consecutive actions become ordinary slots on the created entity.
+  fresh(); spawn(300); cast(['nearestEnemy', 'bolt', 'probe']);
+  const legacy = game.projectiles.at(-1), legacySlot = legacy.slots.find(s => s.linked);
+  assert.deepEqual(legacySlot.cards, ['entitySelf', 'probe']);
+  legacy.update(0.016, game); assert.deepEqual(hits, [legacy], 'consecutive actions no longer imply hits');
 `, context);
-console.log('Chain card checks passed.');
+console.log('Chain slots: target conditions, inactive tails, independent cooldowns, orb execution without hits, target events and explicit events passed.');

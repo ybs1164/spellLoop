@@ -1,0 +1,1100 @@
+--- before/c/sim/cards_impl.c
++++ after/c/sim/cards_impl.c
+@@ -14,6 +14,7 @@
+ static int prop_first[CARD__COUNT], prop_last[CARD__COUNT];
+ static const DataTable *PROPS;
+ static int C_ROW, C_PATH, C_VALUE;
++static void prepare_values(void);
+ 
+ void cards_impl_init(void) {
+   PROPS = data_table("cards__props");
+@@ -27,6 +28,7 @@
+   }
+   targets_init();
+   actions_init();
++  prepare_values();
+ }
+ 
+ static const DataCell *prop(int card, const char *path) {
+@@ -52,9 +54,13 @@
+   return -1;
+ }
+ 
+-/* js actionValue: 스탯 비율(effect.statRatios / statRatios) → 고정 값(effect / fixedValues) → 탄속 */
+-float action_value(Ctx *c, int card, const char *field, int owner) {
+-  World *w = c->w;
++typedef struct { int stat; float value; bool scaled; } ValuePlan;
++static const char *const VALUE_FIELDS[] = {
++  "damage", "speed", "knockback", "heal", "shield", "distance", "pullDistance", "summonHp", "summonAttack", "summonSpeed"
++};
++static ValuePlan values[CARD__COUNT][ARRAY_LEN(VALUE_FIELDS)];
++
++static ValuePlan compile_value(int card, const char *field) {
+   char path[96];
+   const char *stat = NULL;
+   double ratio = 1;
+@@ -64,15 +70,30 @@
+     if (stat) { snprintf(path, sizeof path, "%sstatRatios.%s.ratio", k ? "" : "effect.", field); ratio = card_prop(card, path, 1); }
+   }
+   if (stat) {
+-    int s = stat_id(stat);
+-    return s >= 0 && owner >= 0 ? w->stat[owner][s] * (float)ratio : 0;
++    return (ValuePlan){ stat_id(stat), (float)ratio, true };
+   }
+   snprintf(path, sizeof path, "effect.%s", field);
+   const DataCell *v = prop(card, path);
+   if (!v) { snprintf(path, sizeof path, "fixedValues.%s", field); v = prop(card, path); }
+-  if (v && v->type == DT_NUM) return (float)v->num;
+-  if (!strcmp(field, "speed")) return (float)data_num(data_table("cards"), card, "projectileSpeed", 0);
+-  return 0;
++  float value = v && v->type == DT_NUM ? (float)v->num :
++    !strcmp(field, "speed") ? (float)data_num(data_table("cards"), card, "projectileSpeed", 0) : 0;
++  return (ValuePlan){ -1, value, false };
++}
++
++static void prepare_values(void) {
++  for (int c = 0; c < CARD__COUNT; c++)
++    for (int f = 0; f < ARRAY_LEN(VALUE_FIELDS); f++) values[c][f] = compile_value(c, VALUE_FIELDS[f]);
++}
++
++/* Compile immutable CSV lookups, never the owner's changing stats. Unknown
++ * fields retain the generic property API and its original fallback order. */
++float action_value(Ctx *c, int card, const char *field, int owner) {
++  ValuePlan value;
++  int f = 0;
++  while (f < ARRAY_LEN(VALUE_FIELDS) && strcmp(field, VALUE_FIELDS[f])) f++;
++  if (card >= 0 && card < CARD__COUNT && f < ARRAY_LEN(VALUE_FIELDS)) value = values[card][f];
++  else value = compile_value(card, field);
++  return value.scaled ? (value.stat >= 0 && owner >= 0 ? c->w->stat[owner][value.stat] * value.value : 0) : value.value;
+ }
+ 
+ float action_damage(Ctx *c, int card, const char *field) {
+--- before/c/sim/combat.c
++++ after/c/sim/combat.c
+@@ -222,7 +222,7 @@
+ void hit_line(World *w, float x0, float y0, float x1, float y1, float width, float dmg, float knock, int source) {
+   float dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy;
+   if (len2 <= 0) len2 = 1;
+-  for (int e = 0; e < w->hi; e++) {
++  for (int e = kind_next(w, TK_ENEMY, 0, w->hi); e < w->hi; e = kind_next(w, TK_ENEMY, e + 1, w->hi)) {
+     if (!ent_live(w, e) || w->kind[e] != TK_ENEMY) continue;
+     float t = clampf(((w->x[e] - x0) * dx + (w->y[e] - y0) * dy) / len2, 0, 1);
+     float px = x0 + dx * t - w->x[e], py = y0 + dy * t - w->y[e], rr = width + w->r[e];
+@@ -249,7 +249,7 @@
+ /* ---------- 상태 진행 ---------- */
+ void update_statuses(World *w) {
+   const float dt = SIM_DT;
+-  for (int i = 0; i < w->hi; i++) {
++  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
+     if (!ent_live(w, i)) continue;
+     // 표식: 중첩마다 만료
+     float mt = 0;
+@@ -302,7 +302,7 @@
+ void update_buffs(World *w) {
+   const float dt = SIM_DT;
+   int p = ent_index(w, w->player);
+-  for (int i = 0; i < w->hi; i++) {
++  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
+     if (!ent_live(w, i)) continue;
+     bool any = false;
+     for (int k = 0; k < CB__COUNT; k++) if (w->cbuff[i][k] > 0) { w->cbuff[i][k] = maxf(0, w->cbuff[i][k] - dt); any = true; }
+--- before/c/sim/entities.c
++++ after/c/sim/entities.c
+@@ -6,6 +6,9 @@
+ #include <stddef.h>
+ #include <stdlib.h>
+ #include <string.h>
++#if defined(__wasm_simd128__)
++#include <wasm_simd128.h>
++#endif
+ 
+ #define TAU_F 6.2831853f
+ static inline float d2(float ax, float ay, float bx, float by) { float dx = bx - ax, dy = by - ay; return dx * dx + dy * dy; }
+@@ -667,7 +670,26 @@
+   int rule = e->hit_rule;
+   static int near[4096];
+   int m = grid_query(w, w->x[s], w->y[s], w->r[s], near, 4096);
++#if defined(__wasm_simd128__)
++  int probe = 0;
++#endif
+   for (int q = 0; q < m && !w->dying[s]; q++) {
++#if defined(__wasm_simd128__)
++    /* Reject only packets whose four scalar distance tests are all no-ops.
++     * A real hit still reads live fields and runs in the original order. */
++    if (q >= probe && q + 4 <= m) {
++      probe = q + 4;
++      int a = near[q], b = near[q+1], c = near[q+2], d = near[q+3];
++      v128_t x = wasm_f32x4_make(w->x[a],w->x[b],w->x[c],w->x[d]);
++      v128_t y = wasm_f32x4_make(w->y[a],w->y[b],w->y[c],w->y[d]);
++      v128_t r = wasm_f32x4_make(w->r[a],w->r[b],w->r[c],w->r[d]);
++      v128_t dx = wasm_f32x4_sub(x,wasm_f32x4_splat(w->x[s]));
++      v128_t dy = wasm_f32x4_sub(y,wasm_f32x4_splat(w->y[s]));
++      v128_t rr = wasm_f32x4_add(r,wasm_f32x4_splat(w->r[s]));
++      v128_t distance = wasm_f32x4_add(wasm_f32x4_mul(dx,dx),wasm_f32x4_mul(dy,dy));
++      if (wasm_i32x4_all_true(wasm_f32x4_gt(distance,wasm_f32x4_mul(rr,rr)))) { q += 3; continue; }
++    }
++#endif
+     int en = near[q];
+     if (!ent_live(w, en) || w->kind[en] != TK_ENEMY) continue;
+     float rr = w->r[s] + w->r[en];
+@@ -722,7 +744,7 @@
+ /** 적이 설치물·아군에 닿으면 0.5초마다 피해 (js collideStructures) */
+ static void collide_structures(World *w) {
+   static int near[4096];
+-  for (int o = 0; o < w->hi; o++) {
++  for (int o = index_next(w->fast.structures, 0, w->hi); o < w->hi; o = index_next(w->fast.structures, o + 1, w->hi)) {
+     if (!ent_live(w, o) || (w->kind[o] != TK_OBJECT && w->kind[o] != TK_ALLY)) continue;
+     w->contact_cd[o] = maxf(0, w->contact_cd[o] - SIM_DT);
+     if (w->contact_cd[o] > 0) continue;
+@@ -758,8 +780,8 @@
+   int p = player_i(w);
+   if (p < 0) return;
+   float ring = spawn_ring(w), far = ring * 1.6f;
+-  for (int i = 0; i < w->hi; i++) {
+-    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY) continue;
++  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) {
++    if (!ent_live(w, i)) continue;
+     float dx = w->x[i] - w->x[p], dy = w->y[i] - w->y[p], dd = dx * dx + dy * dy;
+     if (dd <= far * far) continue;
+     float d = sqrtf(dd);
+@@ -828,7 +850,7 @@
+   for (int round = 0; round < 8; round++) {
+     bool any = false;
+     int hi = w->hi;
+-    for (int i = 0; i < hi; i++) {
++    for (int i = entity_scan_next(w, 0, hi); i < hi; i = entity_scan_next(w, i + 1, hi)) {
+       if (!w->alive[i] || w->dying[i] != 1) continue;
+       if (w->kind[i] == TK_SELF) { w->dying[i] = 0; continue; }   // 플레이어는 게임 오버로 끝낸다
+       if (w->kind[i] == TK_ENEMY && w->hp[i] <= 0 && !w->merged[i]) { /* 처치 수·파티클은 kill_enemy 가 이미 */ }
+@@ -838,7 +860,7 @@
+     }
+     if (!any) break;
+   }
+-  for (int i = 0; i < w->hi; i++) {
++  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
+     if (!w->alive[i]) continue;
+     if (w->dying[i]) { ent_free(w, i); continue; }
+     if (w->kind[i] == TK_ENEMY) enemies++;
+--- before/c/sim/game.c
++++ after/c/sim/game.c
+@@ -424,7 +424,7 @@
+   // 단계 돌파: 보스가 모두 나왔고 살아 있는 보스가 없으면 CLEAR_DELAY 뒤 다음 단계 (마지막이면 승리)
+   if (w->clear_t < 0 && w->boss_spawned) {
+     bool alive = false;
+-    for (int i = 0; i < w->hi && !alive; i++)
++    for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi && !alive; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
+       alive = ent_live(w, i) && w->kind[i] == TK_ENEMY && w->etype[i] >= 0 && data_num(T_ENEMIES, w->etype[i], "boss", 0);
+     if (!alive) {
+       w->clear_t = CLEAR_DELAY;
+--- before/c/sim/slots.c
++++ after/c/sim/slots.c
+@@ -11,6 +11,29 @@
+ 
+ #define SLOT_EVENT_BUDGET_FRAME 256
+ Ctx *g_ctx;
++
++void slots_cache_reset(World *w) {
++  static uint64_t epoch;
++  w->fast.plan_epoch = ++epoch;
++  if (!w->fast.plan_epoch) w->fast.plan_epoch = ++epoch;
++  memset(w->fast.slot_plan, 0, sizeof w->fast.slot_plan);
++  memset(w->fast.slot_watchers, 0, sizeof w->fast.slot_watchers);
++  for (int k = 0; k < (w->slot_hi + 63) / 64; k++) w->fast.slot_dirty[k] = UINT64_MAX;
++  for (int k = 0; k < (w->hi + 63) / 64; k++) w->fast.owner_events_dirty[k] = UINT64_MAX;
++}
++
++/* Mark writable Slot access, including editor/tests, before its contents change.
++ * Cached recipes additionally compare their keys, so pointer edits remain safe. */
++void slot_changed(World *w, int si) {
++  w->fast.slot_dirty[si >> 6] |= UINT64_C(1) << (si & 63);
++  w->target_event_tick = UINT64_MAX;
++  w->fast.slot_serial++;
++  int owner = ent_index(w, w->slots[si].owner);
++  if (owner >= 0) {
++    w->fast.no_after[owner >> 6] &= ~(UINT64_C(1) << (owner & 63));
++    w->fast.owner_events_dirty[owner >> 6] |= UINT64_C(1) << (owner & 63);
++  }
++}
+ 
+ /* ---------- 카드 변형 ---------- */
+ int variant_make(World *w, int base, char cd_op, float cd_value, const VarKV *kv, int nkv) {
+@@ -57,6 +80,7 @@
+   memset(sl, 0, sizeof *sl);
+   sl->owner = ent_handle(w, owner_i);
+   sl->next = -1;
++  slot_changed(w, s);
+   if (w->slot_tail[owner_i] >= 0) w->slots[w->slot_tail[owner_i]].next = s;
+   else w->slot_head[owner_i] = s;
+   w->slot_tail[owner_i] = s;
+@@ -119,13 +143,14 @@
+   int i = ent_index(w, owner);
+   if (i < 0) return NULL;
+   for (int s = w->slot_head[i]; s >= 0; s = w->slots[s].next)
+-    if (!w->slots[s].linked && k-- == 0) return &w->slots[s];
++    if (!w->slots[s].linked && k-- == 0) { slot_changed(w, s); return &w->slots[s]; }
+   return NULL;
+ }
+ 
+ void slots_inherit(World *w, int source, int target) {
+   for (int s = w->slot_head[target]; s >= 0;) {
+     int next = w->slots[s].next;
++    slot_changed(w, s);
+     w->slots[s].owner = HANDLE_NONE;
+     w->slots[s].next = w->slot_free; w->slot_free = s; s = next;
+   }
+@@ -153,7 +178,7 @@
+   *value = CARDS[card].cd_value;
+ }
+ 
+-float slot_cooldown(const World *w, const Slot *s) {
++static float calculate_cooldown(const World *w, const Slot *s) {
+   float v = BASE_COOLDOWN;
+   for (int i = 0; i < s->n; i++) {
+     char op; float value;
+@@ -221,12 +246,15 @@
+ typedef struct {
+   int stage_n;                 /* 이 슬롯의 몫: cards[0, stage_n) */
+   int chain_at, chain_n;       /* 연쇄 나머지 cards[chain_at, chain_at + chain_n) (행동이 있을 때만) */
+-  int actions[MAX_SLOT_CARDS], nact;
+-  int triggers[MAX_SLOT_CARDS], ntrig;
+-  int conditions[MAX_SLOT_CARDS], ncond;
+-  int whens[MAX_SLOT_CARDS], nwhen;
++  uint8_t actions[MAX_SLOT_CARDS], nact;
++  uint8_t conditions[MAX_SLOT_CARDS], ncond;
++  uint8_t whens[MAX_SLOT_CARDS], nwhen;
++  uint16_t trigger_mask, all_triggers, targeted;
++  uint8_t ntrig;
+   bool enters, every, ok;
+   uint8_t rule;
++  bool after, watches, runs_blocked;
++  float cooldown;
+ } Analysis;
+ 
+ /** 행동 뒤에 연쇄 카드가 이어지는 스택인가 (js isChainStack) */
+@@ -260,7 +288,7 @@
+     if (c->type == CARD_TYPE_ACTION) a->actions[a->nact++] = i;
+     else if (c->type == CARD_TYPE_ARTIFACT) {
+       int trig = card_trigger(id);
+-      if (trig) { a->triggers[a->ntrig++] = trig; if (trig == EV_ENTER) a->enters = true; }
++      if (trig) { a->trigger_mask |= (uint16_t)(1u << trig); a->ntrig++; if (trig == EV_ENTER) a->enters = true; }
+       if (card_condition(id) || trig == EV_ENTER) a->conditions[a->ncond++] = i;
+       if (c->fn[CF_WHEN].key) a->whens[a->nwhen++] = i;
+       int rule = card_hit_rule(id);
+@@ -268,31 +296,77 @@
+     }
+   }
+   a->ok = a->nact > 0 && slot_rule_error(s->cards, a->stage_n) < 0;
+-}
+-
+-static const Analysis *structural_analysis(const Slot *s) {
+-  typedef struct { uint16_t cards[MAX_SLOT_CARDS]; uint8_t n; bool used; Analysis analysis; } Cached;
+-  static Cached cache[2048];
+-  unsigned hash = s->n;
+-  for (int k = 0; k < s->n; k++) hash = (hash ^ s->cards[k]) * 16777619u;
+-  Cached *entry = &cache[hash & 2047];
+-  if (!entry->used || entry->n != s->n || memcmp(entry->cards, s->cards, s->n * sizeof s->cards[0])) {
+-    entry->used = true; entry->n = s->n;
+-    memcpy(entry->cards, s->cards, s->n * sizeof s->cards[0]);
+-    analyze_structure(s, &entry->analysis);
+-  }
+-  return &entry->analysis;
+-}
+-
+-static void analyze(const World *w, const Slot *s, Analysis *a) {
+-  *a = *structural_analysis(s);
+-  /* Variant cooldowns remain per-world and may differ for identical card IDs. */
+-  a->every = slot_cooldown(w, s) <= FRAME_COOLDOWN + 1e-6f;
+-}
++  for (int k = 0; k < s->n; k++) a->all_triggers |= (uint16_t)(1u << card_trigger(s->cards[k]));
++  for (int k = 0; k < a->stage_n; k++) {
++    int id = s->cards[k];
++    if (id == CARD_ARTIFACT_THORNS || id == CARD_ARTIFACT_BELL) {
++      a->watches = true;
++      a->targeted |= (uint16_t)(1u << card_trigger(id));
++    }
++  }
++  if (a->nact) a->runs_blocked = data_num(data_table("cards"), s->cards[a->actions[0]], "runsWhileBlocked", 0) != 0;
++}
++
++typedef struct {
++  uint64_t epoch;
++  uint16_t cards[MAX_SLOT_CARDS], vars[MAX_SLOT_CARDS];
++  uint8_t n;
++  Analysis analysis;
++} SlotPlan;
++#define PLAN_COUNT 4096
++static SlotPlan plans[PLAN_COUNT];
++
++static bool plan_matches(const SlotPlan *p, const World *w, const Slot *s) {
++  return p->epoch == w->fast.plan_epoch && p->n == s->n &&
++    !memcmp(p->cards, s->cards, (size_t)s->n * sizeof *s->cards) &&
++    !memcmp(p->vars, s->vars, (size_t)s->n * sizeof *s->vars);
++}
++
++static const Analysis *structural_analysis(const World *w, const Slot *s) {
++  /* Integer bounds avoid subtracting unrelated pointers for standalone Slots. */
++  uintptr_t at = (uintptr_t)s, base = (uintptr_t)w->slots;
++  bool pooled = at >= base && at - base < (size_t)w->slot_hi * sizeof *s && (at - base) % sizeof *s == 0;
++  uint16_t *ref = pooled ? &((World *)w)->fast.slot_plan[(at - base) / sizeof *s] : NULL;
++  if (ref && *ref && plan_matches(&plans[*ref - 1], w, s)) return &plans[*ref - 1].analysis;
++  unsigned hash = (unsigned)w->fast.plan_epoch ^ s->n;
++  for (int k = 0; k < s->n; k++) { hash = (hash ^ s->cards[k]) * 16777619u; hash = (hash ^ s->vars[k]) * 16777619u; }
++  unsigned id = hash & (PLAN_COUNT - 1);
++  SlotPlan *p = &plans[id];
++  if (!plan_matches(p, w, s)) {
++    p->epoch = w->fast.plan_epoch; p->n = s->n;
++    memcpy(p->cards, s->cards, (size_t)s->n * sizeof *s->cards);
++    memcpy(p->vars, s->vars, (size_t)s->n * sizeof *s->vars);
++    analyze_structure(s, &p->analysis);
++    p->analysis.cooldown = calculate_cooldown(w, s);
++    p->analysis.every = p->analysis.cooldown <= FRAME_COOLDOWN + 1e-6f;
++    if (p->analysis.nact) p->analysis.after = var_num(w, s->vars[p->analysis.actions[0]], "afterMovement", 0) != 0;
++  }
++  if (ref) *ref = (uint16_t)(id + 1);
++  return &p->analysis;
++}
++
++float slot_cooldown(const World *w, const Slot *s) { return structural_analysis(w, s)->cooldown; }
++static void analyze(const World *w, const Slot *s, Analysis *a) { *a = *structural_analysis(w, s); }
+ 
+ static bool has_trigger(const Analysis *a, int kind) {
+-  for (int k = 0; k < a->ntrig; k++) if (a->triggers[k] == kind) return true;
+-  return false;
++  return (a->trigger_mask & (1u << kind)) != 0;
++}
++
++#define OWNER_LINKED_HIT (1u << 15)
++static unsigned owner_events(const World *world, int i) {
++  World *w = (World *)world;
++  uint64_t bit = UINT64_C(1) << (i & 63);
++  if (w->fast.owner_events_dirty[i >> 6] & bit) {
++    unsigned mask = 0;
++    for (int si = w->slot_head[i]; si >= 0; si = w->slots[si].next) {
++      const Slot *s = &w->slots[si];
++      mask |= structural_analysis(w, s)->all_triggers;
++      if (s->linked && s->n && card_trigger(s->cards[0]) == EV_HIT) mask |= OWNER_LINKED_HIT;
++    }
++    w->fast.owner_events[i] = (uint16_t)mask;
++    w->fast.owner_events_dirty[i >> 6] &= ~bit;
++  }
++  return w->fast.owner_events[i];
+ }
+ 
+ /* ---------- 대상 선택 (js selectSlotTargets) ---------- */
+@@ -359,7 +433,7 @@
+ static void execute_linked(Ctx *c, Slot *s, const Analysis *a, const Target *targets, int n) {
+   World *w = c->w;
+   int si = (int)(s - w->slots);
+-  const int *acts = a->actions;
++  const uint8_t *acts = a->actions;
+   int id = s->cards[acts[0]], var = s->vars[acts[0]], ntail = a->nact - 1;
+   bool chain = ntail == 0 && a->chain_n > 0, follows = ntail > 0 || chain;
+   Ctx *prev = g_ctx;
+@@ -377,9 +451,7 @@
+   if (!rec0) g_ncreated = 0;
+   // 연쇄 「타격 시」를 가진 소환체가 쏜 탄은 적중을 소환체에게도 알린다 (js attackEventOwner)
+   {
+-    bool listens_hit = false;
+-    for (int q = w->slot_head[c->owner]; q >= 0 && !listens_hit; q = w->slots[q].next)
+-      listens_hit = w->slots[q].linked && w->slots[q].n && card_trigger(w->slots[q].cards[0]) == EV_HIT;
++    bool listens_hit = (owner_events(w, c->owner) & OWNER_LINKED_HIT) != 0;
+     if (listens_hit) for (int k = 0; k < ncreated; k++) if (w->kind[created[k]] == TK_SHOT) w->attack_owner[created[k]] = ent_handle(w, c->owner);
+   }
+ 
+@@ -459,11 +531,10 @@
+ static bool run_slot(World *w, int si, int oi, const SimInput *in, const Event *ev) {
+   Slot *s = &w->slots[si];
+   if (!ev) { int result=run_simple_mechanic(w,s,oi,in); if(result>=0)return result!=0; }
+-  const Analysis *structure=structural_analysis(s);
++  const Analysis *structure=structural_analysis(w,s);
+   if (!structure->ok || (!ev && structure->ntrig && !structure->enters) || (ev && !has_trigger(structure,ev->kind))) return false;
+   Analysis a;
+   a=*structure;
+-  a.every=slot_cooldown(w,s)<=FRAME_COOLDOWN+1e-6f;
+   if (!a.ok) return false;
+   if (!ev && !ent_live(w, oi)) return false;
+   if (!ev && !a.ntrig && !a.every && s->cd > 1e-8f) return false;
+@@ -505,13 +576,12 @@
+     int kept = 0;
+     for (int j = 0; j < n; j++) {
+       Ctx selected = c;
+-      int nearby[3];
+       int ti = target_index(w, &targets[j]);
+       bool ok = true;
+       if (ti >= 0) selected.owner = ti;
+       for (int k = 0; k < a.nwhen && ok; k++) {
+         int id = s->cards[a.whens[k]];
+-        ok = ti >= 0 ? card_when(id, &selected) : id == CARD_ARTIFACT_HOURGLASS || (id == CARD_ARTIFACT_HORN && nearest_enemies(w, targets[j].x, targets[j].y, 3, 180, nearby, NULL, 0) >= 3);
++        ok = ti >= 0 ? card_when(id, &selected) : id == CARD_ARTIFACT_HOURGLASS || (id == CARD_ARTIFACT_HORN && enemies_at_least(w, targets[j].x, targets[j].y, 180, 3));
+       }
+       if (ok) targets[kept++] = targets[j];
+     }
+@@ -529,16 +599,10 @@
+     if (n <= 0) return false;
+   }
+   int first = s->cards[a.actions[0]];
+-  bool runs_blocked = data_num(data_table("cards"), first, "runsWhileBlocked", 0) != 0;
+-  if (!can_act(w, oi) && !c.death && !runs_blocked) return false;
++  if (!can_act(w, oi) && !c.death && !a.runs_blocked) return false;
+   if (n < 0) n = select_targets(&c, s, &a, targets, MAX_TARGETS);
+   if (ev) {
+-    bool targeted = false;
+-    for (int k = 0; k < a.stage_n; k++) {
+-      int id = s->cards[k];
+-      targeted |= (id == CARD_ARTIFACT_THORNS || id == CARD_ARTIFACT_BELL) && card_trigger(id) == ev->kind;
+-    }
+-    if (targeted) {
++    if (a.targeted & (1u << ev->kind)) {
+       int kept = 0;
+       for (int k = 0; k < n; k++) if (targets[k].h == ev->emitter) targets[kept++] = targets[k];
+       n = kept;
+@@ -549,7 +613,7 @@
+   n = m;
+   if (!n) return false;
+   // 실행 전에 쿨타임을 건다. 넘친 시간은 다음 쿨타임에서 뺀다.
+-  if (cooled) s->cd = maxf(0, minf(0, s->cd) + slot_cooldown(w, s));
++  if (cooled) s->cd = maxf(0, minf(0, s->cd) + a.cooldown);
+   execute_linked(&c, s, &a, targets, n);
+   if (oi == ent_index(w, w->player))
+     for (int k = 0; k < n; k++) if (targets[k].kind == TK_ENEMY) w->last_enemy = targets[k].h;
+@@ -560,23 +624,26 @@
+   float rate = w->cooldown_rate[i];
+   uint64_t serial=w->fast.slot_serial;
+   bool any_after=false;
+-  for (int si = w->slot_head[i]; si >= 0;) {
++  for (int si = w->slot_head[i], prev = -1; si >= 0;) {
+     int next = w->slots[si].next;
+     Slot *s = &w->slots[si];
++    /* Two/three-card mechanic stacks bypass the general executor; inspecting
++     * their first action is cheaper than probing the shared recipe cache. */
+     bool after = false;
+-    for (int k = 0; k < s->n; k++) if (CARDS[s->cards[k]].type == CARD_TYPE_ACTION) {
+-      after = var_num(w, s->vars[k], "afterMovement", 0) != 0;
+-      break;
+-    }
++    if (s->n <= 3) {
++      for (int k = 0; k < s->n; k++) if (CARDS[s->cards[k]].type == CARD_TYPE_ACTION) {
++        after = var_num(w, s->vars[k], "afterMovement", 0) != 0;
++        break;
++      }
++    } else after = structural_analysis(w, s)->after;
+     any_after|=after;
+-    if (phase >= 0 && after != (phase == 1)) { si = next; continue; }
++    if (phase >= 0 && after != (phase == 1)) { prev = si; si = next; continue; }
+     if (s->linked) {
+       if (s->link_expires > 0 && s->link_expires <= w->time) {   // 수명이 다한 연쇄 슬롯
+         // 목록에서 뺀다
+-        int prev = -1;
+-        for (int q = w->slot_head[i]; q >= 0 && q != si; q = w->slots[q].next) prev = q;
+         if (prev >= 0) w->slots[prev].next = next; else w->slot_head[i] = next;
+         if (w->slot_tail[i] == si) w->slot_tail[i] = prev;
++        slot_changed(w, si);
+         s->owner = HANDLE_NONE;
+         s->next = w->slot_free;
+         w->slot_free = si;
+@@ -587,6 +654,7 @@
+     if (s->cd > 0) s->cd -= SIM_DT * rate;
+     run_slot(w, si, i, in, NULL);
+     if (!ent_live(w, i)) break;
++    prev = si;
+     si = next;
+   }
+   if(phase==0) {
+@@ -608,11 +676,19 @@
+ 
+ /* ---------- 이벤트 ---------- */
+ static bool listens(const World *w, int i, int kind) {
+-  for (int s = w->slot_head[i]; s >= 0; s = w->slots[s].next) {
+-    const Slot *x = &w->slots[s];
+-    for (int k = 0; k < x->n; k++) if (card_trigger(x->cards[k]) == kind) return true;
+-  }
+-  return false;
++  return (owner_events(w, i) & (1u << kind)) != 0;
++}
++
++static void sync_watchers(World *w) {
++  for (int si = index_next(w->fast.slot_dirty, 0, w->slot_hi); si < w->slot_hi;
++       si = index_next(w->fast.slot_dirty, si + 1, w->slot_hi)) {
++    uint64_t bit = UINT64_C(1) << (si & 63);
++    w->fast.slot_dirty[si >> 6] &= ~bit;
++    const Slot *s = &w->slots[si];
++    bool watches = ent_index(w, s->owner) >= 0 && structural_analysis(w, s)->watches;
++    if (watches) w->fast.slot_watchers[si >> 6] |= bit;
++    else w->fast.slot_watchers[si >> 6] &= ~bit;
++  }
+ }
+ 
+ static void queue_event(World *w, Handle owner, int kind, Handle subject, float x, float y, float damage, int depth, int exclude) {
+@@ -620,19 +696,15 @@
+   if (i < 0 || w->nevents >= MAX_EVENTS) return;
+   if (listens(w, i, kind)) w->events[w->nevents++] = (Event){ (uint8_t)kind, (uint8_t)mini(depth, 255), owner, subject, x, y, damage, exclude, owner, -1 };
+   if (kind != EV_HURT && kind != EV_COMPLETE) return;
++  sync_watchers(w);
+   // 순간 조건을 가진 슬롯만 모아 둔다. 다른 개체의 슬롯도 선택한 대상의 순간을 받는다.
+   if (w->target_event_tick != w->tick) {
+     w->ntarget_event_slots = 0;
+-    for (int si = 0; si < w->slot_hi; si++) {
++    for (int si = index_next(w->fast.slot_watchers, 0, w->slot_hi); si < w->slot_hi;
++         si = index_next(w->fast.slot_watchers, si + 1, w->slot_hi)) {
+       const Slot *s = &w->slots[si];
+       if (ent_index(w, s->owner) < 0) continue;
+-      bool watches=false;
+-      for(int k=0;k<s->n;k++)if(s->cards[k]==CARD_ARTIFACT_THORNS||s->cards[k]==CARD_ARTIFACT_BELL){watches=true;break;}
+-      if(!watches)continue;
+-      Analysis a; analyze(w, s, &a);
+-      for (int k = 0; k < a.stage_n; k++) if (s->cards[k] == CARD_ARTIFACT_THORNS || s->cards[k] == CARD_ARTIFACT_BELL) {
+-        w->target_event_slots[w->ntarget_event_slots++] = si; break;
+-      }
++      w->target_event_slots[w->ntarget_event_slots++] = si;
+     }
+     w->target_event_tick = w->tick;
+   }
+--- before/c/sim/spatial.c
++++ after/c/sim/spatial.c
+@@ -36,7 +36,9 @@
+   Grid *g=&w->grid;
+   for(int b=0;b<GRID_BUCKETS;b++)g->head[b]=-1;
+   g->max_r=0;
+-  for(int i=0;i<w->hi;i++) {
++  bool enemies_only = kind_mask == (1u << TK_ENEMY);
++  for(int i=enemies_only?kind_scan_next(w,TK_ENEMY,0,w->hi):entity_scan_next(w,0,w->hi);i<w->hi;
++      i=enemies_only?kind_scan_next(w,TK_ENEMY,i+1,w->hi):entity_scan_next(w,i+1,w->hi)) {
+     if(!w->alive[i] || w->dying[i] || !(kind_mask&(1u<<w->kind[i])))continue;
+     int b=bucket(cell_of(w->x[i]),cell_of(w->y[i]));
+     g->next[i]=g->head[b];g->head[b]=i;count++;
+@@ -93,6 +95,7 @@
+ static struct {
+   struct { uint32_t key,stamp; uint16_t group; } table[GRID_BUCKETS*2];
+   uint16_t group_of[MAX_ENTITIES],original_bucket[MAX_ENTITIES];
++  uint64_t members[MAX_ENTITIES/64];
+   unsigned counts[GRID_BUCKETS],cursor[GRID_BUCKETS],ngroups;
+   uint32_t stamp;
+   bool active,fallback;
+@@ -117,14 +120,18 @@
+   if(size<256)return;
+   if(++cells.stamp==0){memset(cells.table,0,sizeof cells.table);cells.stamp=1;}
+   cells.ngroups=0;
+-  memset(cells.group_of,0xff,(size_t)w->hi*sizeof *cells.group_of);
++  bool dense = size * 4 >= (unsigned)w->hi;
++  if (dense) memset(cells.group_of,0xff,(size_t)w->hi*sizeof *cells.group_of);
++  else memset(cells.members,0,((size_t)w->hi+63)/64*sizeof *cells.members);
+   unsigned limit=from_entities?(unsigned)w->hi:size;
+-  for(unsigned p=0;p<limit;p++) {
++  for(unsigned p=from_entities?(unsigned)kind_scan_next(w,TK_ENEMY,0,w->hi):0;p<limit;
++      p=from_entities?(unsigned)kind_scan_next(w,TK_ENEMY,(int)p+1,w->hi):p+1) {
+     int i=from_entities?(int)p:w->fast.grid_items[p];
+     if(from_entities&&(!ent_live(w,i)||w->kind[i]!=TK_ENEMY))continue;
+     int cx=cell_of(w->x[i]),cy=cell_of(w->y[i]);
+     if(!compact_cell(cx,cy))return;
+     int group=cell_group(cell_key(cx,cy),true);if(group<0)return;
++    if (!dense) cells.members[i>>6]|=UINT64_C(1)<<(i&63);
+     cells.group_of[i]=(uint16_t)group;cells.original_bucket[i]=from_entities?(uint16_t)bucket(cx,cy):w->fast.grid_bucket[p];cells.counts[group]++;
+   }
+   unsigned at=0;
+@@ -135,7 +142,9 @@
+    * sentinel; grid_reindex restores every public bucket before it is read. */
+   w->fast.grid_start[cells.ngroups]=size;w->fast.grid_start[GRID_BUCKETS]=size;
+   /* Descending IDs within each cell reproduce filtering of the original list. */
+-  for(int i=0;i<w->hi;i++)if(cells.group_of[i]!=UINT16_MAX) {
++  for(int i=dense?0:index_next(cells.members,0,w->hi);i<w->hi;
++      i=dense?i+1:index_next(cells.members,i+1,w->hi)) {
++    if (dense && cells.group_of[i]==UINT16_MAX) continue;
+     unsigned group=cells.group_of[i],p=--cells.cursor[group];
+     w->fast.grid_items[p]=(uint16_t)i;w->fast.grid_position[i]=p;w->fast.grid_bucket[p]=(uint16_t)group;
+   }
+@@ -300,8 +309,8 @@
+ 
+ static SPATIAL_NOINLINE void separate_unindexed(World *w) {
+   int near[512];
+-  for(int i=0;i<w->hi;i++) {
+-    if(!ent_live(w,i)||w->kind[i]!=TK_ENEMY)continue;
++  for(int i=kind_next(w,TK_ENEMY,0,w->hi);i<w->hi;i=kind_next(w,TK_ENEMY,i+1,w->hi)) {
++    if(!ent_live(w,i))continue;
+     int n=grid_query(w,w->x[i],w->y[i],w->r[i],near,512);
+     for(int k=0;k<n;k++) {
+       int j=near[k];if(j<=i||w->dying[j])continue;
+@@ -357,7 +366,9 @@
+ 
+ static void separate_packed(World *restrict w,float *restrict xs,float *restrict ys,const float *restrict rs,const uint8_t *restrict radius_ids,const float weights[restrict static 16][16][4],CandidateRun *restrict near,unsigned *restrict cuts,bool cached_weights) {
+   unsigned size=w->fast.grid_start[GRID_BUCKETS];
+-  for(int i=0;i<w->hi;i++) {
++  bool dense = size * 4 >= (unsigned)w->hi;
++  for(int i=dense?0:index_next(cells.members,0,w->hi);i<w->hi;
++      i=dense?i+1:index_next(cells.members,i+1,w->hi)) {
+     unsigned own=w->fast.grid_position[i];
+     if(own<size && w->fast.grid_items[own]==i)cuts[w->fast.grid_bucket[own]]=own;
+     if(!w->alive[i] || w->dying[i] || w->kind[i]!=TK_ENEMY)continue;
+@@ -427,6 +438,12 @@
+   static unsigned cuts[GRID_BUCKETS];
+   float radii[16],weights[16][16][4];int nradii=0;
+   unsigned size=w->fast.grid_start[GRID_BUCKETS];
++  if (!cells.active) {
++    memset(cells.members,0,((size_t)w->hi+63)/64*sizeof *cells.members);
++    for (unsigned p=0;p<size;p++) {
++      unsigned i=w->fast.grid_items[p];cells.members[i>>6]|=UINT64_C(1)<<(i&63);
++    }
++  }
+   w->fast.grid_compact=true;
+   for(unsigned p=0;p<size;p++) {
+     int i=w->fast.grid_items[p];
+@@ -478,7 +495,7 @@
+ void separate_enemies(World *w) {
+   cells.active=false;
+   unsigned size=w->fast.grid_start[GRID_BUCKETS];
+-  for(int i=0;i<w->hi;i++)if(ent_live(w,i)&&w->kind[i]==TK_ENEMY) {
++  for(int i=kind_next(w,TK_ENEMY,0,w->hi);i<w->hi;i=kind_next(w,TK_ENEMY,i+1,w->hi))if(ent_live(w,i)) {
+     unsigned p=w->fast.grid_position[i];
+     if(p>=size||w->fast.grid_items[p]!=i){separate_unindexed(w);return;}
+   }
+--- before/c/sim/targets.c
++++ after/c/sim/targets.c
+@@ -29,7 +29,7 @@
+   static int cand[MAX_ENTITIES];
+   static ByDist buf[MAX_ENTITIES];
+   int c = isfinite(r) ? grid_query(w, x, y, r, cand, MAX_ENTITIES) : 0, m = 0;
+-  if (!isfinite(r)) for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) cand[c++] = i;
++  if (!isfinite(r)) for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) cand[c++] = i;
+   for (int k = 0; k < c; k++) {
+     int e = cand[k];
+     if (!ent_live(w, e) || w->kind[e] != TK_ENEMY) continue;
+@@ -58,6 +58,27 @@
+   return k;
+ }
+ 
++/* Match nearest_enemies' eligibility, including its nonfinite-radius policy,
++ * without sorting targets that a predicate never observes. Snapshot public
++ * candidates first: cards may mutate the grid when a caller subsequently acts. */
++bool enemies_at_least(const World *w, float x, float y, float r, int count) {
++  if (count <= 0) return true;
++  static int candidates[MAX_ENTITIES];
++  bool finite = isfinite(r);
++  int n = finite ? grid_query(w, x, y, r, candidates, MAX_ENTITIES) : 0;
++  if (!finite) {
++    for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
++      if (ent_live(w, i)) candidates[n++] = i;
++  }
++  for (int k = 0; k < n; k++) {
++    int i = candidates[k];
++    if (!ent_live(w, i) || w->kind[i] != TK_ENEMY) continue;
++    if (finite && d2(x, y, w->x[i], w->y[i]) > r * r) continue;
++    if (--count == 0) return true;
++  }
++  return false;
++}
++
+ /** 유인: 가까운 유인 개체의 범위 안이면 플레이어 대신 그 개체 (js findRedirect) */
+ static Target redirected_player(const World *w, int unit) {
+   int p = player_i(w);
+@@ -77,7 +98,7 @@
+   static ByDist buf[MAX_ENTITIES];
+   int p = player_i(w), m = 0;
+   if (p < 0) return 0;
+-  for (int i = 0; i < w->hi; i++) {
++  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
+     if (!ent_live(w, i) || !(kinds & (1u << w->kind[i])) || (pred && !pred(w, i))) continue;
+     float d = d2(w->x[i], w->y[i], w->x[p], w->y[p]);
+     if (d <= r * r) buf[m++] = (ByDist){ i, d };
+@@ -157,7 +178,7 @@
+ /** 목록 순서(생성 순) 그대로 */
+ static int all_of_kind(const World *w, int kind, Target *out, int cap, bool (*pred)(const World *, int)) {
+   int n = 0;
+-  for (int i = 0; i < w->hi && n < cap; i++) if (ent_live(w, i) && w->kind[i] == kind && (!pred || pred(w, i))) out[n++] = target_of(w, i);
++  for (int i = kind_next(w, kind, 0, w->hi); i < w->hi && n < cap; i = kind_next(w, kind, i + 1, w->hi)) if (ent_live(w, i) && (!pred || pred(w, i))) out[n++] = target_of(w, i);
+   return n;
+ }
+ static bool object_visible(const World *w, int i) {
+@@ -198,8 +219,10 @@
+   int n = 0, p = player_i(w);
+   if (p >= 0 && cap > 0) out[n++] = target_of(w, p);
+   for (int k = 0; k < (int)(sizeof ORDER / sizeof ORDER[0]); k++)
+-    for (int i = 0; i < w->hi && n < cap; i++)
+-      if (ent_live(w, i) && (w->kind[i] == ORDER[k] || (ORDER[k] == TK_GEM && w->kind[i] == TK_PICKUP))) out[n++] = target_of(w, i);
++    for (int i = ORDER[k] == TK_GEM ? pickup_next(w, 0, w->hi) : kind_next(w, ORDER[k], 0, w->hi);
++         i < w->hi && n < cap;
++         i = ORDER[k] == TK_GEM ? pickup_next(w, i + 1, w->hi) : kind_next(w, ORDER[k], i + 1, w->hi))
++      if (ent_live(w, i)) out[n++] = target_of(w, i);
+   return n;
+ }
+ static int r_entity_area(Ctx *c, Target *out, int cap) {
+@@ -269,8 +292,7 @@
+ }
+ static bool t_enemy_in_reach(Ctx *c, const Target *t) {
+   (void)t;
+-  int e;
+-  return nearest_enemies(c->w, c->w->x[c->owner], c->w->y[c->owner], 1, c->w->stat[c->owner][STAT_REACH], &e, NULL, 0) > 0;
++  return enemies_at_least(c->w, c->w->x[c->owner], c->w->y[c->owner], c->w->stat[c->owner][STAT_REACH], 1);
+ }
+ static bool t_same_team(Ctx *c, const Target *t) { int i = target_index(c->w, t); return i >= 0 ? c->w->team[i] == c->w->team[c->owner] : c->w->team[c->owner] == TEAM_FRIENDLY; }
+ static bool t_other_team(Ctx *c, const Target *t) { return !t_same_team(c, t); }
+@@ -293,8 +315,7 @@
+ static bool w_hourglass(Ctx *c) { return !owner_moving(c); }
+ static bool w_chalice(Ctx *c) { int o = c->owner; return c->w->stat[o][STAT_MAX_HP] > 0 && c->w->hp[o] <= c->w->stat[o][STAT_MAX_HP] * 0.5f; }
+ static bool w_horn(Ctx *c) {
+-  static int buf[8];
+-  return nearest_enemies(c->w, c->w->x[c->owner], c->w->y[c->owner], 3, 180, buf, NULL, 0) >= 3;
++  return enemies_at_least(c->w, c->w->x[c->owner], c->w->y[c->owner], 180, 3);
+ }
+ 
+ /* ---------- 연결 ---------- */
+--- before/c/sim/world.c
++++ after/c/sim/world.c
+@@ -16,6 +16,7 @@
+   w->might = w->area = w->duration = w->move_mul = w->cooldown_mul = 1;
+   rng_seed(&w->rng, seed, 54u);
+   rng_seed(&w->fx_rng, seed, 77u);
++  slots_cache_reset(w);
+   return w;
+ }
+ 
+@@ -23,8 +24,11 @@
+ 
+ void world_reindex(World *w) {
+   memset(&w->fast, 0, sizeof w->fast);
++  slots_cache_reset(w);
+   grid_reindex(w);
+   for (int i = 0; i < w->hi; i++) if (w->alive[i]) {
++    w->fast.alive[i>>6] |= UINT64_C(1)<<(i&63);
++    w->fast.alive_count++;
+     w->fast.kinds[w->kind[i]][i>>6] |= UINT64_C(1)<<(i&63);
+     w->fast.kind_count[w->kind[i]]++;
+     if (w->kind[i] == TK_OBJECT || w->kind[i] == TK_ALLY) {
+@@ -57,6 +61,9 @@
+ #undef CLEAR_FIELD
+   w->gen[i] = gen;
+   w->alive[i] = 1;
++  w->fast.owner_events[i] = 0;
++  w->fast.alive[i>>6] |= UINT64_C(1)<<(i&63);
++  w->fast.alive_count++;
+   w->kind[i] = (uint8_t)kind;
+   w->fast.kinds[kind][i>>6] |= UINT64_C(1)<<(i&63);
+   w->fast.kind_count[kind]++;
+@@ -103,6 +110,8 @@
+   index_status(w,i,false,false);index_status(w,i,true,false);
+   uint64_t bit = UINT64_C(1) << (i & 63);
+   w->fast.kinds[w->kind[i]][i>>6] &= ~bit;
++  w->fast.alive[i>>6] &= ~bit;
++  w->fast.alive_count--;
+   w->fast.kind_count[w->kind[i]]--;
+   if (w->fast.structures[i >> 6] & bit) {
+     w->fast.structures[i >> 6] &= ~bit;
+@@ -110,6 +119,7 @@
+   }
+   for (int s = w->slot_head[i]; s >= 0;) {
+     int next = w->slots[s].next;
++    slot_changed(w, s);
+     w->slots[s].owner = HANDLE_NONE;
+     w->slots[s].next = w->slot_free;
+     w->slot_free = s;
+--- before/c/sim/world.h
++++ after/c/sim/world.h
+@@ -268,6 +268,14 @@
+      * retain ascending IDs and read mutations between entity callbacks. */
+     uint64_t kinds[TK__COUNT][MAX_ENTITIES/64];
+     uint32_t kind_count[TK__COUNT];
++    uint64_t alive[MAX_ENTITIES/64];
++    uint32_t alive_count;
++    /* Runtime-only recipe references and sparse watcher invalidation. */
++    uint16_t slot_plan[MAX_SLOT_POOL];
++    uint64_t slot_dirty[MAX_SLOT_POOL/64], slot_watchers[MAX_SLOT_POOL/64];
++    uint64_t plan_epoch;
++    uint16_t owner_events[MAX_ENTITIES];
++    uint64_t owner_events_dirty[MAX_ENTITIES/64];
+   } fast;
+ } World;
+ 
+@@ -285,6 +293,17 @@
+ static inline int kind_next(const World *w, int kind, int start, int end) {
+   return w->fast.kind_count[kind] ? index_next(w->fast.kinds[kind], start, end) : end;
+ }
++static inline int live_next(const World *w, int start, int end) {
++  return index_next(w->fast.alive, start, end);
++}
++/* Dense pools favor a predictable contiguous loop. These scan iterators may
++ * return dead/other-kind IDs: callers must retain their scalar predicates. */
++static inline int entity_scan_next(const World *w, int start, int end) {
++  return w->fast.alive_count * 4 >= (unsigned)end ? start : live_next(w, start, end);
++}
++static inline int kind_scan_next(const World *w, int kind, int start, int end) {
++  return w->fast.kind_count[kind] * 4 >= (unsigned)end ? start : kind_next(w, kind, start, end);
++}
+ static inline int pickup_next(const World *w, int start, int end) {
+   if(start>=end || !(w->fast.kind_count[TK_GEM]+w->fast.kind_count[TK_PICKUP]))return end;
+   int word=start>>6,last=(end-1)>>6;
+@@ -307,6 +326,11 @@
+   if(active)bits[i>>6]|=bit;else bits[i>>6]&=~bit;
+ }
+ void world_reindex(World *w);
++void slots_cache_reset(World *w);
++/* Call after changing cards/vars/n through a retained Slot pointer. slot_of
++ * already marks a newly requested writable reference; cooldown keys are also
++ * checked on lookup. Variants themselves are immutable after variant_make. */
++void slot_changed(World *w, int slot);
+ 
+ World *world_create(uint64_t seed);
+ void world_destroy(World *w);
+@@ -364,6 +388,7 @@
+ void separate_enemies_for_tick(World *w);
+ /** (x, y) 에서 가까운 살아 있는 적 (반경 r 안, 최대 n) → 칸 번호. exclude 는 빼고 */
+ int nearest_enemies(const World *w, float x, float y, int n, float r, int *out, const int *exclude, int nex);
++bool enemies_at_least(const World *w, float x, float y, float r, int count);
+ 
+ /* ---------- 내부 (sim 파일끼리) ---------- */
+ void ent_free(World *w, int i);
+--- before/c/tests/test_main.c
++++ after/c/tests/test_main.c
+@@ -835,6 +835,11 @@
+   World *loaded=world_create(99);bool ok=save_read(loaded,bytes,size);free(bytes);
+   for(int pass=0;pass<2;pass++) {
+     World *a=pass?loaded:w;
++    int alive_next=live_next(a,0,a->hi),alive_count=0;
++    for(int i=0;i<a->hi;i++)if(a->alive[i]) {
++      ok &= alive_next==i;alive_next=live_next(a,i+1,a->hi);alive_count++;
++    }
++    ok &= alive_next==a->hi && alive_count==(int)a->fast.alive_count;
+     for(int kind=0;kind<TK__COUNT;kind++) {
+       int next=kind_next(a,kind,0,a->hi),count=0;
+       for(int i=0;i<a->hi;i++)if(a->alive[i]&&a->kind[i]==kind) {
+@@ -850,6 +855,51 @@
+   }
+   CHECK(ok,"활성 종류 인덱스는 빈 ID 재사용·사망 대기·저장 복원 후에도 원래 순서를 유지한다");
+   world_destroy(loaded);world_destroy(w);
++}
++
++static void test_compiled_slots_and_predicates(void) {
++  World *w=quiet_world(),*other=quiet_world();
++  Slot sample={0};sample.n=2;sample.cards[0]=CARD_SELF;sample.cards[1]=CARD_HEAL;
++  sample.vars[1]=(uint16_t)variant_make(w,CARD_HEAL,'=',0.35f,NULL,0);
++  variant_make(other,CARD_HEAL,'=',1.25f,NULL,0);
++  bool ok=true;
++  for(int k=0;k<100;k++) {
++    ok &= NEAR(slot_cooldown(w,&sample),0.35f) && NEAR(slot_cooldown(other,&sample),1.25f);
++  }
++  sample.vars[1]=0;float ordinary=slot_cooldown(w,&sample);
++  sample.cards[1]=CARD_BOLT;
++  ok &= !NEAR(slot_cooldown(w,&sample),ordinary);
++  CHECK(ok,"슬롯 계획은 여러 월드의 같은 변형 ID와 직접 수정한 카드·변형을 구분한다");
++  world_destroy(other);
++
++  for(int k=0;k<160;k++)dummy(w,ENEMY_GRUNT,(k%16-8)*31.0f,(k/16-5)*27.0f);
++  grid_build(w,1u<<TK_ENEMY);
++  const float radii[]={0,31,180,600,INFINITY,NAN};
++  ok=true;
++  for(int r=0;r<ARRAY_LEN(radii);r++)for(int n=1;n<=8;n++) {
++    int nearest[8];int count=nearest_enemies(w,17,-9,n,radii[r],nearest,NULL,0);
++    ok &= enemies_at_least(w,17,-9,radii[r],n)==(count>=n);
++  }
++  CHECK(ok,"존재 여부 전용 조회는 유한·무한·NaN 반경에서도 기존 최근접 조회와 같은 조건을 판정한다");
++
++  int p=player(w);w->hp[p]=20;
++  Handle owner=ent_spawn(w,TK_POINT,TEAM_FRIENDLY,0,0,1);
++  uint16_t cards[]={CARD_ARTIFACT_THORNS,CARD_SELF,CARD_HEAL};
++  int si=slot_add(w,owner,cards,3);
++  emit_event(w,w->player,EV_HURT,w->player,0,0,1);flush_events(w,NULL);
++  float healed=w->hp[p];
++  CHECK(healed>20,"새 슬롯의 감시 인덱스는 같은 틱의 첫 피해 이벤트부터 작동한다");
++  w->slots[si].cards[0]=CARD_ARTIFACT_BELL;w->slots[si].cd=0;slot_changed(w,si);
++  emit_event(w,w->player,EV_HURT,w->player,0,0,1);flush_events(w,NULL);
++  CHECK(w->hp[p]==healed,"같은 틱에 수정한 감시 슬롯은 이전 이벤트를 더 이상 받지 않는다");
++  emit_event(w,w->player,EV_COMPLETE,w->player,0,0,0);flush_events(w,NULL);
++  CHECK(w->hp[p]>healed,"같은 틱에 수정한 감시 슬롯은 새 이벤트를 받는다");
++  int oi=ent_index(w,owner);ent_free(w,oi);
++  Handle replacement=ent_spawn(w,TK_POINT,TEAM_FRIENDLY,0,0,1);
++  uint16_t inert[]={CARD_ENTITY_SELF,CARD_ENTITY_MOVE};slot_add(w,replacement,inert,2);
++  healed=w->hp[p];emit_event(w,w->player,EV_COMPLETE,w->player,0,0,0);flush_events(w,NULL);
++  CHECK(w->hp[p]==healed,"개체·슬롯 ID 재사용 뒤 이전 감시 슬롯이 새 개체로 새지 않는다");
++  world_destroy(w);
+ }
+ 
+ int main(int argc, char **argv) {
+@@ -887,6 +937,7 @@
+   test_effect_reset_cache();
+   test_exact_separation_and_statuses();
+   test_kind_index_lifecycle();
++  test_compiled_slots_and_predicates();
+   int done, total;
+   cards_impl_coverage(&done, &total);
+   printf("%d/%d 통과 · 카드 함수 구현 %d/%d\n", checks - failures, checks, done, total);
+--- before/c/tests/test_optimization_replay.c
++++ after/c/tests/test_optimization_replay.c
+@@ -2,6 +2,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <time.h>
+ static unsigned long long digest=1469598103934665603ull;
+ static void hash(const void *ptr,size_t n){const unsigned char *p=ptr;while(n--){digest^=*p++;digest*=1099511628211ull;}}
+ #define H(v) hash(&(v),sizeof(v))
+@@ -27,11 +28,48 @@
+       w->hp[e]=w->stat[e][STAT_MAX_HP]=1e9f;
+     }
+   }
++  if(mode>=4) {
++    w->spawn_acc=-1e9f;w->barrel_cd=1e9f;w->next_swarm=1e9f;
++    Ctx c={.w=w,.actor=p,.owner=p,.rule=RULE_NONE};
++    if(mode==4) {
++      int first=w->hi;
++      for(int k=0;k<16000;k++)ent_spawn(w,TK_POINT,TEAM_NEUTRAL,0,0,1);
++      for(int i=first;i<w->hi;i++)ent_free(w,i);
++    }
++    for(int k=0;k<(mode==4?40:300);k++) {
++      int e=ent_index(w,spawn_enemy(w,k%2?ENEMY_GRUNT:ENEMY_BRUTE,(k%25-12)*19,(k/25-6)*21));
++      w->hp[e]=w->stat[e][STAT_MAX_HP]=1e6f;
++      if(mode==6) {
++        w->r[e]=6.75f+k%19;
++        add_debuff(w,e,DB_MARK,0.2f+k%5,0,1);
++        add_debuff(w,e,DB_BURN,0.1f+k%3,17,1);
++        if(k%4==0)add_debuff(w,e,DB_FREEZE,0.7f,0,1);
++        if(k%7==0)cast_buff(&c,CB_HASTE,&(Target){TK_ENEMY,0,ent_handle(w,e),w->x[e],w->y[e]});
++      }
++    }
++    if(mode!=4)for(int k=0;k<300;k++)spawn_shot(&c,k%25*19-238,k/25*21-125,120,30,5,1,0,100,10,0x8BE9FFFFu,SHAPE_DOT);
++    if(mode==7) {
++      Handle temporary=ent_spawn(w,TK_POINT,TEAM_FRIENDLY,0,0,1);
++      uint16_t idle[]={CARD_ENTITY_SELF,CARD_ENTITY_MOVE};
++      for(int k=0;k<60000;k++)slot_add(w,temporary,idle,2);
++      ent_free(w,ent_index(w,temporary));
++    }
++    if(mode==5 || mode==7)for(int k=0;k<12;k++) {
++      int o=ent_index(w,spawn_placed(&c,OBJ_ORB,(Vec2){k*9-54,50},NULL));
++      uint16_t watched[]={CARD_ARTIFACT_THORNS,CARD_SELF,CARD_HEAL};
++      uint16_t complete[]={CARD_ARTIFACT_BELL,CARD_ENTITY_SELF,CARD_HEAL};
++      slot_add(w,ent_handle(w,o),watched,3);slot_add(w,ent_handle(w,o),complete,3);
++    }
++  }
++  bool timing=getenv("AMAGOS_REPLAY_TIMING")!=NULL;
++  clock_t started=timing?clock():0;
+   for(int t=0;t<ticks&&w->state==GS_PLAYING;t++){
+     w->hp[p]=w->stat[p][STAT_MAX_HP];
+     float a=(float)w->time*.6f;in.move=(Vec2){-sinf(a),cosf(a)};
++    if((mode==5 || mode==7) && t%7==0)emit_event(w,w->player,EV_HURT,w->player,w->x[p],w->y[p],1);
+     sim_step(w,&in);
+   }
++  if(timing)fprintf(stderr,"replay_cpu_ms=%.6f\n",1000.0*(double)(clock()-started)/CLOCKS_PER_SEC);
+   if(argc>5) {
+     FILE *file=fopen(argv[5],"rb");if(!file)return 3;
+     fseek(file,0,SEEK_END);long len=ftell(file);rewind(file);
+@@ -47,6 +85,21 @@
+     bool ok=fwrite(bytes,1,len,file)==len;fclose(file);free(bytes);if(!ok)return 3;
+   }
+   H(w->hi);H(w->free_head);H(w->player);H(w->state);H(w->tick);H(w->time);H(w->kills);H(w->xp);H(w->level);H(w->rng);H(w->fx_rng);
++  H(w->stage);H(w->route);H(w->stage_step);H(w->stage_start);H(w->boss_spawned);H(w->spawned_bosses);H(w->clear_t);
++  H(w->spawn_acc);H(w->next_swarm);H(w->barrel_cd);H(w->enemy_count);H(w->pending_levelups);H(w->nrewards);H(w->ninv);H(w->inventory);H(w->nvars);
++  H(w->reward_kinds);H(w->nreward_kinds);H(w->notice);H(w->xp_next);H(w->view_w);H(w->view_h);H(w->prey);H(w->last_enemy);H(w->nfallen);
++  for(int k=0;k<ARRAY_LEN(w->fallen);k++){H(w->fallen[k].x);H(w->fallen[k].y);H(w->fallen[k].t);}
++  H(w->might);H(w->area);H(w->duration);H(w->move_mul);H(w->armor);H(w->cooldown_mul);H(w->pbuff);H(w->shield_t);H(w->hurt_t);
++  H(w->shake);H(w->banner);H(w->banner_life);H(w->banner_max);H(w->banner_text);H(w->banner_sub);H(w->banner_color);
++  for(int k=0;k<MAX_REWARDS;k++){H(w->rewards[k].kind);H(w->rewards[k].n);H(w->rewards[k].level);H(w->rewards[k].choices);}
++  for(int v=0;v<w->nvars;v++) {
++    const Variant*x=&w->vars[v];H(x->base);H(x->cd_op);H(x->cd_value);H(x->nkv);
++    for(int k=0;k<x->nkv;k++){H(x->kv[k].key);H(x->kv[k].num);H(x->kv[k].str);H(x->kv[k].is_str);}
++  }
++  H(w->nevents);
++  for(int k=0;k<w->nevents;k++) {
++    const Event*e=&w->events[k];H(e->kind);H(e->depth);H(e->owner);H(e->subject);H(e->x);H(e->y);H(e->damage);H(e->exclude);H(e->emitter);H(e->only_slot);
++  }
+ #define FIELD(type,name) hash(w->name,sizeof(type)*(size_t)w->hi);
+   ENTITY_FIELDS(FIELD)
+ #undef FIELD
+--- before/c/tools/bench_web.py
++++ after/c/tools/bench_web.py
+@@ -20,13 +20,20 @@
+ if os.environ.get('BENCH_INLINE_LIMIT'):
+     extra=['-sBINARYEN_EXTRA_PASSES=--one-caller-inline-max-function-size='+os.environ['BENCH_INLINE_LIMIT']+',--inline-max-combined-binary-size=16384']
+ out.mkdir(parents=True, exist_ok=True)
++hook_counts={}
++def hook(code, old, new, expected=None):
++    count=code.count(old)
++    if not count or (expected is not None and count!=expected):
++        raise SystemExit(f'Benchmark hook mismatch ({count}, expected {expected}): {old}')
++    hook_counts[old]=count
++    return code.replace(old,new)
+ source = (root / 'platform/main_sdl.c').read_text(encoding='utf-8')
+-source = source.replace('SDL_AppResult SDL_AppInit(', 'SDL_AppResult original_init(')
++source = hook(source,'SDL_AppResult SDL_AppInit(', 'SDL_AppResult original_init(',1)
+ source = '#include <emscripten.h>\n#define BENCH_USE_PUBLIC_ITERATE 1\ndouble bench_loop_ms[4];\nint bench_real_draw=1;\n'+source
+ if os.environ.get('BENCH_REAL_TIMERS'):
+-    source=source.replace('sim_step(w, &in);','do { double start=emscripten_get_now(); sim_step(w, &in); bench_loop_ms[0]+=emscripten_get_now()-start; bench_loop_ms[2]++; } while(0);')
+-    source=source.replace('static void draw(App *app) {','static void draw(App *app) { double start=emscripten_get_now();')
+-    source=source.replace('  render_frame(&v, w);','  render_frame(&v, w); bench_loop_ms[1]+=emscripten_get_now()-start;')
++    source=hook(source,'sim_step(w, &in);','do { double start=emscripten_get_now(); sim_step(w, &in); bench_loop_ms[0]+=emscripten_get_now()-start; bench_loop_ms[2]++; } while(0);',2)
++    source=hook(source,'static void draw(App *app) {','static void draw(App *app) { double start=emscripten_get_now();',1)
++    source=hook(source,'  render_frame(&v, w);','  render_frame(&v, w); bench_loop_ms[1]+=emscripten_get_now()-start;',1)
+ if os.environ.get('BENCH_REAL_NO_DRAW'):
+     source=source.replace('  draw(app);\n  interp_end(app);','  interp_end(app);')
+ if os.environ.get('BENCH_ALPHA0'):
+@@ -95,6 +102,12 @@
+     subprocess.run([cc,opt,'-flto','-msimd128','-DNDEBUG',*profile_flags,*['-I'+str(p) for p in [*includes,root/'sim']],'-c',str(root/os.environ['BENCH_SPATIAL']),'-o',str(override)],env=env,check=True)
+     objects.insert(4,override)
+     spatial_objects.append(override)
++for option,unit in [('BENCH_SLOTS','slots'),('BENCH_COMBAT','combat'),('BENCH_ENTITIES','entities')]:
++    if os.environ.get(option):
++        override=out/('override-'+unit+'.o')
++        subprocess.run([cc,opt,'-flto','-msimd128','-DNDEBUG',*profile_flags,*['-I'+str(p) for p in [*includes,root/'sim']],'-c',str(root/os.environ[option]),'-o',str(override)],env=env,check=True)
++        objects.insert(4,override)
++        spatial_objects.append(override)
+ if os.environ.get('BENCH_SPATIAL_ALTS'):
+     alternatives=os.environ['BENCH_SPATIAL_ALTS'].split(';')
+     declarations='extern int bench_variant;\n'
+@@ -148,10 +161,11 @@
+     subprocess.run([cc, opt, '-flto', '-msimd128', *profile_flags, *extra, '--profiling-funcs', *map(str, objects), '-lm', '-sMAX_WEBGL_VERSION=2', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=64MB', '--shell-file=' + str(root / 'platform/web/shell.html'), '--preload-file=' + str(web / 'assets') + '@/assets', '-o', str(out / 'amagos.html')], env=env, check=True)
+     shutil.copy2(out / 'amagos.html', out / 'index.html')
+     sources=[p for directory in ['core','data','sim','render','platform'] for p in (root/directory).rglob('*') if p.is_file()]
+-    sources += [root/'CMakeLists.txt',root/'profiles/web.proftext',Path(__file__)]
+-    for option in ['BENCH_GFX','BENCH_RENDER','BENCH_SPATIAL','BENCH_SPATIAL_ALTS']:
++    sources += [root/'CMakeLists.txt',root/'profiles/web.proftext',Path(__file__),root/'tools/bench_web.inc',entry]
++    sources += sorted((root.parent/'data').glob('*.csv')) + sorted((web/'gen').glob('data_gen.*'))
++    for option in ['BENCH_GFX','BENCH_RENDER','BENCH_SPATIAL','BENCH_SPATIAL_ALTS','BENCH_SLOTS','BENCH_COMBAT','BENCH_ENTITIES']:
+         sources += [root/name for name in os.environ.get(option,'').split(';') if name]
+-    manifest={'sources':{str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.exists()},'flags':[opt,*profile_flags,*extra],'options':{key:value for key,value in os.environ.items() if key.startswith('BENCH_')},'phases':'--phases' in sys.argv,'realTimers':bool(os.environ.get('BENCH_REAL_TIMERS'))}
++    manifest={'sources':{os.path.relpath(p,root):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.exists()},'objects':{os.path.relpath(p,root):hashlib.sha256(p.read_bytes()).hexdigest() for p in objects},'hooks':hook_counts,'flags':[opt,*profile_flags,*extra],'options':{key:value for key,value in os.environ.items() if key.startswith('BENCH_')},'phases':'--phases' in sys.argv,'realTimers':bool(os.environ.get('BENCH_REAL_TIMERS'))}
+     (out/'build.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+     print(out)
+ if '--test' in sys.argv or '--test-only' in sys.argv:
+--- before/c/tools/check_optimization_replay.py
++++ after/c/tools/check_optimization_replay.py
+@@ -7,17 +7,23 @@
+ root=Path(__file__).resolve().parents[2]
+ sys.path.insert(0,str(root/'c/tools'))
+ import build
+-parser=argparse.ArgumentParser();parser.add_argument('--spatial',type=Path);parser.add_argument('--wasm',action='store_true');parser.add_argument('--profile',type=Path);args=parser.parse_args()
++parser=argparse.ArgumentParser();parser.add_argument('--spatial',type=Path);parser.add_argument('--wasm',action='store_true');parser.add_argument('--profile',type=Path)
++parser.add_argument('--baseline',type=Path,help='Full source snapshot zip (c/sim, c/data, c/core)')
++parser.add_argument('--output',type=Path,help='JSON result path; also isolates build artifacts')
++args=parser.parse_args()
+ if args.profile and not args.wasm:parser.error('--profile requires --wasm')
+ env=build.build_env()
+ if args.wasm:
+     em=Path(build.emsdk_dir());compiler=[str(em/'upstream/emscripten/emcc.exe')];env['PATH']=str(em/'upstream/emscripten')+os.pathsep+env['PATH']
+ else:compiler=[build.zig_exe(),'cc']
+-out=root/('c/build/optimization-replay-wasm' if args.wasm else 'c/build/optimization-replay'); before=out/'before'
++out=root/('c/build/optimization-replay-wasm' if args.wasm else 'c/build/optimization-replay')
++if args.output:out=out/args.output.stem
++before=out/'before'
+ before.mkdir(parents=True,exist_ok=True)
+-with zipfile.ZipFile(root/'reports/generated/c-js-performance/baseline-sim.zip') as archive:
++with zipfile.ZipFile(args.baseline or root/'reports/generated/c-js-performance/baseline-sim.zip') as archive:
+     for name in ['world.h','world.c','targets.c','entities.c','actions.c','slots.c','deck.c','combat.c','spatial.c','data.c','game.c','cards_impl.c']:
+-        (before/name).write_bytes(archive.read(name))
++        source=('c/sim/'+name if name!='data.c' else 'c/data/data.c') if args.baseline else name
++        (before/name).write_bytes(archive.read(source))
+ changed=['world','targets','entities','actions','slots','deck','combat']
+ common=['game','spatial','cards_impl']
+ for label,old in [('before',True),('after',False)]:
+@@ -35,7 +41,7 @@
+     subprocess.run([*compiler,*flags,*[p.as_posix() for p in objects],*(['-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=64MB','-sENVIRONMENT=node','-sNODERAWFS=1','-sEXIT_RUNTIME=1'] if args.wasm else []),'-o',target.as_posix()],env=env,check=True)
+ results=[]
+ for seed in [1,7,31]:
+-    for mode,ticks in [(0,3600),(1,1800),(2,90),(3,90)]:
++    for mode,ticks in [(0,3600),(1,1800),(2,90),(3,90),*([(4,180),(5,180),(6,240),(7,240)] if args.baseline else [])]:
+         rows=[]
+         for label in ['before','after']:
+             p=subprocess.run([ *(['node',str(out/f'diff-{label}.js')] if args.wasm else [str(out/f'diff-{label}.exe')]),str(seed),str(mode),str(ticks),str(out/f'{label}-{seed}-{mode}.sav')],capture_output=True,text=True,encoding='utf-8',check=True)
+@@ -43,5 +49,7 @@
+         loaded=subprocess.run([ *(['node',str(out/'diff-after.js')] if args.wasm else [str(out/'diff-after.exe')]),str(seed),str(mode),'0','-',str(out/f'before-{seed}-{mode}.sav')],capture_output=True,text=True,encoding='utf-8',check=True)
+         compatible=json.loads(loaded.stdout)==rows[0]
+         same=rows[0]==rows[1];results.append({'equal':same,'baselineSaveLoads':compatible,'before':rows[0],'after':rows[1]});print(seed,mode,'PASS' if same and compatible else 'FAIL','old save loads:',compatible,rows,flush=True)
+-(root/('reports/generated/c-js-performance/optimization-differential-wasm.json' if args.wasm else 'reports/generated/c-js-performance/optimization-differential.json')).write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
++destination=args.output or root/('reports/generated/c-js-performance/optimization-differential-wasm.json' if args.wasm else 'reports/generated/c-js-performance/optimization-differential.json')
++destination.parent.mkdir(parents=True,exist_ok=True)
++destination.write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
+ raise SystemExit(0 if all(r['equal'] and r['baselineSaveLoads'] for r in results) else 1)

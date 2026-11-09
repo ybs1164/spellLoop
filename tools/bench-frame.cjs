@@ -265,6 +265,11 @@ for (const [name, scenario] of Object.entries(scenarios)) {
   times.sort((a, b) => a - b);
   console.log(name.padEnd(8), 'avg', avg.toFixed(2).padStart(6) + 'ms', 'p95', times[Math.floor(times.length * 0.95)].toFixed(2).padStart(6) + 'ms',
     'max', worst.toFixed(1) + 'ms', '>16ms', over16, '>33ms', over33, 'frames', tick, 'enemies', g.enemies.length, 'pickups', g.pickups.length, 'shots', g.projectiles.length + g.hazards.length, 'objects', g.objects.length, 'fp', fingerprint(g));
+  if (process_env.BENCH_JSON) console.log('BENCH_RESULT ' + JSON.stringify({ name, avg, p95: times[Math.floor(times.length * 0.95)], max: worst,
+    over16, over33, frames: tick, measured: times.length, enemies: g.enemies.length, shots: g.projectiles.length + g.hazards.length,
+    objects: g.objects.length, kills: g.kills, hp: g.player.hp, fp: fingerprint(g),
+    cpuAvg: cpuTimes.reduce((a, b) => a + b, 0) / cpuTimes.length,
+    calAvg: calTimes.length ? calTimes.reduce((a, b) => a + b, 0) / calTimes.length : null }));
   if (process_env.BENCH_WASM && WasmCore.on()) {
     const w = wasmStats, runs = w.runs.sort((a, b) => a - b), q = f => runs.length ? runs[Math.min(runs.length - 1, Math.floor(runs.length * f))] : 0;
     const per = v => (v / tick).toFixed(0);

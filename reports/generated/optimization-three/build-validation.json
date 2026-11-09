@@ -1,0 +1,48 @@
+{
+  "world": 60538504,
+  "slot": 96,
+  "entityCapacity": 65536,
+  "slotCapacity": 131072,
+  "fields": {
+    "stat": 5505024,
+    "cbuff": 1572864,
+    "marks": 4718592,
+    "burns": 4718592,
+    "hit_mem": 4194304,
+    "eff": 6815744,
+    "slots": 12582912,
+    "target_event_slots": 524288,
+    "vars": 1064960,
+    "fast": 3367648
+  },
+  "initialHi": 4,
+  "initialSaveBytes": 1431656,
+  "sparseHi": 10000,
+  "sparseSaveBytes": 7889072,
+  "pgoSourceMismatches": [],
+  "pgoGeneratedUtc": "2026-11-04T03:12:20.744669+00:00",
+  "pgoSha256": "04990d733d01eb297198c0ae0fc4df0d22d58135f59b5f82aaa0e33e7e3d5e1c",
+  "shipping": {
+    ".nojekyll": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "amagos.data": {
+      "bytes": 5410308,
+      "sha256": "184bb66ee148fa7072dd6af31ca07bce7c7d8837fddcb89c68f376f0ec0898e2"
+    },
+    "amagos.js": {
+      "bytes": 221727,
+      "sha256": "bd88a3c758c06b98960e3c88300fb08a73daf89b256b50c3b260632c8629bd13"
+    },
+    "amagos.wasm": {
+      "bytes": 1536168,
+      "sha256": "fa4fe1cd700e55fb1d31ca6cd4e2fea02fe9221cf674f426d5cc4c216412f5b8"
+    },
+    "index.html": {
+      "bytes": 1403,
+      "sha256": "613b2c5f8336fa53c3ef25f3aa7cdbb5b068835e293877b5069ec1af87840247"
+    }
+  },
+  "changedSharedData": []
+}

@@ -102,8 +102,6 @@ for (const name of TABLES) {
   exportTable(outDir, fileName(name), value, fnKeyFor(name), meta, COLUMN_NAMES);
 }
 for (const [, keys] of sources) if (keys.length > 1) for (const i of impls) if (keys.includes(i.key)) i.shared = keys[0];
-writeCsv(path.join(outDir, '_tables.csv'), ['table', 'shape', 'row', 'parent'], meta.tables);
-writeCsv(path.join(outDir, '_schema.csv'), ['table', 'column', 'type', 'index'], meta.schema);
 writeCsv(path.join(outDir, 'impls.csv'), ['key', 'kind', 'arg', 'shared'], impls);
 
 // 스칼라 상수 (data/constants.csv): 시뮬레이션·데이터 파일의 최상위 `const 이름 = 값`
@@ -124,11 +122,38 @@ for (const dir of CONST_DIRS) for (const f of fs.readdirSync(path.join(root, 'js
 writeCsv(path.join(outDir, 'constants.csv'), ['name', 'type', 'value', 'file'], constants);
 
 /* ---------- 화면 문구: UI 가 카드에 보여 주는 이름·설명 (js/ui/card-html.js 를 그대로 돌린 결과) ---------- */
-for (const p of ['js/ui/ui.js', 'js/ui/card-html.js']) vm.runInContext(fs.readFileSync(path.join(root, p), 'utf8'), context, { filename: p });
-const cardUi = get(`Object.keys(CARDS).map(id => { const c = CARDS[id]; return {
-  _key: id, name: UI.cardName(c), desc: UI.cardDescription(c), stats: UI.cardStatsText(c) ? 1 : 0, cdop: cooldownOpText(c),
-  reward: !c.entityOnly && !c.configured && c.group !== 'entity' && (c.weight ?? 1) > 0 ? 1 : 0, weight: c.weight ?? 1 }; })`);
-writeCsv(path.join(outDir, 'card_ui.csv'), ['_key', 'name', 'desc', 'stats', 'cdop', 'reward', 'weight'], plain(cardUi));
+for (const p of ['js/ui/ui.js', 'js/ui/card-html.js', 'js/ui/editor.js', 'js/ui/codex.js']) vm.runInContext(fs.readFileSync(path.join(root, p), 'utf8'), context, { filename: p });
+const cardUi = get(`(() => {
+  const previous = Math.random; Math.random = () => 0.5;
+  let variants; try { variants = UI.codexVariantIds(); } finally { Math.random = previous; }
+  return Object.keys(CARDS).map(id => { const c = CARDS[id]; return {
+  _key: id, name: UI.cardName(c), desc: UI.cardDescription(c), stats: UI.cardStatsText(c) ? 1 : 0, stats_text: UI.cardStatsText(c), cdop: cooldownOpText(c),
+  ui_type: ['target','action','artifact'].indexOf(c.type), ui_icon: iconIndex(id),
+  kind: UI.acceptsText(c).replace(/<[^>]*>/g, ''), keywords: UI.keysHtml(c).replace(/<[^>]*>/g, ''),
+  codex: CODEX_CARD_IDS.includes(id) && !c.variantOf ? 1 : variants.includes(id) ? 2 : 0,
+  reward: !c.entityOnly && !c.configured && c.group !== 'entity' && (c.weight ?? 1) > 0 ? 1 : 0, weight: c.weight ?? 1 }; }); })()`);
+writeCsv(path.join(outDir, 'card_ui.csv'), ['_key', 'name', 'desc', 'stats', 'stats_text', 'cdop', 'ui_type', 'ui_icon', 'kind', 'keywords', 'codex', 'reward', 'weight'], plain(cardUi));
+
+// 도감의 기본 개체 스탯·슬롯도 같은 JS 정의에서 내보낸다 (실제 판 상태와 분리).
+const codex = plain(get(`(() => {
+  const previous = Math.random; Math.random = () => 0.5;
+  try { return UI.codexEntities().map(e => {
+    const stats = entityStats(e.owner);
+    const slots = e.owner.slots || e.owner.deck?.slots || [];
+    return { name: e.name || UI.entityName(e.owner, e.kind), category: e.cat, team: ENTITY_TEAMS[entityTeam(e.owner)],
+      color: e.color || e.owner.color || '#2a3246', sprite: e.sprite ?? -1, icon: iconIndex(e.icon || 'objects'),
+      tags: (e.owner.traits || []).map(k => TRAITS[k].color + ';' + TRAITS[k].name).concat(ENTITY_GIMMICKS[e.owner.gimmick] ? ['#8a93a8;' + ENTITY_GIMMICKS[e.owner.gimmick].name] : []),
+      ui_stats: UI.codexStatsHtml(e).split('<span class="cx-stat"').slice(1).map(s => (s.match(/--i:(-?[0-9]+)/)?.[1] || '-1') + ';' + s.split('<i>')[1].split('</i>')[0] + ';' + s.split('<b>')[1].split('</b>')[0]),
+      slot_cards: slots.map(s => s.cards.join(',')), slot_cds: slots.map(s => cooldownText(slotCooldown(s))),
+      note: e.note || ENTITY_GIMMICKS[e.owner.gimmick]?.desc || undefined,
+      stats: ENTITY_STAT_NAMES.filter(k => ['moveSpeed','attackPower','knockback','knockbackResistance','statusResistance','lifetime','range'].includes(k) || stats[k] > 0).map(k => (STAT_RATIO_LABELS[k] || ({knockbackResistance:'넉백 저항', statusResistance:'상태 저항', lifetime:'기본 수명', range:'범위', xpReward:'경험치', pierce:'관통', attackPeriod:'공격 주기', summonPeriod:'소환 주기', supportPeriod:'지원 주기'}[k]) || k) + ': ' + (stats[k] === Infinity ? '무제한' : stats[k])).join(' · '),
+      slots: (e.owner.slots || e.owner.deck?.slots || []).map(s => (s.cards.map(id => UI.cardName(CARDS[id]) + ' (' + cooldownOpText(CARDS[id]) + ')').join(' → ') || '비어 있음') + ' · ' + cooldownText(slotCooldown(s)) + '초') };
+  }); } finally { Math.random = previous; }
+})()`));
+originals.codex_entities = codex;
+exportTable(outDir, 'codex_entities', codex, () => { throw new Error('도감에 함수가 들어갔다'); }, meta, COLUMN_NAMES);
+writeCsv(path.join(outDir, '_tables.csv'), ['table', 'shape', 'row', 'parent'], meta.tables);
+writeCsv(path.join(outDir, '_schema.csv'), ['table', 'column', 'type', 'index'], meta.schema);
 
 /* ---------- 왕복 확인: CSV 에서 다시 만든 표가 원본과 같다 ---------- */
 function withFnKeys(v) {

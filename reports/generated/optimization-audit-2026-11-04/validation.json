@@ -1,0 +1,18 @@
+{
+  "scope": "Current-source audit and planning; production game sources unchanged",
+  "nativeRules": {"passed": 145, "total": 145},
+  "cardImplementationCoverage": {"implemented": 101, "total": 101},
+  "nativeCliTicks": 600,
+  "shippingSiteBuild": true,
+  "wasmRules": {"passed": 145, "total": 145},
+  "roundingSamples": 2000000,
+  "staticSiteSmoke": true,
+  "smokeRenderer": "SwiftShader diagnostic; not used for performance measurements",
+  "webDiagnosticScenes": 8,
+  "webDiagnosticDprs": [1, 2],
+  "webDiagnosticFramesPerPhase": 120,
+  "webDiagnosticRounds": 1,
+  "newStateDifferentialComparisonPerformed": false,
+  "newPixelEquivalenceComparisonPerformed": false,
+  "performanceClaim": "Diagnostic baseline only; no before/after speedup claim"
+}

@@ -26,7 +26,7 @@ const root = path.resolve(__dirname, '..');
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.evaluate(()=>{
       game.start();
-      game.player.deck.slots=[{cards:['artifactRing','artifactHourglass','nearestEnemy','bolt','chain','explode'],cd:0.4}];
+      game.player.deck.slots=[{cards:['artifactHorn','artifactHourglass','nearestEnemy','bolt','chain','explode'],cd:0.4}];
       game.player.deck.inventory=['artifactThorns','artifactChalice','heal','self'];
       game.player.deck.changed(); game.openEditor();
     });

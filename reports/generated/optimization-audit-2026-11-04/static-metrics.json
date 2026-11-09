@@ -1,0 +1,55 @@
+{
+  "world": 60096120,
+  "slot": 96,
+  "entityCapacity": 65536,
+  "slotCapacity": 131072,
+  "fields": {
+    "stat": 5505024,
+    "cbuff": 1572864,
+    "marks": 4718592,
+    "burns": 4718592,
+    "hit_mem": 4194304,
+    "eff": 6815744,
+    "slots": 12582912,
+    "target_event_slots": 524288,
+    "vars": 1064960,
+    "fast": 2925264
+  },
+  "initialHi": 4,
+  "initialSaveBytes": 1431656,
+  "sparseHi": 10000,
+  "sparseSaveBytes": 7889072,
+  "pgoMismatches": [
+    "c/sim/slots.c",
+    "c/sim/spatial.c",
+    "c/sim/world.h",
+    "c/render/render.c",
+    "c/render/render.h",
+    "c/platform/main_sdl.c",
+    "c/platform/web/shell.html"
+  ],
+  "pgoGeneratedUtc": "2026-11-03T14:27:49.575042+00:00",
+  "artifacts": {
+    "amagos.data": {
+      "bytes": 5410308,
+      "gzipBytes": 1238784,
+      "sha256": "184bb66ee148fa7072dd6af31ca07bce7c7d8837fddcb89c68f376f0ec0898e2"
+    },
+    "amagos.js": {
+      "bytes": 221727,
+      "gzipBytes": 52053,
+      "sha256": "bd88a3c758c06b98960e3c88300fb08a73daf89b256b50c3b260632c8629bd13"
+    },
+    "amagos.wasm": {
+      "bytes": 1516993,
+      "gzipBytes": 487123,
+      "sha256": "d8c327447c594f9e442caa087e4edc25cac89ff73be8b84de5458fcbcfa90a11"
+    },
+    "index.html": {
+      "bytes": 1403,
+      "gzipBytes": 863,
+      "sha256": "613b2c5f8336fa53c3ef25f3aa7cdbb5b068835e293877b5069ec1af87840247"
+    }
+  },
+  "generatedUtc": "2026-11-03T15:54:58.914457+00:00"
+}

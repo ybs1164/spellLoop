@@ -29,8 +29,26 @@ static unsigned char ALIVE[CAP];
 static int AT[CAP], NEXT[CAP], HCX[CAP], HCY[CAP];
 static int HEAD[HASH_SLOTS], TAIL[HASH_SLOTS], SLOT_STAMP[HASH_SLOTS];
 static int stamp = 0;
-// 결과가 JS 와 비트까지 같아야 하므로 sin/cos/atan2/hypot/exp 는 JS 의 Math 를 그대로 부른다 (V8 과 다른 libm 은 값이 달라진다).
+// 정밀 경로는 V8 Math 와 같은 값을 낸다. 이동 근사는 아래 motion_* 에만 적용한다.
 #include "v8math.h"
+// 이동에만 허용하는 근사. 충돌 판정·피해·쿨타임·m_* 정확도 검사는 그대로 둔다.
+static int fast_motion = 1;
+EXPORT("motion_math") void motion_math(int enabled) { fast_motion = enabled != 0; }
+static double motion_hypot(double x, double y) {
+  if (!fast_motion) return v8_hypot(x, y);
+  double n = x * x + y * y;
+  return n >= 2.2250738585072014e-308 && n < __builtin_inf() ? __builtin_sqrt(n) : v8_hypot(x, y);
+}
+static double motion_atan2(double y, double x) {
+  if (!fast_motion) return v8_atan2(y, x);
+  double ax = dabs(x), ay = dabs(y);
+  if (ax == 0 || ay == 0 || !(ax < __builtin_inf() && ay < __builtin_inf())) return v8_atan2(y, x);
+  double z = ax < ay ? ax / ay : ay / ax, z2 = z * z;
+  double a = z * (0.999866 + z2 * (-0.3302995 + z2 * (0.180141 + z2 * (-0.085133 + z2 * 0.0208351))));
+  if (ax < ay) a = 1.5707963267948966 - a;
+  if (x < 0) a = 3.141592653589793 - a;
+  return y < 0 ? -a : a;
+}
 static double OUT[4];
 static int CAND[CAP];
 EXPORT("pcand") int* pcand(void) { return CAND; }
@@ -381,21 +399,23 @@ static void nap_core(int si, double dt, int flags, double cx, double cy, double 
   double ang = F[F_ANG][si];
   double x = SX[si], y = SY[si];
   double dx = cx - x, dy = cy - y;
-  double dirx, diry;
+  double dirx, diry, d = 1;
   if (flags & NF_TOWARD) {   // entityMovementDirection: 대상 쪽 단위 벡터 (거리 0 이면 0)
-    double len = v8_hypot(dx, dy);
+    double len = motion_hypot(dx, dy);
+    d = len;
     if (len != 0 && len == len) { dirx = dx / len; diry = dy / len; } else { dirx = 0; diry = 0; }
   } else { dirx = v8_cos(ang); diry = v8_sin(ang); }
-  double d = v8_hypot(dx, dy);
+  if (!fast_motion || (!(flags & NF_TOWARD) && (flags & NF_KEEP))) d = motion_hypot(dx, dy);
   if (d == 0 || d != d) d = 1;
-  if (move && (dirx != 0 || diry != 0)) ang = v8_atan2(diry, dirx);
+  // ang 에서 만든 방향을 다시 atan2 로 각도로 되돌리는 계산은 생략한다.
+  if (move && (dirx != 0 || diry != 0) && (!fast_motion || (flags & NF_TOWARD))) ang = motion_atan2(diry, dirx);
   double mx = dirx, my = diry;
   if (*fear > 0) {
     double fx = x - px, fy = y - py;
-    double fd = v8_hypot(fx, fy);
+    double fd = motion_hypot(fx, fy);
     if (fd == 0 || fd != fd) fd = 1;
     mx = fx / fd; my = fy / fd;
-    ang = v8_atan2(my, mx);
+    ang = motion_atan2(my, mx);
   } else if (flags & NF_KEEP) {
     double k = keep, strafe = F[F_STRAFE][si];
     double radial = d < k * 0.8 ? -1 : d > k * 1.15 ? 1 : 0;
@@ -631,3 +651,5 @@ EXPORT("m_cos") double m_cos(double x) { return v8_cos(x); }
 EXPORT("m_atan2") double m_atan2(double y, double x) { return v8_atan2(y, x); }
 EXPORT("m_exp") double m_exp(double x) { return v8_exp(x); }
 EXPORT("m_hypot") double m_hypot(double x, double y) { return v8_hypot(x, y); }
+EXPORT("m_motion_atan2") double m_motion_atan2(double y, double x) { return motion_atan2(y, x); }
+EXPORT("m_motion_hypot") double m_motion_hypot(double x, double y) { return motion_hypot(x, y); }

@@ -9,11 +9,16 @@
 | 구조 | `run-all-checks.cjs` | 전체 검사 + 상태 지문 + 자동 플레이를 `baseline.json` 과 비교 (`--save` 로 기준선 갱신) |
 | 규칙 검사 | `check-*.cjs` | 규칙·카드·개체별 단위 검사 (`playwright` 가 필요한 `check-event-ui`, `check-play-logs`, `check-worker-sim` 은 없으면 건너뜀) |
 | 성능 | `bench-frame.cjs`, `bench-render.cjs`, `stress-browser.cjs` | 프레임·렌더 측정, 스트레스 (사용법은 `reports/ingame-optimization-plan.md`. 1만 개체: `node tools/bench-frame.cjs tenk`, 순간 대량 생성: `burst` (`BURST_NOBUDGET=1` 은 생성 안전장치를 끄고 잰다), 단계별 `BENCH_PHASES=1`) |
+| 이동 연산 | `bench-sim-math.cjs`, `check-sim-math.cjs` | 부동소수점 이동 최적화의 원래/근사 경로 교대 A/B와 오차 검사 (기본은 최적화, `SIM_MATH=exact` 또는 브라우저 `?math=exact` 로 원래 연산). 결과 `reports/generated/sim-math-benchmark.json`, 분석 `reports/sim-math-optimization.md` |
 | 플레이 | `play-stages.cjs` | 고정 시드 자동 플레이 (결과 `reports/generated/stage-playthrough.json`) |
 | 밸런스 | `simulate-balance.cjs`, `summarize-balance.cjs`, `report-stat-ratios.cjs` | 밸런스 시뮬레이션과 요약 |
 | 개발 | `serve.cjs` | 정적 서버 (`?worker=1` 은 http 에서만 동작) |
 | 에셋 | `build_icons.py` | 카드 아이콘 아틀라스 생성 |
 | C 재작성 | `shot-js.cjs` | JS 판 화면을 C 판 `amagos --shot` 과 같은 조건(스테이지·틱·원 그리며 이동)으로 찍는다 (`NODE_PATH=$(npm root -g)`, playwright) |
 | C 재작성 | `export-csv.cjs`, `extract-rules.cjs` | JS 데이터 표 → `data/*.csv` (CSV 왕복 확인 포함), 검사 단언 → `docs/RULES.md`. `npm run data:export` 로 다시 만들고 `npm run data:check` 로 어긋남을 검사한다 (`docs/C_REWRITE_PLAN.md`) |
+
+`node tools/compare-c-js.cjs [amagos_cli 경로]`는 C/JS 기본 개체 50종의 스탯·팀·행동 주기를 비교한다(C CLI 빌드 필요). `node tools/smoke-c-web.cjs`는 `c/build/site/c`의 정적 C 웹 배포를 브라우저에서 확인한다(Playwright 필요).
+
+`node tools/compare-ui.cjs [출력 폴더]`는 JS와 C 웹 빌드를 1280×720·390×844에서 캡처한다. 타이틀·플레이/HUD·도감 카드/개체/필터/슬롯 펼치기/목록 끝·일시정지·편집기·개체 조회/슬롯 펼치기의 PNG와 JS 요소 배치 JSON, 비교용 `index.html`을 저장한다. 먼저 `python c/tools/build.py web --site c/build/site/c`를 실행한다. 기본 출력은 `c/build/ui-compare/`이며 Playwright가 필요하다. Windows 전역 설치는 `$env:NODE_PATH = (npm root -g)`로 모듈 경로를 지정한다.
 
 리팩터링처럼 동작이 같아야 하는 변경은 `node tools/run-all-checks.cjs` (약 4분) 가 "기준선과 동일" 이어야 한다.

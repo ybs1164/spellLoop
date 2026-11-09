@@ -15,8 +15,6 @@ int slot_next_type(const uint16_t *cards, int n) {
 const char *slot_rule_message(int card) {
   switch (card) {
     case CARD_ARTIFACT_BOOTS: return "「바람의 장화」는 이동 카드가 포함된 슬롯에만 넣을 수 있습니다";
-    case CARD_ARTIFACT_RING: return "「절제의 반지」 슬롯은 행동 카드를 3장 이하로 써야 합니다";
-    case CARD_ARTIFACT_SEAL: return "「외길의 인장」 슬롯은 행동·대상 카드를 2장 이하로 써야 합니다";
     default: return "";
   }
 }
@@ -24,6 +22,7 @@ const char *slot_rule_message(int card) {
 Slot *player_slot(World *w, int k) { return slot_of(w, w->player, k); }
 
 void deck_changed(World *w) {
+  w->target_event_tick = UINT64_MAX;
   // 구성이 바뀌면 남은 쿨타임은 유지하되 새 쿨타임을 넘지 않게 줄인다
   for (int k = 0; k < MAX_SLOTS; k++) {
     Slot *s = player_slot(w, k);
@@ -60,17 +59,10 @@ static bool event_card(int card) {
 }
 /** slotDeadError: 첫 칸의 타격 시, 앞에 발동 연쇄 카드가 없는 이벤트 상대, 행동이 받지 않는 종류의 대상 바로 뒤 행동 */
 static const char *dead_error(const Draft *d, char *buf, size_t n) {
-  const Card *first = &CARDS[d->cards[0]];
-  if (first->type == CARD_TYPE_ARTIFACT && first->event_kind && strcmp(first->event_kind, "hit") == 0) {
-    snprintf(buf, n, "%s은(는) 앞 행동이 있어야 작동하므로 첫 칸에 놓을 수 없습니다", first->name);
-    return buf;
-  }
-  // 행동 뒤의 연쇄 카드는 그 행동의 이벤트를 넘기고, 첫 구간의 연쇄 카드는 발동 순간이 있어야 이벤트를 준다
-  bool acted = false, event = false;
+  bool event = false;
   for (int i = 0; i < d->n; i++) {
     const Card *c = &CARDS[d->cards[i]];
-    if (c->type == CARD_TYPE_ACTION) acted = true;
-    else if (c->type == CARD_TYPE_ARTIFACT && (acted || event_card(d->cards[i]))) event = true;
+    if (c->type == CARD_TYPE_ARTIFACT) event = event_card(d->cards[i]);
     if (d->cards[i] == CARD_EVENT_SUBJECT && !event) { snprintf(buf, n, "%s은(는) 앞에 발동 연쇄 카드가 있어야 작동하므로 이 칸에 놓을 수 없습니다", c->name); return buf; }
     if (!i || c->type != CARD_TYPE_ACTION) continue;
     const Card *t = &CARDS[d->cards[i - 1]];

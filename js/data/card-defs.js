@@ -84,8 +84,8 @@ const CARDS = {
   },
   gems: {
     type: 'target', kind: 'gem', name: '보석', weight: 1,
-    desc: '넓은 시야(900) 안의 모든 보석을 고른다.',
-    resolve: (env) => env.gems(900),
+    desc: '모든 보석을 고른다.',
+    resolve: (env) => env.gems(),
   },
   prey: {
     type: 'target', kind: 'enemy', name: '사냥감', weight: 1,
@@ -312,8 +312,8 @@ const CARDS = {
   },
   snipe: {
     type: 'action', group: 6, name: '저격', weight: 2, accepts: ALL_KINDS,
-    desc: '즉시 저격해 공격력의 1000% 피해를 준다.',
-    run: (ts, env) => ts.forEach((t) => env.snipe(t)),
+    desc: '공격력의 1000% 피해를 선택한 모든 대상에게 균등하게 나누어 즉시 타격한다.',
+    run: (ts, env) => ts.forEach(t => env.directAction('snipe', t, 1 / ts.length)),
   },
   split: {
     type: 'action', group: 6, name: '분열', weight: 1, accepts: ['self', 'object', 'ally', 'zone', 'shot'],
@@ -342,6 +342,7 @@ const CARDS = {
 
 // 행동별 필수 속성: 실제 개체의 ON/OFF 값을 확인한다.
 const ACTION_RULES = {
+  snipe: { requires: ['position'], exclude: ['point'] },
   pull: { requires: ['position'], exclude: ['self', 'point'] },
   heal: { requires: ['health'] }, shield: { requires: ['health'] },
   armor: { requires: ['health'] },
@@ -356,11 +357,6 @@ const ACTION_RULES = {
   split: { requires: ['position'], exclude: ['point', 'enemy'] },
   swap: { requires: ['position'], exclude: ['self'] },
 };
-const DIRECT_ACTIONS = ['snipe'];
-for (const id of DIRECT_ACTIONS) {
-  ACTION_RULES[id] = { requires: ['position'], exclude: ['point'] };
-  CARDS[id].run = (ts, env) => ts.forEach(t => env.directAction(id, t));
-}
 for (const [id, c] of Object.entries(CARDS)) {
   if (c.type !== 'action') continue;
   Object.assign(c, ACTION_RULES[id] || { requires: ['position'] });

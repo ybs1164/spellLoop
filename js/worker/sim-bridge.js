@@ -26,7 +26,7 @@ const SimBridge = {
     bridge.bothSlot = { has: id => id === 'entityGuard' || id === 'armor' };
     bridge.noSlot = { has: () => false };
     bridge.keysSent = '';
-    bridge.worker = new Worker('js/worker/sim-worker.js');
+    bridge.worker = new Worker('js/worker/sim-worker.js' + (SIM_FAST_MATH ? '?math=fast' : '?math=exact'));
     bridge.worker.onmessage = ({ data }) => {
       if (data.type === 'snap') { if (data.gen === bridge.gen) bridge.latest = data; bridge.worker.postMessage({ type: 'ack' }); }
       else if (data.type === 'debug') bridge.debugResult = data.result;

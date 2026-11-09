@@ -1,0 +1,32 @@
+{
+  "nativeRules": {
+    "passed": 137,
+    "total": 137
+  },
+  "wasmRules": {
+    "passed": 137,
+    "total": 137
+  },
+  "nativeStateAndSave": {
+    "passed": 12,
+    "total": 12
+  },
+  "wasmStateAndSave": {
+    "passed": 12,
+    "total": 12
+  },
+  "pixelComparisons": {
+    "passed": 31,
+    "total": 31,
+    "maxChannelDelta": 0
+  },
+  "roundingSamples": 2000000,
+  "staticSiteSmoke": true,
+  "selectedSourcesMatchBuild": true,
+  "jsReferenceUnchanged": true,
+  "shippingHashes": {
+    "amagos.wasm": "e23fa2dd4cfdb11b2df637dec0f1fba469364d01eec6a35efcdefcf81562d430",
+    "amagos.js": "7f9798117eae0e0aff5374ded231ba6281f69d00171b37f48725d57d27de1658",
+    "amagos.data": "184bb66ee148fa7072dd6af31ca07bce7c7d8837fddcb89c68f376f0ec0898e2"
+  }
+}

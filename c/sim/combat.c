@@ -64,9 +64,8 @@ void add_debuff(World *w, int i, int key, float duration, float dps, int count) 
   const Effects *e = &w->eff[i];
   if (key == DB_FEAR && (e->mask & FX_RESIST) && e->fear_immune) return;
   if (key == DB_FREEZE && (e->mask & FX_RESIST)) duration *= e->resist_freeze;
-  if (g_ctx && g_ctx->applied < 64) g_ctx->applied_list[g_ctx->applied++] = ent_handle(w, i);
-  if (key == DB_MARK) { add_stack(w->marks[i], duration, 0, count); w->mark_t[i] = maxf(w->mark_t[i], duration); return; }
-  if (key == DB_BURN) { add_stack(w->burns[i], duration, dps, count); w->burn_t[i] = maxf(w->burn_t[i], duration); return; }
+  if (key == DB_MARK) { add_stack(w->marks[i], duration, 0, count); w->mark_t[i] = maxf(w->mark_t[i], duration); index_status(w,i,false,true); return; }
+  if (key == DB_BURN) { add_stack(w->burns[i], duration, dps, count); w->burn_t[i] = maxf(w->burn_t[i], duration); index_status(w,i,true,true); return; }
   static const char *const CAPS[] = { "freeze", "root", "fear" };
   if (!T_CAPS) T_CAPS = data_table("status_caps");
   float cap = (float)data_num(T_CAPS, data_row(T_CAPS, CAPS[key]), "value", 3) * (1 - w->stat[i][STAT_STATUS_RESISTANCE]);
@@ -90,32 +89,87 @@ void report_hit(World *w, int source, int target, float damage, int elem) {
   (void)elem;
   if (!(damage > 0) || target < 0) return;
   Handle th = ent_handle(w, target);
-  if (g_ctx && g_ctx->hits < 64) {
-    g_ctx->hit_list[g_ctx->hits] = (Target){ w->kind[target], 0, th, w->x[target], w->y[target] };
-    g_ctx->hit_dmg[g_ctx->hits++] = damage;
-  }
-  if (source >= 0 && !(g_ctx && g_ctx->linked)) {
+  if (source >= 0) {
     emit_event(w, ent_handle(w, source), EV_HIT, th, w->x[target], w->y[target], damage);
     if (w->attack_owner[source]) emit_event(w, w->attack_owner[source], EV_HIT, th, w->x[target], w->y[target], damage);
   }
   emit_event(w, th, EV_HURT, source >= 0 ? ent_handle(w, source) : HANDLE_NONE, w->x[target], w->y[target], damage);
 }
 
+/* ---------- 판 기록 ---------- */
+const char *kind_name(int kind, int sub, int etype, int hazard) {
+  static const char *const allies[] = { "회복 사제", "기사", "궁수", "분신" };
+  static const char *const objects[] = { "구체", "지뢰", "포탑", "미끼", "화약통" };
+  static const char *const zones[] = { "독 장판", "소용돌이", "회전 칼날", "점액", "결계", "유성", "심연", "치유 장판", "보호 장판", "화상 장판" };
+  static const char *const pickups[] = { "경험치 보석", "생명의 보석", "자석", "보물 상자" };
+#define PICK(list) (sub >= 0 && sub < ARRAY_LEN(list) ? list[sub] : "?")
+  switch (kind) {
+    case TK_SELF: return "플레이어";
+    case TK_ENEMY: return etype >= 0 ? data_str(data_table("enemy_types"), etype, "name", "적") : "적";
+    case TK_ALLY: return PICK(allies);
+    case TK_OBJECT: return PICK(objects);
+    case TK_ZONE: return PICK(zones);
+    case TK_GEM: case TK_PICKUP: return PICK(pickups);
+    case TK_SHOT: return hazard ? (sub == 1 ? "속박탄" : "적 탄환") : "아군 탄환";
+    default: return "알 수 없는 피해";
+  }
+#undef PICK
+}
+
+/** 피해를 낸 쪽: 탄·장판은 만든 개체를 따라 올라가 적(또는 플레이어)을 찾는다 */
+static int hit_root(const World *w, int s) {
+  for (int k = 0; k < 4 && s >= 0; k++) {
+    if (w->kind[s] == TK_ENEMY || w->kind[s] == TK_SELF) return s;
+    int o = w->source[s] ? ent_index(w, w->source[s]) : -1;
+    if (o < 0 || o == s) return s;
+    s = o;
+  }
+  return s;
+}
+
+static void log_hit(World *w, int source, float dmg) {
+  RunStats *r = &w->run;
+  HitLog h = { -1, -1, TK__COUNT, 0, TK__COUNT, 0, -1, dmg, (float)w->time };
+  if (source >= 0 && source < w->hi) {
+    int root = hit_root(w, source);
+    h.kind = w->kind[root]; h.sub = w->sub[root]; h.etype = w->etype[root]; h.hazard = w->hazard[root];
+    h.via_kind = w->kind[source]; h.via_sub = w->sub[source]; h.via_hazard = w->hazard[source];
+  }
+  if (r->nhits >= HIT_LOG) memmove(r->hits, r->hits + 1, sizeof r->hits[0] * (HIT_LOG - 1)), r->nhits = HIT_LOG - 1;
+  r->hits[r->nhits++] = h;
+}
+
+static void player_down(World *w, int p) {
+  w->hp[p] = 0;
+  w->state = GS_GAMEOVER;
+  w->run.death_t = 0;
+  fx_burst(w, w->x[p], w->y[p], 0xFF5A5AFFu, 36);
+  fx_burst(w, w->x[p], w->y[p], w->color[p], 18);
+  fx_circle(w, w->x[p], w->y[p], 70, 0xFF5A5AFFu, 0.6f, CS_WAVE, -1, -1, 0, HANDLE_NONE);
+  fx_shake(w, 12);
+  const HitLog *k = w->run.nhits ? &w->run.hits[w->run.nhits - 1] : NULL;
+  char sub[128];
+  snprintf(sub, sizeof sub, "%s에게 쓰러졌습니다", k ? kind_name(k->kind, k->sub, k->etype, k->hazard) : "알 수 없는 피해");
+  fx_banner(w, "쓰러졌습니다", 0xFF6B6BFFu, sub);
+}
+
 void kill_enemy(World *w, int e) {
   if (w->dying[e]) return;
   w->dying[e] = 1;
   w->kills++;
+  if (w->etype[e] >= 0 && w->etype[e] < ENEMY__COUNT && w->run.kills_by[w->etype[e]] < UINT16_MAX) w->run.kills_by[w->etype[e]]++;
   if (w->nfallen >= 60) { memmove(w->fallen, w->fallen + 1, sizeof w->fallen[0] * 59); w->nfallen = 59; }
   w->fallen[w->nfallen].x = w->x[e]; w->fallen[w->nfallen].y = w->y[e]; w->fallen[w->nfallen].t = (float)w->time;
   w->nfallen++;
   bool boss = w->etype[e] >= 0 && data_num(data_table("enemy_types"), w->etype[e], "boss", 0) != 0;
+  if (boss) w->run.boss_kills++;
   fx_burst(w, w->x[e], w->y[e], w->color[e], boss ? 40 : 6);
 }
 
 /** 실제 피해 (js hurtEnemy): 표식 → 갑주 */
 static void hurt_enemy(World *w, int e, float dmg, float dx, float dy, float knock, uint32_t color) {
   if (w->mark_t[e] > 0) { dmg *= mark_multiplier(w, e); color = 0xFF8F8FFFu; }
-  float reduction = w->stat[e][STAT_DEFENSE];
+  float reduction = w->eff[e].mask & FX_ARMOR ? w->stat[e][STAT_DEFENSE] : 0;
   if (reduction > 0) {
     float cut = maxf(1, dmg - reduction);
     if (cut < dmg * 0.75f) color = 0x8A93A8FFu;   // 갑주에 크게 막혔다
@@ -151,6 +205,9 @@ void damage_enemy(World *w, int e, float dmg, float dx, float dy, float knock, u
   }
   float before = w->hp[e];
   if (amount > 0) hurt_enemy(w, e, amount, dx, dy, knock, aff > 1 ? 0xFFE45CFFu : color);
+  if (source < 0 || w->team[source] != TEAM_HOSTILE) {   // 우리 편(또는 주인 없는 화상·폭발)이 준 피해만 센다
+    w->run.dealt += before - maxf(0, w->hp[e]) + absorbed;
+  }
   report_hit(w, source, e, before - w->hp[e] + absorbed, elem);
 }
 
@@ -168,13 +225,14 @@ void player_damage(World *w, float amount, int source) {
     fx_label(w, w->x[p], w->y[p] - 24, t, 0x7FB2FFFFu);
     if (dmg <= 0) { w->invuln[p] = 0.3f; return; }
   }
+  log_hit(w, source, dmg);
   w->hp[p] -= dmg;
   report_hit(w, source, p, dmg, ELEM_NONE);
   w->invuln[p] = 0.5f;
   w->hurt_t = 2;
   fx_shake(w, 6);
   fx_text(w, w->x[p], w->y[p] - 24, (int)lroundf(dmg), 0xFF5A5AFFu);
-  if (w->hp[p] <= 0) { w->hp[p] = 0; w->state = GS_GAMEOVER; }
+  if (w->hp[p] <= 0) player_down(w, p);
 }
 
 void shatter(World *w, int i) {
@@ -227,7 +285,7 @@ void hit_circle(World *w, float x, float y, float r, float dmg, float knock, Eac
 void hit_line(World *w, float x0, float y0, float x1, float y1, float width, float dmg, float knock, int source) {
   float dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy;
   if (len2 <= 0) len2 = 1;
-  for (int e = 0; e < w->hi; e++) {
+  for (int e = kind_next(w, TK_ENEMY, 0, w->hi); e < w->hi; e = kind_next(w, TK_ENEMY, e + 1, w->hi)) {
     if (!ent_live(w, e) || w->kind[e] != TK_ENEMY) continue;
     float t = clampf(((w->x[e] - x0) * dx + (w->y[e] - y0) * dy) / len2, 0, 1);
     float px = x0 + dx * t - w->x[e], py = y0 + dy * t - w->y[e], rr = width + w->r[e];
@@ -254,26 +312,33 @@ void heal_entity(World *w, int i, float n) {
 /* ---------- 상태 진행 ---------- */
 void update_statuses(World *w) {
   const float dt = SIM_DT;
-  for (int i = 0; i < w->hi; i++) {
+  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
     if (!ent_live(w, i)) continue;
     // 표식: 중첩마다 만료
     float mt = 0;
+    if(w->fast.marks[i>>6] & (UINT64_C(1)<<(i&63))) {
     for (int k = 0; k < MAX_STACKS; k++) {
       Stack *s = &w->marks[i][k];
       if (s->time <= 0) continue;
       s->time = maxf(0, s->time - dt);
       mt = maxf(mt, s->time);
     }
+    index_status(w,i,false,mt>0);
+    }
     w->mark_t[i] = mt;
     // 화상: 중첩별 초당 피해를 모아 0.5초마다 (js tickBurn)
     float damage = 0, bt = 0;
-    bool any = false;
+    bool any = false, alive_after=false;
+    if(w->fast.burns[i>>6] & (UINT64_C(1)<<(i&63))) {
     for (int k = 0; k < MAX_STACKS; k++) {
       Stack *s = &w->burns[i][k];
       if (s->time <= 0) continue;
       damage += s->dps * minf(dt, s->time);
       s->time = maxf(0, s->time - dt);
+      alive_after |= s->time>0;
       if (s->time > 1e-9f) { any = true; bt = maxf(bt, s->time); }
+    }
+    index_status(w,i,true,alive_after);
     }
     w->burn_t[i] = bt;
     if (damage > 0 || w->burn_pending[i] > 0) {
@@ -300,7 +365,7 @@ static void scale_field(float *v, float *cur, float factor) { if (isfinite(*v)) 
 void update_buffs(World *w) {
   const float dt = SIM_DT;
   int p = ent_index(w, w->player);
-  for (int i = 0; i < w->hi; i++) {
+  for (int i = entity_scan_next(w, 0, w->hi); i < w->hi; i = entity_scan_next(w, i + 1, w->hi)) {
     if (!ent_live(w, i)) continue;
     bool any = false;
     for (int k = 0; k < CB__COUNT; k++) if (w->cbuff[i][k] > 0) { w->cbuff[i][k] = maxf(0, w->cbuff[i][k] - dt); any = true; }

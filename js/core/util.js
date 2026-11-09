@@ -2,6 +2,32 @@
 
 const TAU = Math.PI * 2;
 
+// 이동 최적화 기본 사용. SIM_MATH=exact (Node) 또는 ?math=exact (브라우저) 로 원래 계산.
+// 피해량·쿨타임·충돌 거리 판정식은 그대로다 (이동·방향 변화로 맞는 대상은 달라질 수 있다).
+const SIM_FAST_MATH = typeof process !== 'undefined' ? process.env?.SIM_MATH !== 'exact'
+  : typeof location === 'undefined' || new URLSearchParams(location.search).get('math') !== 'exact';
+const simHypot = SIM_FAST_MATH ? (x, y) => {
+  const n = x * x + y * y;
+  // 너무 크거나 작은 값·NaN·무한대는 Math.hypot 의 스케일링과 특수값 처리를 유지한다.
+  return n >= 2.2250738585072014e-308 && n < Infinity ? Math.sqrt(n) : Math.hypot(x, y);
+} : Math.hypot;
+const simAtan2 = SIM_FAST_MATH ? (y, x) => {
+  const ax = Math.abs(x), ay = Math.abs(y);
+  if (!ax || !ay || !(ax < Infinity && ay < Infinity)) return Math.atan2(y, x);
+  const z = ax < ay ? ax / ay : ay / ax, z2 = z * z;
+  // atan(z), 0 <= z <= 1: 최대 각도 오차 1.2e-5 rad (check-sim-math 로 검증).
+  let a = z * (0.999866 + z2 * (-0.3302995 + z2 * (0.180141 + z2 * (-0.085133 + z2 * 0.0208351))));
+  if (ax < ay) a = Math.PI / 2 - a;
+  if (x < 0) a = Math.PI - a;
+  return y < 0 ? -a : a;
+} : Math.atan2;
+const simAngDiff = SIM_FAST_MATH ? (a, b) => {
+  const d = a - b;
+  if (!Number.isFinite(d) || Math.abs(d) > 1e6) return Math.atan2(Math.sin(d), Math.cos(d));
+  const r = d % TAU;
+  return r > Math.PI ? r - TAU : r < -Math.PI ? r + TAU : r;
+} : (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+
 const rand = (a, b) => a + Math.random() * (b - a);
 const randInt = (a, b) => Math.floor(a + Math.random() * (b - a + 1));
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);

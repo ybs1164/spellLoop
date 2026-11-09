@@ -28,6 +28,35 @@ static float aim_at(const Ctx *c, const Target *t) {
 }
 
 /* ---------- 공통 효과 ---------- */
+static float lead_aim(Ctx *c, const Target *t, float speed, float life) {
+  World *w = c->w;
+  float base = aim_at(c, t);
+  int o = target_index(w, t);
+  if (o < 0 || o == c->actor || !(speed > 0)) return base;
+  double elapsed = w->time - w->lead_time[o];
+  if (!w->lead_sample[o] || elapsed > 1) {
+    w->lead_sample[o] = 1; w->lead_time[o] = w->time;
+    w->lead_x[o] = w->x[o]; w->lead_y[o] = w->y[o];
+    w->lead_vx[o] = w->lead_vy[o] = 0;
+  } else if (elapsed >= 0.05) {
+    w->lead_vx[o] = (w->x[o] - w->lead_x[o]) / (float)elapsed;
+    w->lead_vy[o] = (w->y[o] - w->lead_y[o]) / (float)elapsed;
+    w->lead_x[o] = w->x[o]; w->lead_y[o] = w->y[o]; w->lead_time[o] = w->time;
+  }
+  float vx = w->lead_vx[o], vy = w->lead_vy[o];
+  if (!vx && !vy) return base;
+  float dx = w->x[o] - w->x[c->actor], dy = w->y[o] - w->y[c->actor];
+  float a = vx * vx + vy * vy - speed * speed, b = 2 * (dx * vx + dy * vy), d = dx * dx + dy * dy, tau;
+  if (fabsf(a) < 1e-6f) tau = b < 0 ? -d / b : NAN;
+  else {
+    float disc = b * b - 4 * a * d;
+    if (disc < 0) return base;
+    float r = sqrtf(disc), t1 = (-b - r) / (2 * a), t2 = (-b + r) / (2 * a);
+    tau = minf(t1 > 0 ? t1 : INFINITY, t2 > 0 ? t2 : INFINITY);
+  }
+  return tau > 0 && tau <= life ? atan2f(dy + vy * tau, dx + vx * tau) : base;
+}
+
 static void blast(Ctx *c, float x, float y, float r0, float dmg, uint32_t color, int elem, float knock) {
   World *w = c->w;
   float r = r0 * w->area;
@@ -76,9 +105,14 @@ static void configured_bolt(Ctx *c, const Target *t) {
   bool ring = ring_s ? (!strcmp(ring_s, "auto") ? n > 1 : !strcmp(ring_s, "true")) : var_num(w, var, "ring", 0) != 0;
   float knock = var_has(w, var, "knockbackStat") ? w->stat[a][STAT_KNOCKBACK] : (float)var_num(w, var, "knockback", 0);
   float radius = (float)var_num(w, var, "radius", 5), life = (float)var_num(w, var, "life", 1.4);
+  if (var_num(w, var, "lead", 0)) base = lead_aim(c, t, speed, life);
   for (int i = 0; i < n; i++) {
     float ang = base + (ring ? (float)i / n * TAU_F : (i - (n - 1) / 2.0f) * 0.2f);
-    if (var_num(w, var, "hazard", 0)) spawn_hazard(w, a, w->x[a], w->y[a], cosf(ang) * speed, sinf(ang) * speed, radius, dmg, life, w->color[a]);
+    if (var_num(w, var, "hazard", 0)) {
+      Handle h = spawn_hazard(w, a, w->x[a], w->y[a], cosf(ang) * speed, sinf(ang) * speed, radius, dmg, life, w->color[a]);
+      const char *kind = var_str(w, var, "projectileKind");
+      if (kind && !strcmp(kind, "curseBolt")) configure_curse_shot(w, h);
+    }
     else {
       const char *shape = var_str(w, var, "shape"), *color = var_str(w, var, "color");
       int sh = shape && !strcmp(shape, "arrow") ? SHAPE_ARROW : SHAPE_DOT;
@@ -123,7 +157,7 @@ static void a_boomerang(Ctx *c, const Target *ts, int n) {
     int si = slot_add_entity_ids(w, h, RETURN, 3);
     if (si >= 0) {
       VarKV kv[4] = { { "passive", 1, "", false }, { "acceleration", speed / 0.5f, "", false }, { "maxSpeed", speed, "", false }, { "collectRange", 18, "", false } };
-      w->slots[si].vars[1] = (uint16_t)variant_make(w, CARD_BOOMERANG, 0, 0, kv, 4);
+      w->slots[si].vars[1] = (uint16_t)variant_make(w, CARD_BOOMERANG, '=', (float)FRAME_COOLDOWN, kv, 4);   // 매 프레임
     }
   }
 }
@@ -144,7 +178,7 @@ static void a_homing(Ctx *c, const Target *ts, int n) {
     int si = slot_add_entity_ids(w, h, TURN, 3);
     if (si >= 0) {
       VarKV kv[3] = { { "passive", 1, "", false }, { "turn", 7, "", false }, { "range", 500, "", false } };
-      w->slots[si].vars[1] = (uint16_t)variant_make(w, CARD_HOMING, 0, 0, kv, 3);
+      w->slots[si].vars[1] = (uint16_t)variant_make(w, CARD_HOMING, '=', (float)FRAME_COOLDOWN, kv, 3);   // 매 프레임 선회
     }
   }
 }
@@ -303,7 +337,7 @@ static void drain_enemy(Ctx *c, int e) {
 }
 static void a_drain(Ctx *c, const Target *ts, int n) { for (int k = 0; k < n; k++) hostile(c, &ts[k], drain_enemy, 18, true); }
 
-/** 저격: 대상 하나에 바로 (js directAction('snipe')). 개체 설정이 있으면 그 공격력·넉백 */
+/** 저격 총피해를 대상 수로 나눈다. 개체 전용 타격은 대상마다 적용한다. */
 static void a_snipe(Ctx *c, const Target *ts, int n) {
   World *w = c->w;
   int a = c->actor, p = player_i(w);
@@ -320,7 +354,7 @@ static void a_snipe(Ctx *c, const Target *ts, int n) {
       else damage_target(w, &ts[k], dmg, knock, elem, a);
       continue;
     }
-    damage_target(w, &ts[k], action_value(c, CARD_SNIPE, "damage", a) * w->might, action_value(c, CARD_SNIPE, "knockback", a), ELEM_NONE, a);
+    damage_target(w, &ts[k], action_value(c, CARD_SNIPE, "damage", a) * w->might / n, action_value(c, CARD_SNIPE, "knockback", a), ELEM_NONE, a);
     fx_circle(w, w->x[o], w->y[o], w->r[o] + 12, 0x8BE9FFFFu, 0.3f, CS_WAVE, -1, -1, 0, ent_handle(w, o));
     if (p >= 0) fx_beam(w, w->x[p], w->y[p], w->x[o], w->y[o], 0x8BE9FFFFu, 3, 0.2f);
   }
@@ -401,15 +435,23 @@ static void a_decoy(Ctx *c, const Target *ts, int n) { place_at(c, OBJ_DECOY, ts
 static void a_summon(Ctx *c, const Target *ts, int n) {
   World *w = c->w;
   const char *type = var_str(w, c->var, "type");
+  if (var_num(w, c->var, "blockFear", 0) && has_state(w, c->actor, DB_FEAR)) return;
   for (int k = 0; k < n; k++) {
     Vec2 o = target_pos(w, &ts[k]);
     if (type) {   // 적이 부하를 부른다 (js configuredSummon)
-      int et = data_row(data_table("enemy_types"), type), cnt = (int)maxf(1, w->stat[c->actor][STAT_SUMMON_COUNT]);
+      int et = data_row(data_table("enemy_types"), type);
+      int cnt = (int)maxf(1, var_num(w, c->var, "death", 0) ? (float)var_num(w, c->var, "n", 1) : w->stat[c->actor][STAT_SUMMON_COUNT]);
       for (int j = 0; et >= 0 && j < cnt; j++) {
-        float a = rng_range(&w->rng, 0, TAU_F), d = w->r[c->actor] + 16;
+        bool death = var_num(w, c->var, "death", 0) != 0;
+        float a = (float)j / cnt * TAU_F + (death ? 0 : rng_range(&w->rng, -0.3f, 0.3f));
+        float d = death ? w->r[c->actor] * 0.8f : w->r[c->actor] + 30;
         Handle h = spawn_enemy(w, et, o.x + cosf(a) * d, o.y + sinf(a) * d);
         int e = ent_index(w, h);
-        if (e >= 0 && var_num(w, c->var, "minions", 0)) w->stat[e][STAT_XP_REWARD] = 0;
+        if (e >= 0) {
+          w->team[e] = w->team[c->actor];
+          if (death) { w->kx[e] = cosf(a) * 320; w->ky[e] = sinf(a) * 320; }
+          else { w->stat[e][STAT_XP_REWARD] = 0; w->flash[e] = 0.2f; }
+        }
       }
       fx_circle(w, o.x, o.y, 40, 0xC49BFFFFu, 0.35f, CS_WAVE, -1, -1, 0, 0);
       continue;
@@ -559,6 +601,7 @@ static void spread_from(Ctx *c, int src) {
     w->freeze_t[src] = w->root_t[src] = w->fear_t[src] = w->mark_t[src] = w->burn_t[src] = 0;
     memset(w->marks[src], 0, sizeof w->marks[src]);
     memset(w->burns[src], 0, sizeof w->burns[src]);
+    index_status(w,src,false,false);index_status(w,src,true,false);
   }
 }
 static void a_spread(Ctx *c, const Target *ts, int n) {
@@ -574,7 +617,7 @@ static void a_absorb(Ctx *c, const Target *ts, int n) {
     if (w->kind[o] == TK_GEM || w->kind[o] == TK_PICKUP) {
       // 줍는다 (js Pickup.collect)
       switch (w->sub[o]) {
-        case PICK_HEART: if (p >= 0) heal_entity(w, p, 30); break;
+        case PICK_HEART: gain_xp(w, w->value[o]); break;
         case PICK_MAGNET: for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_GEM) w->stat[i][STAT_REACH] = INFINITY; break;
         case PICK_CHEST: push_reward(w, REWARD_CHEST); fx_banner(w, "보물 상자!", 0xFFD166FFu, NULL); break;
         default: gain_xp(w, w->value[o]); break;
@@ -596,6 +639,7 @@ static void a_disappear(Ctx *c, const Target *ts, int n) {
 /** 분열: 대상을 하나 더 만든다 (js split) */
 static void a_split(Ctx *c, const Target *ts, int n) {
   World *w = c->w;
+  if (w->split_born[c->actor]) return;
   for (int k = 0; k < n; k++) {
     int o = target_index(w, &ts[k]);
     if (o < 0 || !ent_live(w, o)) continue;
@@ -636,10 +680,35 @@ static void a_split(Ctx *c, const Target *ts, int n) {
     }
     int ci = ent_index(w, ch);
     if (ci < 0) continue;
-    if (ts[k].kind != TK_SHOT && ts[k].kind != TK_ENEMY) {
+    w->split_born[ci] = 1;
+    if (ts[k].kind != TK_SHOT) {
+      slots_inherit(w, o, ci);
+      static const int COPY[] = { STAT_ATTACK_POWER, STAT_MOVE_SPEED, STAT_KNOCKBACK, STAT_KNOCKBACK_RESISTANCE, STAT_STATUS_RESISTANCE, STAT_RANGE, STAT_MAX_HP };
+      for (int st = 0; st < ARRAY_LEN(COPY); st++) w->stat[ci][COPY[st]] = w->stat[o][COPY[st]];
       w->team[ci] = w->team[o];
-      if (isfinite(w->life[o]) && ts[k].kind != TK_SELF) w->life[ci] = w->life[o];
-      if (w->stat[o][STAT_MAX_HP] > 0 && ts[k].kind != TK_SELF) w->hp[ci] = w->hp[o];
+      if (ts[k].kind != TK_SELF) w->max_life[ci] = w->max_life[o];
+      if (isfinite(w->life[o])) w->life[ci] = w->life[o];
+      if (w->stat[o][STAT_MAX_HP] > 0) w->hp[ci] = w->hp[o];
+      w->follow[ci] = w->follow[o];
+    } else {
+      slots_inherit(w, o, ci);
+      w->sub[ci] = w->sub[o];
+      w->team[ci] = w->team[o];
+      memcpy(w->stat[ci], w->stat[o], sizeof w->stat[ci]);
+      memcpy(w->cbuff[ci], w->cbuff[o], sizeof w->cbuff[ci]);
+      memcpy(w->marks[ci], w->marks[o], sizeof w->marks[ci]);
+      memcpy(w->burns[ci], w->burns[o], sizeof w->burns[ci]);
+      index_status(w,ci,false,(w->fast.marks[o>>6] & (UINT64_C(1)<<(o&63)))!=0);
+      index_status(w,ci,true,(w->fast.burns[o>>6] & (UINT64_C(1)<<(o&63)))!=0);
+      memcpy(w->hit_mem[ci], w->hit_mem[o], sizeof w->hit_mem[ci]);
+      w->source[ci] = w->source[o]; w->attack_owner[ci] = w->attack_owner[o];
+      w->follow[ci] = w->follow[o]; w->home[ci] = w->home[o];
+      w->max_life[ci] = w->max_life[o]; w->back[ci] = w->back[o];
+      w->freeze_t[ci] = w->freeze_t[o]; w->root_t[ci] = w->root_t[o];
+      w->fear_t[ci] = w->fear_t[o]; w->mark_t[ci] = w->mark_t[o]; w->burn_t[ci] = w->burn_t[o];
+      w->shield[ci] = w->shield[o]; w->cooldown_rate[ci] = w->cooldown_rate[o];
+      w->card_move[ci] = w->card_move[o];
+      w->sc_r[ci] = w->sc_r[o]; w->sc_spd[ci] = w->sc_spd[o]; w->sc_dmg[ci] = w->sc_dmg[o];
     }
     fx_beam(w, w->x[o], w->y[o], w->x[ci], w->y[ci], 0xD9A8FFFFu, 2, 0.25f);
     fx_circle(w, w->x[ci], w->y[ci], 20, 0xD9A8FFFFu, 0.3f, CS_WAVE, -1, 4, 0, 0);
@@ -647,47 +716,50 @@ static void a_split(Ctx *c, const Target *ts, int n) {
 }
 
 /* ---------- 기믹 (js enableMechanic: 효과를 켜고 개체 틱이 읽는다) ---------- */
-static float eff_value(Ctx *c, const char *path_ratio, const char *path_stat, const char *path_value, float fallback) {
-  World *w = c->w;
-  int card = c->card;
-  const char *stat = card_prop_str(card, path_stat);
-  if (stat) {
+static float eff_value(World *w, int owner, int card, int field, const char *path_ratio, const char *path_stat, const char *path_value, float fallback) {
+  typedef struct { bool ready; int stat; float ratio, fixed; } Value;
+  static Value values[CARD__COUNT][4];
+  Value *v = &values[card][field];
+  if (!v->ready) {
+    v->stat = -1;
+    const char *stat = card_prop_str(card, path_stat);
     const DataTable *so = data_table("stat_order");
-    int st = -1;
-    for (int r = 0; r < so->nrows; r++) if (!strcmp(data_str(so, r, "value", ""), stat)) st = r;
-    if (st >= 0) return w->stat[c->owner][st] * (float)card_prop(card, path_ratio, 1);
+    if (stat) for (int r = 0; r < so->nrows; r++) if (!strcmp(data_str(so, r, "value", ""), stat)) v->stat = r;
+    v->ratio = (float)card_prop(card, path_ratio, 1);
+    v->fixed = (float)card_prop(card, path_value, fallback);
+    v->ready = true;
   }
-  return (float)card_prop(card, path_value, fallback);
+  return v->stat >= 0 ? w->stat[owner][v->stat] * v->ratio : v->fixed;
 }
-static void m_move(Ctx *c, const Target *ts, int n) {
-  Effects *e = &c->w->eff[c->owner];
-  if (n < 1) return;
+void mechanic_move(World *w, int owner, int card, const Target *target) {
+  Effects *e = &w->eff[owner];
   e->mask |= FX_MOVE;
-  e->move_speed = eff_value(c, "effect.statRatios.speed.ratio", "effect.statRatios.speed.stat", "effect.speed", 170);
-  e->move_target = ts[0];
+  e->move_speed = eff_value(w,owner,card,0,"effect.statRatios.speed.ratio", "effect.statRatios.speed.stat", "effect.speed", 170);
+  e->move_target = *target;
 }
+static void m_move(Ctx *c, const Target *ts, int n) { if(n>0)mechanic_move(c->w,c->owner,c->card,&ts[0]); }
 static void m_keep(Ctx *c, const Target *ts, int n) {
   (void)ts; (void)n;
   Effects *e = &c->w->eff[c->owner];
   e->mask |= FX_KEEP;
-  e->keep = eff_value(c, "effect.statRatios.distance.ratio", "effect.statRatios.distance.stat", "effect.distance", 240);
+  e->keep = eff_value(c->w,c->owner,c->card,1,"effect.statRatios.distance.ratio", "effect.statRatios.distance.stat", "effect.distance", 240);
 }
-static void m_hit(Ctx *c, const Target *ts, int n) {
-  (void)ts; (void)n;
-  World *w = c->w;
-  Effects *e = &w->eff[c->owner];
+void mechanic_hit(World *w, int owner, int card, int var, int rule) {
+  Effects *e = &w->eff[owner];
   e->mask |= FX_HIT;
-  e->hit_damage = eff_value(c, "effect.statRatios.damage.ratio", "effect.statRatios.damage.stat", "effect.damage", 10);
-  e->hit_knock = eff_value(c, "effect.statRatios.knockback.ratio", "effect.statRatios.knockback.stat", "effect.knockback", 140);
-  e->hit_pierce = w->stat[c->owner][STAT_PIERCE];
-  e->hit_rule = c->rule == RULE_NONE ? RULE_OPPOSING : c->rule;
-  e->hit_repeat = (float)var_num(w, c->var, "repeatCd", -1);
-  if (var_num(w, c->var, "playerPower", 0)) e->hit_damage *= w->might;
+  e->hit_damage = eff_value(w,owner,card,2,"effect.statRatios.damage.ratio", "effect.statRatios.damage.stat", "effect.damage", 10);
+  e->hit_knock = eff_value(w,owner,card,3,"effect.statRatios.knockback.ratio", "effect.statRatios.knockback.stat", "effect.knockback", 140);
+  e->hit_pierce = w->stat[owner][STAT_PIERCE];
+  e->hit_rule = rule == RULE_NONE ? RULE_OPPOSING : rule;
+  e->hit_repeat = (float)var_num(w,var,"repeatCd",-1);
+  if (var_num(w,var,"playerPower",0)) e->hit_damage *= w->might;
 }
+static void m_hit(Ctx *c, const Target *ts, int n) { (void)ts;(void)n;mechanic_hit(c->w,c->owner,c->card,c->var,c->rule); }
 static void m_decoy(Ctx *c, const Target *ts, int n) {
   (void)ts; (void)n;
   Effects *e = &c->w->eff[c->owner];
   e->mask |= FX_DECOY;
+  index_decoy(c->w, c->owner, true);
   e->decoy_range = (float)card_prop(c->card, "effect.range", 350);
 }
 static void m_resist(Ctx *c, const Target *ts, int n) {
@@ -769,6 +841,8 @@ bool action_impl_done(int card) { return run_of[card] != NULL; }
 
 bool card_run(int card, Ctx *c, const Target *ts, int n) {
   if (!run_of[card]) return false;
+  if (card == CARD_ENTITY_MOVE) { m_move(c,ts,n); return true; }
+  if (card == CARD_ENTITY_HIT) { m_hit(c,ts,n); return true; }
   run_of[card](c, ts, n);
   return true;
 }

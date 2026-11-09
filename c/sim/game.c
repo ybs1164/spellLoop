@@ -92,19 +92,9 @@ static void update_spawns(World *w) {
     Vec2 p = spawn_point(w, rng_range(&w->rng, 0, 6.2831853f), rng_range(&w->rng, 0, 80));
     if (!spawn_enemy(w, type, p.x, p.y)) continue;
     w->spawned_bosses |= 1u << bit;
-    char text[96], sub[256] = "";
+    char text[96];
     snprintf(text, sizeof text, "⚠ %s 출현", data_str(T_ENEMIES, type, "name", ""));
-    const char *hint = data_str(T_ENEMIES, type, "bossHint", "");
-    if (hint[0]) snprintf(sub, sizeof sub, "%s", hint);
-    else {
-      const DataCell *traits = data_cell(T_ENEMIES, type, data_col(T_ENEMIES, "traits"));
-      for (int k2 = 0; traits && traits->type == DT_LIST && k2 < traits->n; k2++) {
-        int tr = data_row(T_TRAITS, traits->items[k2].str);
-        if (k2) strncat(sub, " · ", sizeof sub - strlen(sub) - 1);
-        strncat(sub, data_str(T_TRAITS, tr, "name", ""), sizeof sub - strlen(sub) - 1);
-      }
-    }
-    fx_banner(w, text, 0xFF3B6BFFu, sub[0] ? sub : NULL);
+    fx_banner(w, text, 0xFF3B6BFFu, NULL);
   }
   uint32_t all = nb >= 32 ? 0xFFFFFFFFu : (1u << nb) - 1;
   if (nb) w->boss_spawned = (w->spawned_bosses & all) == all;
@@ -139,11 +129,9 @@ static uint32_t css_rgba(const char *s) {
 }
 
 static void stage_banner(World *w) {
-  char text[96], summary[192], sub[320];
+  char text[96];
   stage_title(w, text, sizeof text);
-  stage_boss_summary(w->stage, summary, sizeof summary);
-  snprintf(sub, sizeof sub, "%s · %s", data_str(T_STAGES, w->stage, "hint", ""), summary);
-  fx_banner(w, text, css_rgba(data_str(T_STAGES, w->stage, "color", "#ffffff")), sub);
+  fx_banner(w, text, css_rgba(data_str(T_STAGES, w->stage, "color", "#ffffff")), NULL);
 }
 
 /** step 단계(0부터)를 시작한다. 단계 보상과 플레이어 설치물은 유지하고 적·적 탄·적 장판은 치운다 */
@@ -295,13 +283,35 @@ bool claim_reward(World *w, int ri, int i) {
 }
 
 /* ---------- 연출 ---------- */
+static void normalize_texts(World *w) {
+  int head=w->fast.text_head;
+  if(!head)return;
+  FxText temp[MAX_FX_TEXTS];
+  int tail=w->ntexts-head;
+  memcpy(temp,w->texts+head,sizeof(FxText)*(size_t)tail);
+  memcpy(temp+tail,w->texts,sizeof(FxText)*(size_t)head);
+  memcpy(w->texts,temp,sizeof(FxText)*(size_t)w->ntexts);
+  w->fast.text_head=0;
+}
 static void push_text(World *w, FxText t) {
+  /* During a tick only update_effects reads text order. Rotate once at that
+   * boundary instead of moving the whole full queue on every impact. */
+  if(w->fast.batch_texts && w->ntexts>=MAX_FX_TEXTS) {
+    int head=w->fast.text_head;
+    w->texts[head]=t;
+    w->fast.text_head=(head+1)%MAX_FX_TEXTS;
+    return;
+  }
   if (w->ntexts >= MAX_FX_TEXTS) memmove(w->texts, w->texts + 1, sizeof(FxText) * (size_t)--w->ntexts);   // 가장 오래된 것부터 지운다
   w->texts[w->ntexts++] = t;
 }
 void fx_text(World *w, float x, float y, int value, uint32_t color) {
   FxText t = { x, y, 0.7f, value, color, { 0 } };
-  snprintf(t.text, sizeof t.text, "%d", value);
+  char digits[12];int n=0;
+  unsigned magnitude=value<0?0u-(unsigned)value:(unsigned)value;
+  do {digits[n++]=(char)('0'+magnitude%10);magnitude/=10;}while(magnitude);
+  int at=0;if(value<0)t.text[at++]='-';
+  while(n)t.text[at++]=digits[--n];
   push_text(w, t);
 }
 void fx_label(World *w, float x, float y, const char *text, uint32_t color) {
@@ -364,6 +374,7 @@ static void update_effects(World *w) {
   }
   w->nparts = n;
   n = 0;
+  normalize_texts(w);
   for (int i = 0; i < w->ntexts; i++) {
     FxText *t = &w->texts[i];
     t->y -= 40 * dt;
@@ -382,8 +393,16 @@ static void update_effects(World *w) {
   if (w->banner && (w->banner_life -= dt) <= 0) w->banner = BANNER_NONE;
 }
 
+bool sim_death_step(World *w) {
+  if (w->state != GS_GAMEOVER || w->run.death_t >= DEATH_SHOW) return false;
+  update_effects(w);
+  w->run.death_t += SIM_DT;
+  return w->run.death_t < DEATH_SHOW;
+}
+
 void sim_step(World *w, const SimInput *in) {
   if (w->state != GS_PLAYING) return;
+  w->fast.batch_texts=true;
   tables();
   update_spawns(w);
   update_barrels(w);
@@ -392,13 +411,15 @@ void sim_step(World *w, const SimInput *in) {
   update_effects(w);
   resolve_deaths(w, in);
   flush_events(w, in);
+  w->fast.batch_texts=false;
+  normalize_texts(w);
   w->tick++;
   w->time += SIM_DT;
   if (w->state != GS_PLAYING) return;   // 이번 틱에 쓰러졌다
   // 단계 돌파: 보스가 모두 나왔고 살아 있는 보스가 없으면 CLEAR_DELAY 뒤 다음 단계 (마지막이면 승리)
   if (w->clear_t < 0 && w->boss_spawned) {
     bool alive = false;
-    for (int i = 0; i < w->hi && !alive; i++)
+    for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi && !alive; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
       alive = ent_live(w, i) && w->kind[i] == TK_ENEMY && w->etype[i] >= 0 && data_num(T_ENEMIES, w->etype[i], "boss", 0);
     if (!alive) {
       w->clear_t = CLEAR_DELAY;

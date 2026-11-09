@@ -20,7 +20,7 @@ const PROJECTILE_INIT_KEYS = new Set(['_pi', '_slot', '_slots', '_freezeT', '_di
   '_radius', '_markStacks', '_cardBuffs', '_burnStacks', '_directBurnStacks', '_damage', '_knockback', '_speed', '_baseSpeed', '_pierceLimit', '_moveEffect', '_moveSpeed', '_hitEffect',
   '_slotSpawned', '_extra', 'source', 'knockbackResistance', 'statusResistance', 'range', 'sight', 'keepDistance', 'shotSpeed', 'shotCount', 'summonCount', 'shotPower',
   'combatStats', 'cardScales', 'cardPower', 'cardRate', 'cardArmor', 'cardShield', 'targetFeatures', 'splitBorn', 'attackEventOwner', 'markT', 'directBurnPending', 'directBurnTick',
-  'pierce', 'color', 'shape', 'boomerang', 'returnTime', 'back', 'homing', 'turn', 'spin', 'blastOnEnd', 'team', 'max', 'hitSet']);
+  'pierce', 'color', 'shape', 'boomerang', 'returnTime', 'back', 'homing', 'turn', 'spin', 'blastOnEnd', 'team', 'max', 'hitSet', '_slotTargetListeners']);
 // opts 의 키 중 따로 기록하지 않아도 init 이 다시 채우는 것 (위 필드와 접근자)
 const PROJECTILE_OPT_KEYS = new Set([...PROJECTILE_INIT_KEYS, ...PROJECTILE_SOA_PROPS, ...PROJECTILE_GUARD_PROPS]);
 /** 탄 껍데기 풀의 키: 슬롯 틀을 가르는 값(부메랑·유도·폭발)의 조합. 같은 키의 껍데기는 대개 같은 틀이라 슬롯 묶음을 그대로 쓴다 */
@@ -56,6 +56,7 @@ class Projectile {
     PSoA.napOn[pi] = 0; PSoA.lodDt[pi] = 0; PSoA.lodSkip[pi] = 0; PSoA.dead[pi] = 0; PSoA.seq[pi] = PSoA.seqNo = (PSoA.seqNo + 1) % 1073741824;
     this._slot = undefined; this._slots = undefined; this._freezeT = 0; this._directFrozen = undefined; this._fearT = undefined; this._directStates = undefined;
     this._effectSlots = undefined; this._burnEventEffects = undefined; this._cardMove = undefined; this._directMove = undefined;
+    this._slotTargetListeners = undefined;
     this._radius = undefined; PSoA.radius[pi] = NaN; PSoA.hitOk[pi] = 0; PSoA.buffy[pi] = 0; PSoA.settled[pi] = 0;
     this._markStacks = undefined; this._cardBuffs = undefined; this._burnStacks = undefined; this._directBurnStacks = undefined;
     this._damage = undefined; this._knockback = undefined; this._speed = undefined; this._baseSpeed = undefined; this._pierceLimit = undefined;
@@ -85,6 +86,7 @@ class Projectile {
     for (const k in opts) {
       const v = opts[k];
       switch (k) {
+        case '_slotTargetListeners': break;   // 이벤트 구독은 복제·재사용하지 않는다.
         case 'source': this.source = v; break;
         case 'x': this.x = v; break;
         case 'y': this.y = v; break;
@@ -199,9 +201,9 @@ class Projectile {
     if (returning) {
       // 대상 쪽으로 일정한 가속도를 받아, 멀어지던 탄이 자연스럽게 느려졌다가 되돌아온다.
       const p = returning.targets?.length ? game.targetObj(returning.targets[0]) : game.chaseTarget(this);
-      const dx = p.x - this.x, dy = p.y - this.y, d = Math.hypot(dx, dy) || 1;
+      const dx = p.x - this.x, dy = p.y - this.y, d = simHypot(dx, dy) || 1;
       this.vx += (dx / d) * returning.acceleration * dt; this.vy += (dy / d) * returning.acceleration * dt;
-      const sp = Math.hypot(this.vx, this.vy);
+      const sp = simHypot(this.vx, this.vy);
       if (sp > returning.maxSpeed) { this.vx *= returning.maxSpeed / sp; this.vy *= returning.maxSpeed / sp; }
       // 대상 쪽으로 방향을 틀 때마다 같은 적을 다시 맞힐 수 있다.
       const back = this.vx * dx + this.vy * dy > 0;
@@ -215,10 +217,10 @@ class Projectile {
       // 유도 효과는 슬롯이 프레임마다 다시 켜므로 매 프레임 가장 가까운 적을 다시 고른다.
       this.homing = game.nearestEnemies(this.x, this.y, 1, guiding.range)[0] || null;
       if (this.homing) {
-        const sp = Math.hypot(this.vx, this.vy);
-        const want = Math.atan2(this.homing.y - this.y, this.homing.x - this.x);
-        const cur = Math.atan2(this.vy, this.vx);
-        const a = cur + clamp(angDiff(want, cur), -guiding.turn * dt, guiding.turn * dt);
+        const sp = simHypot(this.vx, this.vy);
+        const want = simAtan2(this.homing.y - this.y, this.homing.x - this.x);
+        const cur = simAtan2(this.vy, this.vx);
+        const a = cur + clamp(simAngDiff(want, cur), -guiding.turn * dt, guiding.turn * dt);
         this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
       }
     }

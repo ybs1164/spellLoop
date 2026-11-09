@@ -1,0 +1,382 @@
+[
+  {
+    "mode": "exact",
+    "file": "check-action-target-positions.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-basic-state-inheritance.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:39:8\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-basic-state-inheritance.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-batches.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-card-distance-ui.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-chain-cards.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-common-action-modes.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-common-mechanics.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-controls.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-debuffs.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-drain.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-enemy-damage.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-entity-card-values.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-entity-gimmicks.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-entity-slots.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:151:8\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-entity-slots.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-entity-state-values.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-event-slots.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:65:65\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-event-slots.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-event-ui.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-event-ui.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-event-ui.cjs:8:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-event-ui.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-explicit-actions.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:92:72\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-explicit-actions.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-gimmick-bosses.cjs",
+    "status": "fail",
+    "detail": "js/game.js:245\r\n      (this.rewards ??= []).push({ kind, level: this.player.level, notes: this.levelNotes, choices: rollRewards(this.player, REWARD_CHOICES) });\r\n                                                                                                    ^\r\n\r\nReferenceError: rollRewards is not defined\r\n    at Game.openLevelUp (js/game.js:245:101)\r\n    at Game.step (js/game.js:401:40)\r\n    at killBoss (evalmachine.<anonymous>:65:10)\r\n    at evalmachine.<anonymous>:69:3\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-gimmick-bosses.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-load-order.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-mechanic-migrations.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-mine-sequence.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-play-logs.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-play-logs.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-play-logs.cjs:7:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-play-logs.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-pool.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-sim-math.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-slot-sections.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-slots.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-snap-pack.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-spread.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-stage-pressure.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-stat-ratios.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-stat-readers.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-targets.cjs",
+    "status": "fail",
+    "detail": "js/game.js:131\r\n    UI.updateRewards(this);\r\n       ^\r\n\r\nTypeError: UI.updateRewards is not a function\r\n    at Game.start (js/game.js:131:8)\r\n    at evalmachine.<anonymous>:11:14\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at get (N:\\Projects\\codingVS\\tools\\check-targets.cjs:9:24)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-targets.cjs:217:1)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-teams.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:50:33\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-teams.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "exact",
+    "file": "check-wasm-math.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "exact",
+    "file": "check-worker-sim.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-worker-sim.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-worker-sim.cjs:6:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-worker-sim.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-action-target-positions.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-basic-state-inheritance.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:39:8\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-basic-state-inheritance.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-batches.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-card-distance-ui.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-chain-cards.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-common-action-modes.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-common-mechanics.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-controls.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-debuffs.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-drain.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-enemy-damage.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-entity-card-values.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-entity-gimmicks.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-entity-slots.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:151:8\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-entity-slots.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-entity-state-values.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-event-slots.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:65:65\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-event-slots.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-event-ui.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-event-ui.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-event-ui.cjs:8:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-event-ui.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-explicit-actions.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:92:72\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-explicit-actions.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-gimmick-bosses.cjs",
+    "status": "fail",
+    "detail": "js/game.js:245\r\n      (this.rewards ??= []).push({ kind, level: this.player.level, notes: this.levelNotes, choices: rollRewards(this.player, REWARD_CHOICES) });\r\n                                                                                                    ^\r\n\r\nReferenceError: rollRewards is not defined\r\n    at Game.openLevelUp (js/game.js:245:101)\r\n    at Game.step (js/game.js:401:40)\r\n    at killBoss (evalmachine.<anonymous>:65:10)\r\n    at evalmachine.<anonymous>:69:3\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-gimmick-bosses.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-load-order.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-mechanic-migrations.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-mine-sequence.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-play-logs.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-play-logs.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-play-logs.cjs:7:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-play-logs.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-pool.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-sim-math.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-slot-sections.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-slots.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-snap-pack.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-spread.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-stage-pressure.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-stat-ratios.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-stat-readers.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-targets.cjs",
+    "status": "fail",
+    "detail": "js/game.js:131\r\n    UI.updateRewards(this);\r\n       ^\r\n\r\nTypeError: UI.updateRewards is not a function\r\n    at Game.start (js/game.js:131:8)\r\n    at evalmachine.<anonymous>:11:14\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at get (N:\\Projects\\codingVS\\tools\\check-targets.cjs:9:24)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-targets.cjs:217:1)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-teams.cjs",
+    "status": "fail",
+    "detail": "js/game.js:914\r\n    out.length = 0;\r\n               ^\r\n\r\nTypeError: Cannot set properties of undefined (setting 'length')\r\n    at Game.queryStructs (js/game.js:914:16)\r\n    at Game.collideShot (js/game.js:1219:25)\r\n    at evalmachine.<anonymous>:50:33\r\n    at Script.runInContext (node:vm:149:12)\r\n    at Object.runInContext (node:vm:301:6)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-teams.cjs:9:4)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32)\r\n    at Function._load (node:internal/modules/cjs/loader:1108:12)\r\n\r\nNode.js v22.14.0\r\n"
+  },
+  {
+    "mode": "fast",
+    "file": "check-wasm-math.cjs",
+    "status": "pass"
+  },
+  {
+    "mode": "fast",
+    "file": "check-worker-sim.cjs",
+    "status": "skip",
+    "detail": "node:internal/modules/cjs/loader:1228\r\n  throw err;\r\n  ^\r\n\r\nError: Cannot find module 'playwright'\r\nRequire stack:\r\n- N:\\Projects\\codingVS\\tools\\check-worker-sim.cjs\r\n- N:\\Projects\\codingVS\\[eval]\r\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)\r\n    at Function._load (node:internal/modules/cjs/loader:1055:27)\r\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\r\n    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)\r\n    at Module.require (node:internal/modules/cjs/loader:1311:12)\r\n    at require (node:internal/modules/helpers:136:16)\r\n    at Object.<anonymous> (N:\\Projects\\codingVS\\tools\\check-worker-sim.cjs:6:22)\r\n    at Module._compile (node:internal/modules/cjs/loader:1554:14)\r\n    at Object..js (node:internal/modules/cjs/loader:1706:10)\r\n    at Module.load (node:internal/modules/cjs/loader:1289:32) {\r\n  code: 'MODULE_NOT_FOUND',\r\n  requireStack: [\r\n    'N:\\\\Projects\\\\codingVS\\\\tools\\\\check-worker-sim.cjs',\r\n    'N:\\\\Projects\\\\codingVS\\\\[eval]'\r\n  ]\r\n}\r\n\r\nNode.js v22.14.0\r\n"
+  }
+]

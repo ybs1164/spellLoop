@@ -8,6 +8,7 @@ World *world_create(uint64_t seed) {
   if (!w) return NULL;
   w->free_head = -1;
   w->slot_free = -1;
+  w->target_event_tick = UINT64_MAX;
   w->view_w = 960;
   w->view_h = 540;
   w->nvars = 1;
@@ -15,10 +16,32 @@ World *world_create(uint64_t seed) {
   w->might = w->area = w->duration = w->move_mul = w->cooldown_mul = 1;
   rng_seed(&w->rng, seed, 54u);
   rng_seed(&w->fx_rng, seed, 77u);
+  slots_cache_reset(w);
   return w;
 }
 
 void world_destroy(World *w) { free(w); }
+
+void world_reindex(World *w) {
+  memset(&w->fast, 0, sizeof w->fast);
+  slots_cache_reset(w);
+  grid_reindex(w);
+  for (int i = 0; i < w->hi; i++) if (w->alive[i]) {
+    w->fast.alive[i>>6] |= UINT64_C(1)<<(i&63);
+    w->fast.alive_count++;
+    w->fast.kinds[w->kind[i]][i>>6] |= UINT64_C(1)<<(i&63);
+    w->fast.kind_count[w->kind[i]]++;
+    if (w->kind[i] == TK_OBJECT || w->kind[i] == TK_ALLY) {
+      w->fast.structures[i >> 6] |= UINT64_C(1) << (i & 63);
+      w->fast.nstructures++;
+    }
+    if (w->eff[i].mask & FX_DECOY) index_decoy(w, i, true);
+    for(int k=0;k<MAX_STACKS;k++) {
+      if(w->marks[i][k].time>0)index_status(w,i,false,true);
+      if(w->burns[i][k].time>0)index_status(w,i,true,true);
+    }
+  }
+}
 
 int ent_index(const World *w, Handle h) {
   int i = (int)(h & 0xFFFFu);
@@ -38,7 +61,17 @@ Handle ent_spawn(World *w, int kind, Team team, float x, float y, float radius) 
 #undef CLEAR_FIELD
   w->gen[i] = gen;
   w->alive[i] = 1;
+  w->fast.owner_events[i] = 0;
+  w->fast.alive[i>>6] |= UINT64_C(1)<<(i&63);
+  w->fast.alive_count++;
   w->kind[i] = (uint8_t)kind;
+  w->fast.kinds[kind][i>>6] |= UINT64_C(1)<<(i&63);
+  w->fast.kind_count[kind]++;
+  w->fast.no_after[i>>6]&=~(UINT64_C(1)<<(i&63));
+  if (kind == TK_OBJECT || kind == TK_ALLY) {
+    w->fast.structures[i >> 6] |= UINT64_C(1) << (i & 63);
+    w->fast.nstructures++;
+  }
   w->team[i] = (uint8_t)team;
   w->etype[i] = -1;
   w->sub[i] = -1;
@@ -53,6 +86,8 @@ Handle ent_spawn(World *w, int kind, Team team, float x, float y, float radius) 
   w->sc_r[i] = w->sc_spd[i] = w->sc_dmg[i] = w->sc_val[i] = w->card_move[i] = 1;
   memset(w->stat[i], 0, sizeof w->stat[i]);
   w->stat[i][STAT_KNOCKBACK] = 100;
+  w->stat[i][STAT_RANGE] = roundf(radius);
+  w->stat[i][STAT_SHOT_COUNT] = w->stat[i][STAT_SUMMON_COUNT] = 1;
   w->stat[i][STAT_PIERCE] = INFINITY;
   memset(w->cbuff[i], 0, sizeof w->cbuff[i]);
   memset(w->marks[i], 0, sizeof w->marks[i]);
@@ -71,8 +106,20 @@ void ent_kill(World *w, Handle h) {
 
 /** 풀에서 뺀다 (틱 끝의 사망 처리에서만 부른다) */
 void ent_free(World *w, int i) {
+  index_decoy(w, i, false);
+  index_status(w,i,false,false);index_status(w,i,true,false);
+  uint64_t bit = UINT64_C(1) << (i & 63);
+  w->fast.kinds[w->kind[i]][i>>6] &= ~bit;
+  w->fast.alive[i>>6] &= ~bit;
+  w->fast.alive_count--;
+  w->fast.kind_count[w->kind[i]]--;
+  if (w->fast.structures[i >> 6] & bit) {
+    w->fast.structures[i >> 6] &= ~bit;
+    w->fast.nstructures--;
+  }
   for (int s = w->slot_head[i]; s >= 0;) {
     int next = w->slots[s].next;
+    slot_changed(w, s);
     w->slots[s].owner = HANDLE_NONE;
     w->slots[s].next = w->slot_free;
     w->slot_free = s;
@@ -87,7 +134,22 @@ void ent_free(World *w, int i) {
 
 /* ---------- 저장본 ---------- */
 #define SAVE_MAGIC 0x414D4733u  /* "AMG3" */
-#define SAVE_VERSION 3u
+#define SAVE_VERSION 5u
+
+/* The v3/v4 signature describes the original column layout. On disk only
+ * [0, hi) values are stored, so runtime cache padding changes no payload. */
+#define FIELD_PADDING(type,name) + WORLD_COLUMN_PADDING
+enum { SAVE_COLUMN_PADDING = 0 ENTITY_FIELDS(FIELD_PADDING) };
+#undef FIELD_PADDING
+#define SAVE_WORLD_BYTES (offsetof(World,fast)-SAVE_COLUMN_PADDING)
+
+typedef struct { uint16_t base; char cd_op; float cd_value; uint8_t nkv; VarKV kv[12]; } VariantV3;
+static bool new_save_field(const char *name) {
+  return !strcmp(name, "lead_sample") || !strcmp(name, "lead_time") || !strcmp(name, "lead_x") || !strcmp(name, "lead_y")
+      || !strcmp(name, "lead_vx") || !strcmp(name, "lead_vy") || !strcmp(name, "split_born");
+}
+#define V3_FIELD_BYTES ((2 * sizeof(uint8_t) + sizeof(double) + 4 * sizeof(float)) * MAX_ENTITIES)
+#define V3_VARIANT_BYTES ((sizeof(Variant) - sizeof(VariantV3)) * MAX_VARIANTS)
 
 typedef struct { uint8_t *buf; size_t cap, len; } Writer;
 static void put(Writer *wr, const void *p, size_t n) {
@@ -101,7 +163,7 @@ static void put(Writer *wr, const void *p, size_t n) {
 size_t save_write(const World *w, uint8_t *buf, size_t cap) {
   Writer wr = { buf, cap, 0 };
   uint32_t head[2] = { SAVE_MAGIC, SAVE_VERSION };
-  uint32_t sizes[5] = { MAX_ENTITIES, MAX_SLOT_POOL, STAT__COUNT, CARD__COUNT, (uint32_t)sizeof(World) };
+  uint32_t sizes[5] = { MAX_ENTITIES, MAX_SLOT_POOL, STAT__COUNT, CARD__COUNT, (uint32_t)SAVE_WORLD_BYTES };
   put(&wr, head, sizeof head);
   put(&wr, sizes, sizeof sizes);
   put(&wr, &w->hi, sizeof w->hi);
@@ -132,14 +194,16 @@ bool save_read(World *w, const uint8_t *buf, size_t len) {
   uint32_t head[2], sizes[5];
   get(&rd, head, sizeof head);
   get(&rd, sizes, sizeof sizes);
-  if (!rd.ok || head[0] != SAVE_MAGIC || head[1] != SAVE_VERSION || sizes[0] != MAX_ENTITIES || sizes[1] != MAX_SLOT_POOL || sizes[2] != STAT__COUNT
-      || sizes[3] != CARD__COUNT || sizes[4] != sizeof(World)) return false;
+  bool v3 = rd.ok && head[1] == 3u;
+  size_t world_size = v3 ? SAVE_WORLD_BYTES - V3_FIELD_BYTES - V3_VARIANT_BYTES : SAVE_WORLD_BYTES;
+  if (!rd.ok || head[0] != SAVE_MAGIC || (head[1] != SAVE_VERSION && !v3) || sizes[0] != MAX_ENTITIES || sizes[1] != MAX_SLOT_POOL || sizes[2] != STAT__COUNT
+      || sizes[3] != CARD__COUNT || sizes[4] != world_size) return false;
   int hi, slot_hi;
   get(&rd, &hi, sizeof hi);
   if (!rd.ok || hi < 0 || hi > MAX_ENTITIES) return false;
   // 길이를 먼저 확인한다 (중간에 실패해 월드가 반쯤 바뀌지 않게)
   size_t need = 0;
-#define FIELD_SIZE(type, name) need += sizeof(type) * (size_t)hi;
+#define FIELD_SIZE(type, name) if (!v3 || !new_save_field(#name)) need += sizeof(type) * (size_t)hi;
   ENTITY_FIELDS(FIELD_SIZE)
 #undef FIELD_SIZE
 #define TABLE_SIZE(name) need += sizeof w->name[0] * (size_t)hi;
@@ -149,11 +213,12 @@ bool save_read(World *w, const uint8_t *buf, size_t len) {
   if (at + sizeof(int) > len) return false;
   memcpy(&slot_hi, buf + at, sizeof slot_hi);
   if (slot_hi < 0 || slot_hi > MAX_SLOT_POOL) return false;
-  if (at + 2 * sizeof(int) + sizeof(Slot) * (size_t)slot_hi + (offsetof(World, grid) - offsetof(World, player)) != len) return false;
+  size_t tail = offsetof(World, grid) - offsetof(World, player) - (v3 ? V3_VARIANT_BYTES : 0);
+  if (at + 2 * sizeof(int) + sizeof(Slot) * (size_t)slot_hi + tail != len) return false;
 
   w->hi = hi;
   get(&rd, &w->free_head, sizeof w->free_head);
-#define GET_FIELD(type, name) get(&rd, w->name, sizeof(type) * (size_t)hi);
+#define GET_FIELD(type, name) if (v3 && new_save_field(#name)) memset(w->name, 0, sizeof(type) * (size_t)hi); else get(&rd, w->name, sizeof(type) * (size_t)hi);
   ENTITY_FIELDS(GET_FIELD)
 #undef GET_FIELD
 #define GET_TABLE(name) get(&rd, w->name, sizeof w->name[0] * (size_t)hi);
@@ -162,6 +227,20 @@ bool save_read(World *w, const uint8_t *buf, size_t len) {
   get(&rd, &w->slot_hi, sizeof w->slot_hi);
   get(&rd, &w->slot_free, sizeof w->slot_free);
   get(&rd, w->slots, sizeof(Slot) * (size_t)w->slot_hi);
-  get(&rd, &w->player, offsetof(World, grid) - offsetof(World, player));
+  w->target_event_tick = UINT64_MAX;
+  if (v3) {
+    get(&rd, &w->player, offsetof(World, vars) - offsetof(World, player));
+    for (int v = 0; v < MAX_VARIANTS; v++) {
+      VariantV3 old;
+      get(&rd, &old, sizeof old);
+      memset(&w->vars[v], 0, sizeof w->vars[v]);
+      w->vars[v].base = old.base; w->vars[v].cd_op = old.cd_op;
+      w->vars[v].cd_value = old.cd_value; w->vars[v].nkv = old.nkv;
+      memcpy(w->vars[v].kv, old.kv, sizeof old.kv);
+    }
+    size_t after = offsetof(World, vars) + sizeof w->vars;
+    get(&rd, (uint8_t *)w + after, offsetof(World, grid) - after);
+  } else get(&rd, &w->player, offsetof(World, grid) - offsetof(World, player));
+  if (rd.ok) world_reindex(w);
   return rd.ok;
 }

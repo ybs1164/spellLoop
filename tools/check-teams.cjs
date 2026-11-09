@@ -9,7 +9,7 @@ for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js'
 vm.runInContext(`
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
-  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = []; game._nearStruct = []; game.structHashes = new Map(); game._structCount = 0;
   game.w = 1000; game.h = 800; game.clock = 0; game.start();
   game.player.deck.slots = [];
   game.burst = game.addText = game.addFx = game.circleFx = () => {};

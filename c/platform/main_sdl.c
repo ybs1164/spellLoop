@@ -1,11 +1,12 @@
 /* SDL3 진입점 (데스크톱 · 웹).
  * 콜백 방식(SDL_MAIN_USE_CALLBACKS)이라 브라우저·모바일의 메인 루프 규칙을 SDL 이 맞춘다.
- *  - 고정 틱(SIM_DT) 누적 실행, 렌더는 화면 주사율. 그리기는 render/ (JS 판과 같은 CSS px 단위 「점」)
+ *  - 고정 틱(SIM_DT) 누적 실행, 렌더는 화면 주사율 (개체·파티클 위치는 직전 틱과 보간).그리기는 render/ (JS 판과 같은 CSS px 단위 「점」)
  *  - 화면 상태 (js/sim/game.js update): 타이틀 → 플레이 ⇄ 일시정지 · 카드 편집 · 보상 고르기, 끝나면 종료 화면
  *  - 입력: 키보드(WASD·화살표, Esc/P 일시정지, E/Tab 편집, R 보상, 1~5 선택, Enter 시작) + 포인터(버튼·카드 끌기·스크롤)
  *    + 가상 스틱(화면 왼쪽 절반 터치/마우스 드래그), 터치 화면은 일시정지 버튼
- *  - 수명주기: 포커스를 잃거나 백그라운드로 가면 일시정지 + 저장. 다음 실행은 저장본의 일시정지 화면에서 시작
- *  - 확인용: --shot 파일.png [--ticks N] [--circle] [--stage id] [--deck ...] [--ui pause|editor|reward|levelup|gameover|title] */
+ *  - 수명주기: 포커스를 잃거나 백그라운드로 가면 저장 (웹은 자동 일시정지 없음). 다음 실행은 저장본의 일시정지 화면에서 시작
+ *  - 화면 언어: 타이틀의 English / 한국어 버튼 또는 L 키 (data/lang.h). 고른 언어는 설정 폴더 lang.txt (웹은 localStorage)
+ *  - 확인용: --shot 파일.png [--ticks N] [--circle] [--stage id] [--deck ...] [--ui pause|editor|reward|levelup|gameover|title] [--lang ko|en] */
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
@@ -13,6 +14,7 @@
 #include <emscripten.h>
 #endif
 
+#include "data/lang.h"
 #include "render/render.h"
 #include "sim/world.h"
 
@@ -45,8 +47,11 @@ typedef struct {
   float w, h;                  /* 화면 크기 (점) */
   SDL_FRect safe;              /* 안전 영역 (점) */
   char *save_path;
+  char *lang_path;             /* 고른 화면 언어 (웹은 localStorage) */
   float fps, fps_acc;
   int fps_frames;
+  bool show_perf;
+  float update_ms, render_ms;
   const char *shot;
   const char *shot_stage;
   const char *shot_deck;        /* "nearestEnemy,bolt|ahead,orb" : 이동 슬롯 뒤 슬롯들 */
@@ -54,10 +59,26 @@ typedef struct {
   long shot_ticks;
   bool autoplay;
   bool touch;                  /* 터치 입력을 받은 적이 있다 (모바일은 처음부터) */
+  /* 보간: 직전 틱 위치. 그릴 때만 직전 틱과 지금 틱 사이(acc / SIM_DT)로 옮겼다가 되돌린다 */
+  float *prev_x, *prev_y, *keep_x, *keep_y;
+  uint16_t *prev_gen;
+  int prev_hi;                 /* 직전 틱에 찍어 둔 칸 수 (0 = 보간하지 않는다) */
 } App;
 
 static bool running(const App *app) {
   return app->ui.screen == SCREEN_PLAY && !app->ui.reward_open && app->world->state == GS_PLAYING;
+}
+
+/** 쓰러진 순간을 보여 주는 중 (DEATH_SHOW 뒤 결과 창) */
+static bool dying(const App *app) {
+  return app->world->state == GS_GAMEOVER && app->world->run.death_t < DEATH_SHOW;
+}
+
+/** 쓰러진 장면을 건너뛰고 결과 창으로 (누르던 키가 바로 넘기지 않게 조금 뒤부터) */
+static bool skip_death(App *app) {
+  if (!dying(app)) return false;
+  if (app->world->run.death_t >= 0.6f) app->world->run.death_t = DEATH_SHOW;
+  return true;
 }
 
 /* ---------- 저장 ---------- */
@@ -82,6 +103,39 @@ static bool load_game(App *app) {
   return ok;
 }
 
+/* ---------- 화면 언어 (타이틀의 English / 한국어 버튼, L 키) ---------- */
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+EM_JS(int, web_lang_load, (void), { try { return localStorage.getItem('amagos.lang') === 'en' ? 1 : 0; } catch (e) { return 0; } });
+EM_JS(void, web_lang_save, (int en), {
+  document.documentElement.lang = en ? 'en' : 'ko';
+  try { localStorage.setItem('amagos.lang', en ? 'en' : 'ko'); } catch (e) {}
+});
+#endif
+
+static void load_lang(App *app) {
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+  (void)app;
+  if (web_lang_load()) { lang_set(LANG_EN); web_lang_save(1); }
+#else
+  if (!app->lang_path) return;
+  size_t len = 0;
+  char *s = SDL_LoadFile(app->lang_path, &len);
+  if (s) { if (len >= 2 && !SDL_strncmp(s, "en", 2)) lang_set(LANG_EN); SDL_free(s); }
+#endif
+}
+
+static void toggle_lang(App *app) {
+  bool en = lang_get() != LANG_EN;
+  lang_set(en ? LANG_EN : LANG_KO);
+  ui_invalidate();
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+  (void)app;
+  web_lang_save(en);
+#else
+  if (app->lang_path && !app->shot) SDL_SaveFile(app->lang_path, en ? "en" : "ko", 2);
+#endif
+}
+
 static void set_screen(App *app, Screen s) {
   if (app->ui.screen != s) { app->ui.slots_scroll = app->ui.inv_scroll = 0; app->ui.edit_msg[0] = 0; }
   app->ui.screen = s;
@@ -99,10 +153,48 @@ static void center_camera(App *app) {
   if (p >= 0) app->cam = (Vec2){ app->world->x[p], app->world->y[p] };
 }
 
+/* ---------- 보간 (고정 틱과 화면 주사율이 어긋나도 움직임이 고르게) ---------- */
+#define INTERP_JUMP 160.0f     /* 한 틱에 이보다 멀리 옮겨진 개체(순간 이동·재배치)는 보간하지 않는다 (점) */
+
+static void interp_snapshot(App *app) {
+  const World *w = app->world;
+  SDL_memcpy(app->prev_x, w->x, w->hi * sizeof *w->x);
+  SDL_memcpy(app->prev_y, w->y, w->hi * sizeof *w->y);
+  SDL_memcpy(app->prev_gen, w->gen, w->hi * sizeof *w->gen);
+  app->prev_hi = w->hi;
+}
+
+static float interp_alpha(const App *app) { return SDL_clamp((float)(app->acc / SIM_DT), 0.0f, 1.0f); }
+
+/** 개체·파티클을 그릴 위치로 옮긴다. 그린 뒤 interp_end 로 되돌린다 */
+static void interp_begin(App *app) {
+  World *w = app->world;
+  float a = interp_alpha(app), back = (1 - a) * SIM_DT / 0.9f;   // 파티클은 틱마다 속도가 0.9 배
+  SDL_memcpy(app->keep_x, w->x, w->hi * sizeof *w->x);
+  SDL_memcpy(app->keep_y, w->y, w->hi * sizeof *w->y);
+  for (int i = 0; i < app->prev_hi && i < w->hi; i++) {
+    if (!w->alive[i] || w->gen[i] != app->prev_gen[i]) continue;
+    float dx = w->x[i] - app->prev_x[i], dy = w->y[i] - app->prev_y[i];
+    if (dx * dx + dy * dy > INTERP_JUMP * INTERP_JUMP) continue;
+    w->x[i] = app->prev_x[i] + dx * a;
+    w->y[i] = app->prev_y[i] + dy * a;
+  }
+  for (int k = 0; k < w->nparts; k++) { FxParticle *p = &w->parts[k]; p->x -= p->vx * back; p->y -= p->vy * back; }
+}
+
+static void interp_end(App *app) {
+  World *w = app->world;
+  float back = (1 - interp_alpha(app)) * SIM_DT / 0.9f;
+  SDL_memcpy(w->x, app->keep_x, w->hi * sizeof *w->x);
+  SDL_memcpy(w->y, app->keep_y, w->hi * sizeof *w->y);
+  for (int k = 0; k < w->nparts; k++) { FxParticle *p = &w->parts[k]; p->x += p->vx * back; p->y += p->vy * back; }
+}
+
 static void new_world(App *app) {
   if (app->world) world_destroy(app->world);
   app->world = world_create(SDL_GetTicksNS());
   game_new(app->world);
+  app->prev_hi = 0;
   app->acc = 0;
   app->ui.reward_open = false;
   center_camera(app);
@@ -169,6 +261,21 @@ static void act(App *app, const UiHit *h) {
     case UI_EDITOR: open_editor(app); break;
     case UI_EDITOR_CLOSE: set_screen(app, SCREEN_PLAY); break;
     case UI_DISCORD: SDL_OpenURL(DISCORD_URL); break;
+    case UI_LANG: toggle_lang(app); break;
+    case UI_CODEX:
+      app->ui.view_back = app->ui.screen;
+      set_screen(app, SCREEN_CODEX);
+      break;
+    case UI_VIEW_CLOSE:
+      set_screen(app, app->ui.screen == SCREEN_INSPECTOR ? app->ui.inspector_back : app->ui.view_back);
+      break;
+    case UI_CODEX_TAB: app->ui.codex_tab = h->a; app->ui.slots_scroll = 0; break;
+    case UI_CODEX_FILTER: app->ui.codex_filter = h->a; app->ui.slots_scroll = 0; break;
+    case UI_ENTITY_PAGE: app->ui.entity_page = h->a; app->ui.slots_scroll = 0; break;
+    case UI_ENTITY_TOGGLE: app->ui.entity_open[h->a] = !app->ui.entity_open[h->a]; break;
+    case UI_CODEX_ENTITY_TOGGLE:
+      if (h->a >= 0 && h->a < 128) app->ui.codex_open[h->a] = !app->ui.codex_open[h->a];
+      break;
     case UI_REWARD_TOGGLE: toggle_reward(app); break;
     case UI_REWARD_PICK: pick_reward(app, h->a); break;
     case UI_SLOT_ROW: case UI_SLOT_STRIP: app->ui.edit_sel = h->a; break;
@@ -197,6 +304,7 @@ static void pointer_down(App *app, SDL_FingerID id, float x, float y) {
     ui->press_scroll = scroll_inv(h->action) ? ui->inv_scroll : ui->slots_scroll;
     return;
   }
+  if (ui->screen == SCREEN_PLAY && skip_death(app)) return;
   if (app->touch && running(app) && in_rect(pause_button(app), x, y)) { pause_game(app); return; }
   if (running(app) && !app->stick.active && x < app->w * 0.5f) app->stick = (Stick){ true, id, x, y, x, y };
 }
@@ -275,11 +383,36 @@ static int digit(SDL_Scancode s) {
 }
 
 static void key_down(App *app, SDL_Scancode s) {
+  if (s == SDL_SCANCODE_F3) { app->show_perf = !app->show_perf; return; }
   UiState *ui = &app->ui;
   bool esc = s == SDL_SCANCODE_ESCAPE, enter = s == SDL_SCANCODE_RETURN || s == SDL_SCANCODE_KP_ENTER;
   bool edit = s == SDL_SCANCODE_E || s == SDL_SCANCODE_TAB;
-  if (ui->screen == SCREEN_TITLE) { if (enter || s == SDL_SCANCODE_SPACE) start_game(app); return; }
-  if (app->world->state != GS_PLAYING) { if (enter) start_game(app); return; }
+  if (ui->screen == SCREEN_CODEX) {
+    if (esc) set_screen(app, ui->view_back);
+    return;
+  }
+  if (ui->screen == SCREEN_INSPECTOR) {
+    if (esc || s == SDL_SCANCODE_I) set_screen(app, ui->inspector_back);
+    else if (s == SDL_SCANCODE_LEFT || s == SDL_SCANCODE_RIGHT) {
+      ui->entity_page = (ui->entity_page + (s == SDL_SCANCODE_LEFT ? 5 : 1)) % 6;
+      ui->slots_scroll = 0;
+    }
+    return;
+  }
+  if (s == SDL_SCANCODE_I && ui->screen != SCREEN_TITLE && app->world->state == GS_PLAYING) {
+    ui->inspector_back = ui->screen;
+    set_screen(app, SCREEN_INSPECTOR);
+    return;
+  }
+  if (ui->screen == SCREEN_TITLE) {
+    if (enter || s == SDL_SCANCODE_SPACE) start_game(app);
+    else if (s == SDL_SCANCODE_L) toggle_lang(app);
+    return;
+  }
+  if (app->world->state != GS_PLAYING) {
+    if (enter || esc || s == SDL_SCANCODE_SPACE) { if (!skip_death(app) && enter) start_game(app); }
+    return;
+  }
   switch (ui->screen) {
     case SCREEN_PLAY:
       if (ui->reward_open) {
@@ -305,7 +438,7 @@ static void key_down(App *app, SDL_Scancode s) {
 /* ---------- 그리기 ---------- */
 static void draw(App *app) {
   World *w = app->world;
-  render_prepare(app->renderer, w);
+  render_prepare(app->renderer, w, &app->ui);
   SDL_SetRenderDrawBlendMode(app->renderer, SDL_BLENDMODE_BLEND);
   SDL_SetRenderDrawColor(app->renderer, 16, 19, 28, 255);
   SDL_RenderClear(app->renderer);
@@ -313,6 +446,7 @@ static void draw(App *app) {
   Vec2 a = stick_axis(app);
   RenderView v = {
     .w = app->w, .h = app->h, .cam_x = app->cam.x, .cam_y = app->cam.y, .safe = app->safe, .paused = !running(app), .fps = app->fps,
+    .show_perf = app->show_perf, .update_ms = app->update_ms, .render_ms = app->render_ms,
     .stick = app->stick.active, .stick_ox = app->stick.ox, .stick_oy = app->stick.oy, .stick_ax = a.x, .stick_ay = a.y, .stick_r = STICK_RADIUS,
     .pause_button = pause_button(app), .touch = app->touch, .ui = &app->ui,
   };
@@ -355,12 +489,33 @@ static void shot_ui(App *app) {
     app->ui.reward_open = !SDL_strcmp(ui, "reward");
   } else if (!SDL_strcmp(ui, "editor")) set_screen(app, SCREEN_EDITOR);
   else if (!SDL_strcmp(ui, "pause")) set_screen(app, SCREEN_PAUSE);
-  else if (!SDL_strcmp(ui, "gameover")) w->state = GS_GAMEOVER;
+  else if (!SDL_strcmp(ui, "gameover") || !SDL_strcmp(ui, "dying")) {
+    if (w->state != GS_GAMEOVER) { int p = ent_index(w, w->player); if (p >= 0) { w->invuln[p] = w->shield[p] = 0; player_damage(w, w->hp[p] + 999, -1); } w->state = GS_GAMEOVER; }
+    w->run.death_t = !SDL_strcmp(ui, "dying") ? 1.0f : DEATH_SHOW;
+  }
   else if (!SDL_strcmp(ui, "victory")) w->state = GS_VICTORY;
   else if (!SDL_strcmp(ui, "title")) set_screen(app, SCREEN_TITLE);
+  else if (!SDL_strcmp(ui, "codex")) { app->ui.view_back = SCREEN_TITLE; set_screen(app, SCREEN_CODEX); }
+  else if (!SDL_strcmp(ui, "inspector")) { app->ui.inspector_back = SCREEN_PLAY; set_screen(app, SCREEN_INSPECTOR); }
 }
 
 /* ---------- SDL 콜백 ---------- */
+static bool create_window_renderer(App *app,int width,int height,SDL_WindowFlags flags) {
+  const char *title="오늘도 평화로운 마법 생활";
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE,0);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK,SDL_GL_CONTEXT_PROFILE_ES);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,0);
+  SDL_SetHint(SDL_HINT_RENDER_DRIVER,"opengles2");
+  if(SDL_CreateWindowAndRenderer(title,width,height,flags|SDL_WINDOW_OPENGL,&app->window,&app->renderer))return true;
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,2);
+  if(SDL_CreateWindowAndRenderer(title,width,height,flags|SDL_WINDOW_OPENGL,&app->window,&app->renderer))return true;
+  SDL_ResetHint(SDL_HINT_RENDER_DRIVER);
+#endif
+  return SDL_CreateWindowAndRenderer(title,width,height,flags,&app->window,&app->renderer);
+}
+
 SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
   SDL_SetAppMetadata("What a peaceful Magic World", "0.4", "com.amagos.game");
   SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown");
@@ -374,6 +529,12 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
   App *app = SDL_calloc(1, sizeof *app);
   if (!app) return SDL_APP_FAILURE;
   *state = app;
+  app->prev_x = SDL_malloc(MAX_ENTITIES * sizeof *app->prev_x);
+  app->prev_y = SDL_malloc(MAX_ENTITIES * sizeof *app->prev_y);
+  app->keep_x = SDL_malloc(MAX_ENTITIES * sizeof *app->keep_x);
+  app->keep_y = SDL_malloc(MAX_ENTITIES * sizeof *app->keep_y);
+  app->prev_gen = SDL_malloc(MAX_ENTITIES * sizeof *app->prev_gen);
+  if (!app->prev_x || !app->prev_y || !app->keep_x || !app->keep_y || !app->prev_gen) return SDL_APP_FAILURE;
   app->shot_ticks = 600;
 #if defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_IOS)
   app->touch = true;
@@ -385,6 +546,7 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
     else if (!SDL_strcmp(argv[i], "--stage") && i + 1 < argc) app->shot_stage = argv[++i];
     else if (!SDL_strcmp(argv[i], "--deck") && i + 1 < argc) app->shot_deck = argv[++i];
     else if (!SDL_strcmp(argv[i], "--ui") && i + 1 < argc) app->shot_ui = argv[++i];
+    else if (!SDL_strcmp(argv[i], "--lang") && i + 1 < argc) lang_set(!SDL_strcmp(argv[++i], "en") ? LANG_EN : LANG_KO);
   }
   SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | (app->shot ? SDL_WINDOW_HIDDEN : 0);
 #if defined(SDL_PLATFORM_ANDROID) || defined(SDL_PLATFORM_IOS)
@@ -396,7 +558,7 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
   win_w = EM_ASM_INT({ return window.innerWidth; });
   win_h = EM_ASM_INT({ return window.innerHeight; });
 #endif
-  if (!SDL_CreateWindowAndRenderer("오늘도 평화로운 마법 생활", win_w, win_h, flags, &app->window, &app->renderer)) {
+  if (!create_window_renderer(app, win_w, win_h, flags)) {
     SDL_Log("창 생성: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
@@ -407,11 +569,12 @@ SDL_AppResult SDL_AppInit(void **state, int argc, char **argv) {
   if (!gfx_init(app->renderer, assets)) { SDL_Log("에셋을 읽지 못했다: %s", assets); return SDL_APP_FAILURE; }
 
   char *pref = SDL_GetPrefPath("amagos", "amagos");
-  if (pref) { SDL_asprintf(&app->save_path, "%sstate.bin", pref); SDL_free(pref); }
+  if (pref) { SDL_asprintf(&app->save_path, "%sstate.bin", pref); SDL_asprintf(&app->lang_path, "%slang.txt", pref); SDL_free(pref); }
+  if (!app->shot) load_lang(app);   // 확인용 스크린숏은 --lang 만 따른다
   new_world(app);
   app->ui.screen = SCREEN_TITLE;
   if (app->shot) { shot_setup(app); app->ui.screen = SCREEN_PLAY; }
-  else if (load_game(app)) { app->ui.screen = SCREEN_PAUSE; center_camera(app); }   // 이어 하기는 일시정지 화면에서 시작
+  else if (load_game(app)) { app->ui.screen = SCREEN_PAUSE; app->prev_hi = 0; center_camera(app); }   // 이어 하기는 일시정지 화면에서 시작
   else if (app->world->tick) new_world(app);                                        // 읽다 실패한 저장본이 월드를 건드렸으면 새로
   update_layout(app);
   app->last_ns = SDL_GetTicksNS();
@@ -429,10 +592,21 @@ SDL_AppResult SDL_AppEvent(void *state, SDL_Event *e) {
     case SDL_EVENT_DID_ENTER_BACKGROUND:
     case SDL_EVENT_WINDOW_FOCUS_LOST:
     case SDL_EVENT_WINDOW_MINIMIZED:
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+      app->stick.active = false;
+      app->ui.pressed = app->ui.dragging = false;
+      save_game(app);
+#else
       pause_game(app);
+#endif
       break;
+#ifdef SDL_PLATFORM_EMSCRIPTEN
+    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+#endif
     case SDL_EVENT_DID_ENTER_FOREGROUND:
-      app->last_ns = SDL_GetTicksNS();   // 백그라운드 시간은 틱으로 넘기지 않는다 (일시정지 상태로 돌아온다)
+      app->last_ns = SDL_GetTicksNS();   // 백그라운드 시간은 틱으로 넘기지 않는다
+      app->fps_acc = 0;
+      app->fps_frames = 0;
       break;
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
     case SDL_EVENT_WINDOW_SAFE_AREA_CHANGED:
@@ -510,18 +684,35 @@ SDL_AppResult SDL_AppIterate(void *state) {
     app->acc += dt;
     Vec2 k = keyboard_axis(), st = stick_axis(app);
     SimInput in = { (st.x || st.y) ? st : k };
-    for (int n = 0; app->acc >= SIM_DT && n < 8 && running(app); n++) { sim_step(w, &in); app->acc -= SIM_DT; }
+    for (int n = 0; app->acc >= SIM_DT && n < 8 && running(app); n++) { interp_snapshot(app); sim_step(w, &in); app->acc -= SIM_DT; }
     if (app->acc > SIM_DT) app->acc = 0;
+    if (w->state != GS_PLAYING) save_game(app);   // 끝난 판은 저장본을 지운다
+  } else if (app->ui.screen == SCREEN_PLAY && dying(app)) {
+    // 쓰러진 장면: 개체는 멈추고 파티클·글자만 흐른다
+    app->acc += dt;
+    for (int n = 0; app->acc >= SIM_DT && n < 8; n++) { interp_snapshot(app); sim_death_step(w); app->acc -= SIM_DT; }
+    if (app->acc > SIM_DT) app->acc = 0;
+  }
+  Uint64 update_end = app->show_perf ? SDL_GetTicksNS() : 0;
+  interp_begin(app);
+  if (running(app)) {   // 카메라는 그려질(보간된) 플레이어를 따라간다
     int p = ent_index(w, w->player);
     float t = SDL_min(1.0f, (float)dt * 10);
     if (p >= 0) {
       app->cam.x += (w->x[p] - app->cam.x) * t;
       app->cam.y += (w->y[p] - app->cam.y) * t;
     }
-    if (w->state != GS_PLAYING) save_game(app);   // 끝난 판은 저장본을 지운다
   }
   draw(app);
+  interp_end(app);
   SDL_RenderPresent(app->renderer);
+  if (app->show_perf) {
+    // 이전 프레임의 CPU 경과 시간을 표시하며 지수 평균으로 흔들림을 줄인다.
+    float update_ms = (float)((double)(update_end - now) / 1e6);
+    float render_ms = (float)((double)(SDL_GetTicksNS() - update_end) / 1e6);
+    app->update_ms += (update_ms - app->update_ms) * 0.1f;
+    app->render_ms += (render_ms - app->render_ms) * 0.1f;
+  }
   return SDL_APP_CONTINUE;
 }
 
@@ -529,8 +720,11 @@ void SDL_AppQuit(void *state, SDL_AppResult result) {
   (void)result;
   App *app = state;
   if (!app) return;
+  ui_clear_cache();
   gfx_quit();
   world_destroy(app->world);
+  SDL_free(app->prev_x); SDL_free(app->prev_y); SDL_free(app->keep_x); SDL_free(app->keep_y); SDL_free(app->prev_gen);
   SDL_free(app->save_path);
+  SDL_free(app->lang_path);
   SDL_free(app);
 }

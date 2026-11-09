@@ -1,0 +1,343 @@
+--- before/c/sim/entities.c
++++ after/c/sim/entities.c
+@@ -778,7 +778,7 @@
+ 
+ static void run_kind(World *w, int kind, const SimInput *in, void (*tick)(World *, int)) {
+   int hi = w->hi;
+-  for (int i = 0; i < hi; i++) {
++  for (int i = kind_next(w, kind, 0, hi); i < hi; i = kind_next(w, kind, i + 1, hi)) {
+     if (!ent_live(w, i) || w->kind[i] != kind) continue;
+     if (kind != TK_SELF && kind != TK_ENEMY) {
+       tick_life(w, i);
+@@ -806,7 +806,7 @@
+   }
+   grid_build(w, 1u << TK_ENEMY);
+   run_kind(w, TK_ENEMY, in, tick_enemy);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ENEMY) w->phase[i] += SIM_DT * 7 * (w->freeze_t[i] > 0 ? 0 : 1);
++  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi)) if (ent_live(w, i)) w->phase[i] += SIM_DT * 7 * (w->freeze_t[i] > 0 ? 0 : 1);
+   separate_enemies_for_tick(w);
+   recycle_far_enemies(w);
+   grid_build(w, 1u << TK_ENEMY);   // 밀어내기·재배치로 칸이 바뀐 적도 아래 질의(탄·장판·접촉)에 잡히게
+--- before/c/sim/spatial.c
++++ after/c/sim/spatial.c
+@@ -114,7 +114,7 @@
+ }
+ static void group_separation_cells(World *w,unsigned size,bool from_entities) {
+   cells.active=false;cells.fallback=false;
+-  if(size<2048)return;
++  if(size<256)return;
+   if(++cells.stamp==0){memset(cells.table,0,sizeof cells.table);cells.stamp=1;}
+   cells.ngroups=0;
+   memset(cells.group_of,0xff,(size_t)w->hi*sizeof *cells.group_of);
+@@ -131,7 +131,9 @@
+   for(unsigned group=0;group<cells.ngroups;group++) {
+     w->fast.grid_start[group]=at;at+=cells.counts[group];cells.cursor[group]=at;
+   }
+-  for(unsigned group=cells.ngroups;group<=GRID_BUCKETS;group++)w->fast.grid_start[group]=size;
++  /* Private queries only address allocated groups. Keep the working-set
++   * sentinel; grid_reindex restores every public bucket before it is read. */
++  w->fast.grid_start[cells.ngroups]=size;w->fast.grid_start[GRID_BUCKETS]=size;
+   /* Descending IDs within each cell reproduce filtering of the original list. */
+   for(int i=0;i<w->hi;i++)if(cells.group_of[i]!=UINT16_MAX) {
+     unsigned group=cells.group_of[i],p=--cells.cursor[group];
+@@ -441,7 +443,8 @@
+   }
+   bool cached_weights=nradii<=16;
+   for(unsigned p=0;p<(size+63)/64;p++)w->fast.grid_matches[p]=0;
+-  for(int b=0;b<GRID_BUCKETS;b++) {
++  unsigned groups=cells.active?cells.ngroups:GRID_BUCKETS;
++  for(unsigned b=0;b<groups;b++) {
+     unsigned first=w->fast.grid_start[b],end=w->fast.grid_start[b+1];
+     cuts[b]=end;
+     w->fast.grid_match_count[b]=end-first;
+--- before/c/sim/world.c
++++ after/c/sim/world.c
+@@ -25,6 +25,8 @@
+   memset(&w->fast, 0, sizeof w->fast);
+   grid_reindex(w);
+   for (int i = 0; i < w->hi; i++) if (w->alive[i]) {
++    w->fast.kinds[w->kind[i]][i>>6] |= UINT64_C(1)<<(i&63);
++    w->fast.kind_count[w->kind[i]]++;
+     if (w->kind[i] == TK_OBJECT || w->kind[i] == TK_ALLY) {
+       w->fast.structures[i >> 6] |= UINT64_C(1) << (i & 63);
+       w->fast.nstructures++;
+@@ -56,6 +58,8 @@
+   w->gen[i] = gen;
+   w->alive[i] = 1;
+   w->kind[i] = (uint8_t)kind;
++  w->fast.kinds[kind][i>>6] |= UINT64_C(1)<<(i&63);
++  w->fast.kind_count[kind]++;
+   w->fast.no_after[i>>6]&=~(UINT64_C(1)<<(i&63));
+   if (kind == TK_OBJECT || kind == TK_ALLY) {
+     w->fast.structures[i >> 6] |= UINT64_C(1) << (i & 63);
+@@ -98,6 +102,8 @@
+   index_decoy(w, i, false);
+   index_status(w,i,false,false);index_status(w,i,true,false);
+   uint64_t bit = UINT64_C(1) << (i & 63);
++  w->fast.kinds[w->kind[i]][i>>6] &= ~bit;
++  w->fast.kind_count[w->kind[i]]--;
+   if (w->fast.structures[i >> 6] & bit) {
+     w->fast.structures[i >> 6] &= ~bit;
+     w->fast.nstructures--;
+--- before/c/sim/world.h
++++ after/c/sim/world.h
+@@ -264,6 +264,10 @@
+     int text_head;
+     bool batch_texts;
+     uint64_t basic_effects[MAX_ENTITIES/64];
++    /* Live pool membership, including dying nodes until ent_free. Iterators
++     * retain ascending IDs and read mutations between entity callbacks. */
++    uint64_t kinds[TK__COUNT][MAX_ENTITIES/64];
++    uint32_t kind_count[TK__COUNT];
+   } fast;
+ } World;
+ 
+@@ -277,6 +281,20 @@
+   }
+   int i = word * 64 + __builtin_ctzll(mask);
+   return i < end ? i : end;
++}
++static inline int kind_next(const World *w, int kind, int start, int end) {
++  return w->fast.kind_count[kind] ? index_next(w->fast.kinds[kind], start, end) : end;
++}
++static inline int pickup_next(const World *w, int start, int end) {
++  if(start>=end || !(w->fast.kind_count[TK_GEM]+w->fast.kind_count[TK_PICKUP]))return end;
++  int word=start>>6,last=(end-1)>>6;
++  uint64_t mask=(w->fast.kinds[TK_GEM][word]|w->fast.kinds[TK_PICKUP][word])&(~UINT64_C(0)<<(start&63));
++  while(!mask) {
++    if(++word>last)return end;
++    mask=w->fast.kinds[TK_GEM][word]|w->fast.kinds[TK_PICKUP][word];
++  }
++  int i=word*64+__builtin_ctzll(mask);
++  return i<end?i:end;
+ }
+ static inline void index_decoy(World *w, int i, bool active) {
+   uint64_t bit = UINT64_C(1) << (i & 63), *word = &w->fast.decoys[i >> 6];
+--- before/c/render/render.c
++++ after/c/render/render.c
+@@ -411,17 +411,17 @@
+ 
+ static void draw_world(const RenderView *v, const World *w) {
+   // 층 순서 (render.js): 장판 → 설치물 → 보석·아이템 → 적 → 아군 → 플레이어 → 투사체 → 적 탄 → 이펙트 → 파티클 → 글자
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ZONE && in_view(v, w->x[i], w->y[i], w->r[i] + 20)) draw_zone(w, i);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_OBJECT && in_view(v, w->x[i], w->y[i], 30)) draw_object(w, i);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && (w->kind[i] == TK_GEM || w->kind[i] == TK_PICKUP) && in_view(v, w->x[i], w->y[i], 24)) draw_pickup(w, i);
+-  for (int i = 0; i < w->hi; i++)
+-    if (ent_live(w, i) && w->kind[i] == TK_ENEMY && in_view(v, w->x[i], w->y[i], SDL_max(TILE * LOOKS[SDL_max(0, w->etype[i])].scale / 2 + w->r[i] * 0.15f + 2, w->r[i] + 24) + w->shake + 2))
++  for (int i = kind_next(w, TK_ZONE, 0, w->hi); i < w->hi; i = kind_next(w, TK_ZONE, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], w->r[i] + 20)) draw_zone(w, i);
++  for (int i = kind_next(w, TK_OBJECT, 0, w->hi); i < w->hi; i = kind_next(w, TK_OBJECT, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], 30)) draw_object(w, i);
++  for (int i = pickup_next(w, 0, w->hi); i < w->hi; i = pickup_next(w, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], 24)) draw_pickup(w, i);
++  for (int i = kind_next(w, TK_ENEMY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ENEMY, i + 1, w->hi))
++    if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], SDL_max(TILE * LOOKS[SDL_max(0, w->etype[i])].scale / 2 + w->r[i] * 0.15f + 2, w->r[i] + 24) + w->shake + 2))
+       draw_enemy(w, i);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_ALLY && in_view(v, w->x[i], w->y[i], w->r[i] + 40)) draw_ally(w, i);
++  for (int i = kind_next(w, TK_ALLY, 0, w->hi); i < w->hi; i = kind_next(w, TK_ALLY, i + 1, w->hi)) if (ent_live(w, i) && in_view(v, w->x[i], w->y[i], w->r[i] + 40)) draw_ally(w, i);
+   int p = ent_index(w, w->player);
+   if (p >= 0 && w->state != GS_GAMEOVER) draw_player(w, p);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_SHOT && !w->hazard[i] && in_view(v, w->x[i], w->y[i], 30)) draw_shot(w, i);
+-  for (int i = 0; i < w->hi; i++) if (ent_live(w, i) && w->kind[i] == TK_SHOT && w->hazard[i] && in_view(v, w->x[i], w->y[i], 20)) draw_shot(w, i);
++  for (int i = kind_next(w, TK_SHOT, 0, w->hi); i < w->hi; i = kind_next(w, TK_SHOT, i + 1, w->hi)) if (ent_live(w, i) && !w->hazard[i] && in_view(v, w->x[i], w->y[i], 30)) draw_shot(w, i);
++  for (int i = kind_next(w, TK_SHOT, 0, w->hi); i < w->hi; i = kind_next(w, TK_SHOT, i + 1, w->hi)) if (ent_live(w, i) && w->hazard[i] && in_view(v, w->x[i], w->y[i], 20)) draw_shot(w, i);
+   draw_fx(v, w);
+   for (int k = 0; k < w->nparts; k++) {
+     const FxParticle *pt = &w->parts[k];
+--- before/c/tools/bench_web.py
++++ after/c/tools/bench_web.py
+@@ -9,6 +9,7 @@
+ import sys
+ import re
+ import hashlib
++import json
+ import build
+ 
+ root = Path(build.ROOT)
+@@ -99,20 +100,20 @@
+     declarations='extern int bench_variant;\n'
+     dispatch='switch(bench_variant){'
+     for i,filename in enumerate(alternatives,1):
+-        declarations+=f'void separate_enemies_alt{i}(World *w);\n'
+-        dispatch+=f'case {i}: separate_enemies_alt{i}(w);break;'
++        declarations+=f'void separate_enemies_for_tick_alt{i}(World *w);\n'
++        dispatch+=f'case {i}: separate_enemies_for_tick_alt{i}(w);break;'
+         obj=out/f'alternative-{i}.o'
+-        names=['grid_build','grid_reindex','grid_query','separate_enemies']
++        names=['grid_build','grid_reindex','grid_query','separate_enemies','separate_enemies_for_tick']
+         subprocess.run([cc,opt,'-flto','-msimd128',*['-D'+n+'='+n+f'_alt{i}' for n in names],*['-I'+str(p) for p in [*includes,root/'sim']],'-c',str(root/filename),'-o',str(obj)],env=env,check=True)
+         objects.insert(4,obj)
+-    dispatch+='default: separate_enemies(w);break;}'
++    dispatch+='default: separate_enemies_for_tick(w);break;}'
+     if os.environ.get('BENCH_OPAQUE_DISPATCH'):
+-        declarations+='static void (*volatile spatial_variants[])(World*)={separate_enemies,'+','.join('separate_enemies_alt'+str(i) for i in range(1,len(alternatives)+1))+'};\n'
++        declarations+='static void (*volatile spatial_variants[])(World*)={separate_enemies_for_tick,'+','.join('separate_enemies_for_tick_alt'+str(i) for i in range(1,len(alternatives)+1))+'};\n'
+         dispatch='spatial_variants[bench_variant>=0&&bench_variant<'+str(len(alternatives)+1)+'?bench_variant:0](w);'
+     if os.environ.get('BENCH_SPATIAL_TIMERS'):
+         declarations+='#include <emscripten.h>\nextern double bench_phase_ms[32],bench_loop_ms[4];\n'
+         dispatch='do {double start=emscripten_get_now();'+dispatch+'double elapsed=emscripten_get_now()-start;bench_phase_ms[24]+=elapsed;bench_phase_ms[25]++;bench_loop_ms[3]+=elapsed;}while(0);'
+-    code=(root/'sim/entities.c').read_text(encoding='utf-8').replace('#include "world.h"','#include "sim/world.h"\n'+declarations).replace('separate_enemies(w);',dispatch)
++    code=(root/'sim/entities.c').read_text(encoding='utf-8').replace('#include "world.h"','#include "sim/world.h"\n'+declarations).replace('separate_enemies_for_tick(w);',dispatch)
+     file=out/'alternative-entities.c';file.write_text(code,encoding='utf-8');obj=out/'alternative-entities.o'
+     subprocess.run([cc,opt,'-flto','-msimd128',*['-I'+str(p) for p in [*includes,root/'sim']],'-c',str(file),'-o',str(obj)],env=env,check=True)
+     objects.insert(4,obj)
+@@ -122,20 +123,22 @@
+         'game':['sim_step','update_spawns','update_effects'],
+         'entities':['entities_update','run_kind','resolve_deaths','collide_player','collide_structures','recycle_far_enemies'],
+         'combat':['update_statuses','update_buffs'],
+-        'spatial':['grid_build','grid_query','separation_query','separate_enemies'],
++        'spatial':['grid_build','grid_query','separation_query','separate_enemies','separate_enemies_for_tick'],
+     }
+     for name,functions in phases.items():
+         code=(root/f'sim/{name}.c').read_text(encoding='utf-8')
+         for fn in functions: code=re.sub(r'\b(void|int)\s+'+fn+r'\s*\(',r'__attribute__((noinline)) \1 '+fn+'(',code)
+         calls={
+             'game':{'update_spawns(w);':0,'update_barrels(w);':1,'update_buffs(w);':2,'entities_update(w, in);':3,'update_effects(w);':4,'resolve_deaths(w, in);':5,'flush_events(w, in);':6},
+-            'entities':{'grid_build(w, 1u << TK_ENEMY);':7,'run_kind(w, TK_SELF, in, NULL);':8,'run_kind(w, TK_ENEMY, in, tick_enemy);':9,'run_kind(w, TK_ALLY, in, tick_ally);':10,'run_kind(w, TK_OBJECT, in, tick_object);':11,'run_kind(w, TK_ZONE, in, tick_zone);':12,'run_kind(w, TK_SHOT, in, tick_shot);':13,'run_kind(w, TK_GEM, in, tick_pickup);':14,'run_kind(w, TK_PICKUP, in, tick_pickup);':15,'run_kind(w, TK_POINT, in, NULL);':16,'separate_enemies(w);':17,'recycle_far_enemies(w);':18,'update_statuses(w);':19,'collide_structures(w);':20,'collide_player(w);':21},
++            'entities':{'grid_build(w, 1u << TK_ENEMY);':7,'run_kind(w, TK_SELF, in, NULL);':8,'run_kind(w, TK_ENEMY, in, tick_enemy);':9,'run_kind(w, TK_ALLY, in, tick_ally);':10,'run_kind(w, TK_OBJECT, in, tick_object);':11,'run_kind(w, TK_ZONE, in, tick_zone);':12,'run_kind(w, TK_SHOT, in, tick_shot);':13,'run_kind(w, TK_GEM, in, tick_pickup);':14,'run_kind(w, TK_PICKUP, in, tick_pickup);':15,'run_kind(w, TK_POINT, in, NULL);':16,'separate_enemies_for_tick(w);':17,'recycle_far_enemies(w);':18,'update_statuses(w);':19,'collide_structures(w);':20,'collide_player(w);':21},
+         }
+         code='#include <emscripten.h>\nextern double bench_phase_ms[32];\n'+code
+         if name=='spatial':
+             code=code.replace('int n=separation_query(w,i,near,512,xs[own],ys[own],rs[own],cuts);','double query_start=emscripten_get_now(); int n=separation_query(w,i,near,512,xs[own],ys[own],rs[own],cuts); double pairs_start=emscripten_get_now(); bench_phase_ms[22]+=pairs_start-query_start;')
+             code=code.replace('xs[own]=ix;ys[own]=iy;','xs[own]=ix;ys[own]=iy; bench_phase_ms[23]+=emscripten_get_now()-pairs_start;')
+         for call,phase in calls.get(name,{}).items():
++            if call not in code:
++                raise SystemExit(f'Missing phase {phase} hook in {name}: {call}')
+             code=code.replace(call,'do { double phase_start=emscripten_get_now(); '+call+' bench_phase_ms['+str(phase)+']+=emscripten_get_now()-phase_start; } while(0);')
+         source=out/f'phase-{name}.c';source.write_text(code,encoding='utf-8')
+         obj=out/f'phase-{name}.o';phase_objects.append(obj)
+@@ -144,6 +147,12 @@
+ if '--test-only' not in sys.argv:
+     subprocess.run([cc, opt, '-flto', '-msimd128', *profile_flags, *extra, '--profiling-funcs', *map(str, objects), '-lm', '-sMAX_WEBGL_VERSION=2', '-sALLOW_MEMORY_GROWTH=1', '-sINITIAL_MEMORY=64MB', '--shell-file=' + str(root / 'platform/web/shell.html'), '--preload-file=' + str(web / 'assets') + '@/assets', '-o', str(out / 'amagos.html')], env=env, check=True)
+     shutil.copy2(out / 'amagos.html', out / 'index.html')
++    sources=[p for directory in ['core','data','sim','render','platform'] for p in (root/directory).rglob('*') if p.is_file()]
++    sources += [root/'CMakeLists.txt',root/'profiles/web.proftext',Path(__file__)]
++    for option in ['BENCH_GFX','BENCH_RENDER','BENCH_SPATIAL','BENCH_SPATIAL_ALTS']:
++        sources += [root/name for name in os.environ.get(option,'').split(';') if name]
++    manifest={'sources':{str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sources if p.exists()},'flags':[opt,*profile_flags,*extra],'options':{key:value for key,value in os.environ.items() if key.startswith('BENCH_')},'phases':'--phases' in sys.argv,'realTimers':bool(os.environ.get('BENCH_REAL_TIMERS'))}
++    (out/'build.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+     print(out)
+ if '--test' in sys.argv or '--test-only' in sys.argv:
+     for name,source,libs in [('rules',root/os.environ.get('BENCH_TEST_SOURCE','tests/test_main.c'),[*spatial_objects,web/'libamagos_sim.a']),('round',root/'tests/test_gfx_round.c',[])]:
+--- before/c/tests/test_main.c
++++ after/c/tests/test_main.c
+@@ -811,6 +811,33 @@
+   world_destroy(loaded);world_destroy(w);
+ }
+ 
++static void test_kind_index_lifecycle(void) {
++  World *w=quiet_world();
++  for(int i=0;i<150;i++)ent_spawn(w,i%2?TK_GEM:TK_PICKUP,TEAM_NEUTRAL,(float)i,0,2);
++  for(int i=1;i<w->hi;i+=3)if(w->alive[i])ent_free(w,i);
++  for(int i=0;i<30;i++)ent_spawn(w,TK_ENEMY,TEAM_HOSTILE,(float)i,0,8);
++  for(int i=1;i<w->hi;i+=7)if(w->alive[i])ent_kill(w,ent_handle(w,i));
++  size_t size=save_write(w,NULL,0);uint8_t *bytes=malloc(size);save_write(w,bytes,size);
++  World *loaded=world_create(99);bool ok=save_read(loaded,bytes,size);free(bytes);
++  for(int pass=0;pass<2;pass++) {
++    World *a=pass?loaded:w;
++    for(int kind=0;kind<TK__COUNT;kind++) {
++      int next=kind_next(a,kind,0,a->hi),count=0;
++      for(int i=0;i<a->hi;i++)if(a->alive[i]&&a->kind[i]==kind) {
++        ok &= next==i;count++;next=kind_next(a,kind,i+1,a->hi);
++      }
++      ok &= next==a->hi && count==(int)a->fast.kind_count[kind];
++    }
++    int next=pickup_next(a,0,a->hi);
++    for(int i=0;i<a->hi;i++)if(a->alive[i]&&(a->kind[i]==TK_GEM||a->kind[i]==TK_PICKUP)) {
++      ok &= next==i;next=pickup_next(a,i+1,a->hi);
++    }
++    ok &= next==a->hi;
++  }
++  CHECK(ok,"활성 종류 인덱스는 빈 ID 재사용·사망 대기·저장 복원 후에도 원래 순서를 유지한다");
++  world_destroy(loaded);world_destroy(w);
++}
++
+ int main(int argc, char **argv) {
+ #ifdef _WIN32
+   SetConsoleOutputCP(CP_UTF8);   // 한글 출력
+@@ -845,6 +872,7 @@
+   test_late_after_movement_stack();
+   test_effect_reset_cache();
+   test_exact_separation_and_statuses();
++  test_kind_index_lifecycle();
+   int done, total;
+   cards_impl_coverage(&done, &total);
+   printf("%d/%d 통과 · 카드 함수 구현 %d/%d\n", checks - failures, checks, done, total);
+--- before/tools/bench-c-js.cjs
++++ after/tools/bench-c-js.cjs
+@@ -4,9 +4,17 @@
+ const path = require('node:path');
+ const http = require('node:http');
+ const os = require('node:os');
++const crypto = require('node:crypto');
+ const { chromium } = require('playwright');
+ const ROOT = path.resolve(__dirname, '..');
+ const OUT = path.resolve(ROOT, process.env.PERF_DIR || 'reports/generated/c-js-performance');
++const fileHash = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
++function referenceHashes(directory) {
++  return Object.fromEntries(fs.readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name)).flatMap(entry=>{
++    const file=path.join(directory,entry.name);
++    return entry.isDirectory()?Object.entries(referenceHashes(file)):[[path.relative(ROOT,file).replaceAll('\\','/'),fileHash(file)]];
++  }));
++}
+ fs.mkdirSync(OUT, { recursive: true });
+ const scenes = [
+   { name: 'idle', enemies: 0, shots: 0, gems: 0 },
+@@ -38,6 +46,7 @@
+   const resultPath=path.join(OUT,process.env.PERF_OUTPUT || 'results.json');
+   const result = process.env.PERF_RESUME && fs.existsSync(resultPath) ? JSON.parse(fs.readFileSync(resultPath,'utf8')) : { date: new Date().toISOString(), browser: browser.version(), args, frames: Number(process.env.PERF_FRAMES || 120), rows: [], errors: [] };
+   result.host=host;
++  result.referenceHashes=Object.assign({},...['js','data','native'].map(dir=>referenceHashes(path.join(ROOT,dir))));
+   try {
+     for (const dpr of (process.env.PERF_DPRS || '1,2').split(',').map(Number)) {
+       // Alternate implementation order by DPR to reduce systematic warm-up/thermal bias.
+@@ -115,11 +124,12 @@
+           };
+           window.__draw = () => __isC ? Module._bench_draw() : game.render();
+           window.__step = () => __isC ? Module._bench_step() : game.update(1 / 60);
+-          window.__counts = () => __isC ? { entities: Module._bench_count(-3), hi: Module._bench_count(-1), slots: Module._bench_count(-2), enemies:Module._bench_count(-4), shots:Module._bench_count(-5), gems:Module._bench_count(-6), fx:Module._bench_count(-7), texts:Module._bench_count(-8), particles:Module._bench_count(-9) } : { enemies: game.enemies.length, shots: game.projectiles.length, gems: game.pickups.length, particles: game.particles.length, fx: game.fx.length, texts: game.texts.length, wasm: WasmCore.on(), gl: GLSprites.ok, pendingShots: game._shotQueue.length - game._shotQueueHead };
++          window.__counts = () => __isC ? { ticks:Module._bench_count(-10), simSeconds:Module._bench_count(-10)/60, entities: Module._bench_count(-3), hi: Module._bench_count(-1), slots: Module._bench_count(-2), enemies:Module._bench_count(-4), shots:Module._bench_count(-5), gems:Module._bench_count(-6), fx:Module._bench_count(-7), texts:Module._bench_count(-8), particles:Module._bench_count(-9) } : { simSeconds:game.time, enemies: game.enemies.length, shots: game.projectiles.length, gems: game.pickups.length, particles: game.particles.length, fx: game.fx.length, texts: game.texts.length, wasm: WasmCore.on(), gl: GLSprites.ok, pendingShots: game._shotQueue.length - game._shotQueueHead };
+           window.__sync = () => { for (const gl of __gls) gl.finish(); };
+-          window.__stats = values => { const a = values.slice().sort((a,b) => a-b); return { avg: values.reduce((a,b)=>a+b,0)/a.length, p50:a[Math.floor(a.length*.5)], p95:a[Math.floor(a.length*.95)], max:a[a.length-1], over16:values.filter(v=>v>1000/60).length, samples:values.length }; };
++          window.__stats = values => { if(!values.length)return {avg:null,p50:null,p95:null,max:null,over16:0,samples:0}; const a = values.slice().sort((a,b) => a-b); return { avg: values.reduce((a,b)=>a+b,0)/a.length, p50:a[Math.floor(a.length*.5)], p95:a[Math.floor(a.length*.95)], max:a[a.length-1], over16:values.filter(v=>v>1000/60).length, samples:values.length }; };
+         }, {version,jsWasm:process.env.PERF_JS_WASM!=='0'});
+         await page.evaluate(enabled=>window.__measureReal=enabled,!!process.env.PERF_REAL);
++        await page.evaluate(enabled=>window.__realOnly=enabled,!!process.env.PERF_REAL_ONLY);
+         await page.evaluate(enabled=>window.__compareReal=enabled,!!process.env.PERF_COMPARE_REAL_STATE);
+         await page.evaluate(enabled=>window.__debugNoDraw=enabled,!!process.env.PERF_DEBUG_NO_DRAW);
+         for (const scene of scenes) {
+@@ -156,12 +166,12 @@
+             const initial = __counts();
+             const submit = [], sync = [], cadence = [];
+             let last;
+-            for (let i = 0; i < frames; i++) {
++            for (let i = 0; i < (window.__realOnly ? 0 : frames); i++) {
+               const now = await new Promise(__raf);
+               if (last !== undefined) cadence.push(now-last); last=now;
+               const a = performance.now(); __draw(); submit.push(performance.now()-a);
+             }
+-            for (let i = 0; i < Math.min(frames, 60); i++) {
++            for (let i = 0; i < (window.__realOnly ? 0 : Math.min(frames, 60)); i++) {
+               await new Promise(__raf);
+               const a = performance.now(); __draw(); __sync(); sync.push(performance.now()-a);
+             }
+@@ -188,7 +198,7 @@
+             console.log('PERF: live '+scene.name);
+             __reset(scene);
+             const live=[], liveCadence=[]; last=undefined;
+-            for(let i=0;i<frames+20;i++) {
++            for(let i=0;i<(window.__realOnly ? 0 : frames+20);i++) {
+               const now=await new Promise(__raf);
+               if(i>=20 && last!==undefined) liveCadence.push(now-last); last=now;
+               const a=performance.now();
+@@ -232,7 +242,12 @@
+             }
+             return { worldPointers:__isC?(window.__worldPointers||[]).slice(-4):null,scene:scene.name, simulationSkipped:!!(scene.ui||scene.far), initial, afterSim, afterLive, worldBytes, renderSubmit:__stats(submit), renderSync:__stats(sync), renderCadence:__stats(cadence), simulation:__stats(sim), phaseMs, live:__stats(live), liveCadence:__stats(liveCadence), realtime, interpolation:interp.length?__stats(interp):null, glInfo, calls, wasmBytes:__isC ? HEAPU8.buffer.byteLength : WasmCore.exports?.memory.buffer.byteLength, jsHeapBytes:performance.memory?.usedJSHeapSize, heapBytes:__isC ? HEAPU8.buffer.byteLength : performance.memory?.usedJSHeapSize };
+           }, { scene, frames: result.frames });
+-          Object.assign(row,{version,dpr,loadMs});
++          Object.assign(row,{version,dpr,loadMs,realOnly:!!process.env.PERF_REAL_ONLY});
++          if(version.startsWith('C')) {
++            const directory=path.resolve(ROOT,JSON.parse(process.env.PERF_PATHS||'{}')[version]||process.env.PERF_C_PATH||'c/build/perf-web/');
++            row.binaryHashes=Object.fromEntries(['amagos.wasm','amagos.js','amagos.data'].map(name=>[name,fileHash(path.join(directory,name))]));
++            if(fs.existsSync(path.join(directory,'build.json')))row.build=JSON.parse(fs.readFileSync(path.join(directory,'build.json'),'utf8'));
++          }
+           row.hostCpuBusyPct=busy(hostBefore,cpuSample());
+ 
+           if(version.startsWith('C')&&(process.env.PERF_INSTANCE_DUMP||process.env.PERF_OCCLUSION_PROBE)) {

@@ -7,12 +7,39 @@
   <style>
     html, body { margin: 0; height: 100%; background: #12141e; overflow: hidden; }
     canvas { display: block; width: 100vw; height: 100vh; height: 100dvh; touch-action: none; outline: none; }   /* SDL 이 CSS 크기를 따라 캔버스 해상도를 맞춘다 */
+    #status { position: fixed; inset: 0; display: grid; place-content: center; color: #e8ecf5; font: 16px sans-serif; background: #12141e; }
   </style>
 </head>
 <body>
   <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+  <div id="status" role="status">게임 불러오는 중…</div>
   <script>
-    var Module = { canvas: document.getElementById('canvas') };
+    var Module = {
+      canvas: document.getElementById('canvas'),
+      onRuntimeInitialized: function () {
+        document.getElementById('status').hidden = true;
+        document.getElementById('status').style.display = 'none';
+        document.documentElement.dataset.ready = 'true';
+      },
+      onAbort: function () {
+        var status = document.getElementById('status');
+        status.hidden = false;
+        status.style.display = 'grid';
+        status.textContent = '게임을 불러오지 못했습니다. 페이지를 새로 고쳐 주세요.';
+      }
+    };
+    // F3는 브라우저 검색 대신 게임의 성능 오버레이를 전환한다.
+    window.addEventListener('keydown', function (event) {
+      if (event.code === 'F3') event.preventDefault();
+    });
+    // Use the same GPU preference as the JS renderer, for this canvas only.
+    (function (canvas) {
+      var getContext = canvas.getContext;
+      canvas.getContext = function (type, attributes) {
+        if (/webgl/.test(type)) attributes = Object.assign({}, attributes, { powerPreference: 'high-performance' });
+        return getContext.call(this, type, attributes);
+      };
+    })(Module.canvas);
   </script>
   {{{ SCRIPT }}}
 </body>

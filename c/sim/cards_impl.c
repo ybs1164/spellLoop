@@ -14,6 +14,7 @@ bool action_impl_done(int card);
 static int prop_first[CARD__COUNT], prop_last[CARD__COUNT];
 static const DataTable *PROPS;
 static int C_ROW, C_PATH, C_VALUE;
+static void prepare_values(void);
 
 void cards_impl_init(void) {
   PROPS = data_table("cards__props");
@@ -27,6 +28,7 @@ void cards_impl_init(void) {
   }
   targets_init();
   actions_init();
+  prepare_values();
 }
 
 static const DataCell *prop(int card, const char *path) {
@@ -52,9 +54,13 @@ static int stat_id(const char *name) {
   return -1;
 }
 
-/* js actionValue: 스탯 비율(effect.statRatios / statRatios) → 고정 값(effect / fixedValues) → 탄속 */
-float action_value(Ctx *c, int card, const char *field, int owner) {
-  World *w = c->w;
+typedef struct { int stat; float value; bool scaled; } ValuePlan;
+static const char *const VALUE_FIELDS[] = {
+  "damage", "speed", "knockback", "heal", "shield", "distance", "pullDistance", "summonHp", "summonAttack", "summonSpeed"
+};
+static ValuePlan values[CARD__COUNT][ARRAY_LEN(VALUE_FIELDS)];
+
+static ValuePlan compile_value(int card, const char *field) {
   char path[96];
   const char *stat = NULL;
   double ratio = 1;
@@ -64,15 +70,30 @@ float action_value(Ctx *c, int card, const char *field, int owner) {
     if (stat) { snprintf(path, sizeof path, "%sstatRatios.%s.ratio", k ? "" : "effect.", field); ratio = card_prop(card, path, 1); }
   }
   if (stat) {
-    int s = stat_id(stat);
-    return s >= 0 && owner >= 0 ? w->stat[owner][s] * (float)ratio : 0;
+    return (ValuePlan){ stat_id(stat), (float)ratio, true };
   }
   snprintf(path, sizeof path, "effect.%s", field);
   const DataCell *v = prop(card, path);
   if (!v) { snprintf(path, sizeof path, "fixedValues.%s", field); v = prop(card, path); }
-  if (v && v->type == DT_NUM) return (float)v->num;
-  if (!strcmp(field, "speed")) return (float)data_num(data_table("cards"), card, "projectileSpeed", 0);
-  return 0;
+  float value = v && v->type == DT_NUM ? (float)v->num :
+    !strcmp(field, "speed") ? (float)data_num(data_table("cards"), card, "projectileSpeed", 0) : 0;
+  return (ValuePlan){ -1, value, false };
+}
+
+static void prepare_values(void) {
+  for (int c = 0; c < CARD__COUNT; c++)
+    for (int f = 0; f < ARRAY_LEN(VALUE_FIELDS); f++) values[c][f] = compile_value(c, VALUE_FIELDS[f]);
+}
+
+/* Compile immutable CSV lookups, never the owner's changing stats. Unknown
+ * fields retain the generic property API and its original fallback order. */
+float action_value(Ctx *c, int card, const char *field, int owner) {
+  ValuePlan value;
+  int f = 0;
+  while (f < ARRAY_LEN(VALUE_FIELDS) && strcmp(field, VALUE_FIELDS[f])) f++;
+  if (card >= 0 && card < CARD__COUNT && f < ARRAY_LEN(VALUE_FIELDS)) value = values[card][f];
+  else value = compile_value(card, field);
+  return value.scaled ? (value.stat >= 0 && owner >= 0 ? c->w->stat[owner][value.stat] * value.value : 0) : value.value;
 }
 
 float action_damage(Ctx *c, int card, const char *field) {

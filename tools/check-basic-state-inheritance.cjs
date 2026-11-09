@@ -10,7 +10,7 @@ vm.runInContext(`
   'use strict';
   UI.hideOverlay = UI.showHud = () => {};
   const game = Object.create(Game.prototype);
-  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = [];
+  game.events = new EventBus(); game.hash = new SpatialHash(64); game._near = []; game._nearStruct = []; game.structHashes = new Map(); game._structCount = 0;
   game.w = 1000; game.h = 800; game.start();
   game.burst = game.addText = game.addFx = game.circleFx = game.shake = () => {};
   const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-8, a + ' != ' + b);
@@ -41,7 +41,7 @@ vm.runInContext(`
   fleeting.update(0.1, game); assert.equal(fleeting.dead, true);
 
   const barrel = new Placed('barrel', 0, 0, 1);
-  game.objects = [barrel]; game.enemies = []; game.rebuildHash();
+  game.objects = [barrel]; game.enemies = []; game.rebuildHash(); game.rebuildStructHash();
   assert.equal(entityActionConfig(barrel, 'explode'), undefined);
   const shot = game.spawnProjectile({ x: 0, y: 0, vx: 0, vy: 0, damage: 10 });
   game.collideShot(shot); close(barrel.hp, 40);
@@ -94,18 +94,10 @@ vm.runInContext(`
   game.split({ kind: 'self' });
   const splitParent = game.allies[0];
   splitParent.update(0.01, game);
-  assert.equal(game.allies.length, 2);
-  const splitChild = game.allies[1];
-  const inheritedCd = splitParent.slots[1].cd;
-  assert.ok(inheritedCd > 0);
-  close(splitChild.slots[1].cd, inheritedCd);
-  assert.notEqual(splitChild.slots[1], splitParent.slots[1]);
-  splitChild.slots[1].cd = 5;
-  const cloneCount = game.allies.length;
-  splitChild.update(0.01, game);
-  assert.equal(game.allies.length, cloneCount, 'a cooling slot stops the inherited split');
-  splitChild.slots[1].cd = 0.5; splitChild.update(6, game);
-  assert.ok(game.allies.length > cloneCount, 'inherited split runs again after the cooldown');
+  assert.equal(game.allies.length, 1, 'a split-born clone cannot split itself again');
+  splitParent.slots[1].cd = 0;
+  splitParent.update(6, game);
+  assert.equal(game.allies.length, 1, 'expired cooldown does not bypass the split-born restriction');
   const victim = new Enemy('grunt', 800, 0, 100);
   game.enemies = [victim]; game.rebuildHash();
   const attached = game.addZone('poison', victim, { kind: 'enemy', e: victim });

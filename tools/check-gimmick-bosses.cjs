@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const context = vm.createContext({ console, assert, TD: new Proxy({}, { get: () => 0 }) });
-for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js', 'js/stages.js', 'js/icons.js', 'js/ui.js', 'js/game.js']) {
+for (const path of ['js/util.js', 'js/input.js', 'js/cards.js', 'js/entities.js', 'js/stages.js', 'js/upgrades.js', 'js/icons.js', 'js/ui.js', 'js/game.js']) {
   vm.runInContext(fs.readFileSync(path, 'utf8'), context, { filename: path });
 }
 vm.runInContext(`
