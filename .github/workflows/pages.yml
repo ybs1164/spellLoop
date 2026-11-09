@@ -49,12 +49,14 @@ jobs:
           "$RUNNER_TEMP/emsdk/emsdk" activate 6.0.11
           echo "EMSDK=$RUNNER_TEMP/emsdk" >> "$GITHUB_ENV"
       - name: Build C web version
-        run: python c/tools/build.py web --site _site/c
+        run: python c/tools/build.py web --site _site
       - name: Assemble site
         run: |
-          cp -r index.html css js assets _site/
-          mkdir -p _site/native
-          cp native/sim_core.wasm _site/native/
+          # C at the root (and /c/ for old links), JS reference build at /js/
+          mkdir -p _site/c _site/js/native
+          cp _site/index.html _site/amagos.js _site/amagos.wasm _site/amagos.data _site/c/
+          cp -r index.html css js assets _site/js/
+          cp native/sim_core.wasm _site/js/native/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:

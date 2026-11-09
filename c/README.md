@@ -50,4 +50,4 @@ JS 판을 C 로 다시 만드는 중이다. 계획과 진행 상황은 [docs/C_R
 - 도감: 타이틀·일시정지의 도감 버튼. 카드·개체 탭과 개체 분류 필터, Esc 또는 닫기로 복귀
 - 개체 조회: I로 열고 닫기. 좌우 키·분류 버튼으로 이동, 카드 슬롯을 눌러 펼치기
 
-`python c/tools/build.py web --site c/build/site/c`로 정적 배포 파일을 모을 수 있다. Pages 워크플로는 기존 JS를 루트, C 웹 버전을 `/c/`에 배포한다.
+`python c/tools/build.py web --site c/build/site/c`로 정적 배포 파일을 모을 수 있다. Pages 워크플로는 C 웹 버전을 루트(`/c/`에도 같은 사본), 기존 JS를 `/js/`에 배포한다.
